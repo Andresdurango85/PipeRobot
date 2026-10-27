@@ -31,9 +31,45 @@ Pinned version: 0.6.1 ([ADR 0002](../decisions/0002-python-tooling-and-pinning.m
 - **A Hub dataset must have a git tag with its codebase version** (e.g. `v3.0`); without it,
   loading raises `RuntimeError: Your dataset must be tagged with a codebase version`.
   _(verified 2026-10-26, LeRobot 0.6.1, aswinkumar99/so101-eval-gallery)_
+- **The Hugging Face Robotics Course imports still work in 0.6.1**:
+  `from lerobot.datasets.lerobot_dataset import LeRobotDataset` and
+  `from lerobot.datasets.streaming_dataset import StreamingLeRobotDataset`; both take
+  `delta_timestamps`. _(verified 2026-10-26, LeRobot 0.6.1, import + signature check)_
+- **Padding at episode edges is flagged as `<key>_is_pad`** (a `BoolTensor`) in each sample, for
+  both the regular and the streaming dataset. _(verified 2026-10-26, LeRobot 0.6.1, source of
+  `datasets/dataset_reader.py` and `datasets/streaming_dataset.py`)_
 - **Unauthenticated Hub access works but warns** ("set a HF_TOKEN to enable higher rate limits").
   Fine for metadata; CI that downloads a lot will need a token as a secret.
   _(verified 2026-10-26, huggingface_hub via LeRobot 0.6.1)_
+
+## Policies (ACT)
+
+- **ACT defaults run a full chunk open-loop**: `ACTConfig()` has `chunk_size=100`,
+  `n_action_steps=100`, `temporal_ensemble_coeff=None`, `n_obs_steps=1`, `use_vae=True`,
+  `kl_weight=10.0`, `vision_backbone="resnet18"` and MEAN_STD normalization for visual, state and
+  action. At 30 fps that is ~3.3 s between observations. Temporal ensembling requires
+  `n_action_steps=1`. _(verified 2026-10-26, LeRobot 0.6.1, `ACTConfig()` + `configuration_act.py`)_
+- **`ACTPolicy` keeps an action queue between `select_action` calls; `reset()` clears it** and must
+  be called at every environment reset, or the next episode starts with the previous one's actions.
+  _(verified 2026-10-26, LeRobot 0.6.1, `policies/act/modeling_act.py`)_
+- **Normalization stats are saved with the policy's pre/post-processors** (`save_pretrained`) and
+  restored by `DataProcessorPipeline.from_pretrained`, unless overridden with
+  `overrides={"normalizer_processor": {"stats": ...}}`.
+  _(verified 2026-10-26, LeRobot 0.6.1, `processor/normalize_processor.py` docstring)_
+
+## Robot Learning Tutorial snippets vs 0.6.1
+
+The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates 0.6.1:
+
+- **`dataset_to_policy_features` moved** from `lerobot.datasets.utils` to
+  `lerobot.utils.feature_utils`. _(verified 2026-10-26, LeRobot 0.6.1, import check)_
+- **`lerobot.robots.so100_follower` no longer exists**; SO-100 and SO-101 share
+  `lerobot.robots.so_follower`, which exports `SO100Follower(Config)`, `SO101Follower(Config)` and
+  `SOFollower(Config)`. _(verified 2026-10-26, LeRobot 0.6.1, import check)_
+- **Still valid**: `lerobot.policies.factory.make_pre_post_processors`,
+  `lerobot.policies.utils.build_inference_frame` / `make_robot_action`,
+  `lerobot.configs.types.FeatureType`, `lerobot.async_inference` (`policy_server`, `robot_client`).
+  _(verified 2026-10-26, LeRobot 0.6.1, import check)_
 
 ## SO-100 / SO-101 naming
 
