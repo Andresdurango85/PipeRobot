@@ -136,14 +136,15 @@ def decide(
     if diff_interval.upper < 0:
         verdict = Verdict.BLOCK
         reason = (
-            f"Regression: success rate dropped {-difference:.1%} and the {confidence:.0%} "
+            f"Regression: success rate dropped {-difference * 100:.1f} pp and the {confidence:.0%} "
             f"interval of the difference {diff_interval} is entirely below zero."
         )
     elif -difference > tolerance:
         verdict = Verdict.WARN
         reason = (
-            f"Success rate dropped {-difference:.1%} (more than the {tolerance:.1%} tolerance), "
-            f"but it is not significant: the difference interval {diff_interval} includes zero. "
+            f"Success rate dropped {-difference * 100:.1f} pp "
+            f"(more than the {tolerance * 100:.0f} pp tolerance), but it is not significant: "
+            f"the difference interval {diff_interval} includes zero. "
             "Run more episodes to tell."
         )
     else:

@@ -6,6 +6,9 @@ downloaded, never the videos, so this is cheap to run.
 Usage:
     uv run python -m eval.dataset_stats
     uv run python -m eval.dataset_stats --repo-id lerobot/svla_so101_pickplace --json
+
+Exit codes: 0 OK, 1 metadata loaded but failed a sanity check, 2 metadata could not be loaded
+(e.g. old v2.1 format or missing version tag).
 """
 
 from __future__ import annotations
@@ -102,6 +105,9 @@ def summarize(meta: DatasetMeta) -> DatasetSummary:
     lengths = _episode_lengths(meta.episodes)
     durations = [n / fps for n in lengths] or [0.0]
     warnings: list[str] = []
+    if not lengths or meta.total_episodes == 0:
+        # Seen on the Hub: data files uploaded but info.json never finalized after recording.
+        warnings.append("dataset has no episodes in its metadata")
     if len(lengths) != meta.total_episodes:
         warnings.append(
             f"info.json reports {meta.total_episodes} episodes "
@@ -176,7 +182,12 @@ def main(
     parser.add_argument("--json", action="store_true", help="Print the summary as JSON")
     args = parser.parse_args(argv)
 
-    summary = summarize(loader(args.repo_id, args.revision))
+    try:
+        meta = loader(args.repo_id, args.revision)
+    except Exception as exc:  # LeRobot raises several types; all mean "cannot use this dataset"
+        print(f"ERROR: could not load {args.repo_id}: {str(exc).strip()}", file=sys.stderr)
+        return 2
+    summary = summarize(meta)
     print(json.dumps(asdict(summary), indent=2) if args.json else format_summary(summary))
     return 1 if summary.warnings else 0
 

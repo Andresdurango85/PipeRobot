@@ -135,6 +135,26 @@ def test_main_fails_when_metadata_is_inconsistent(capsys: pytest.CaptureFixture[
     assert "WARNING" in capsys.readouterr().out
 
 
+def test_empty_dataset_is_flagged() -> None:
+    # Real case (SO-101-robot-learning/so101_pick_place): data uploaded, info.json says 0 episodes.
+    summary = summarize(FakeMeta(lengths=[]))
+
+    assert summary.num_episodes == 0
+    assert "dataset has no episodes in its metadata" in summary.warnings
+
+
+def test_main_returns_2_when_dataset_cannot_be_loaded(capsys: pytest.CaptureFixture[str]) -> None:
+    def loader(repo_id: str, revision: str | None) -> DatasetMeta:
+        raise RuntimeError("The dataset you requested is in 2.1 format.")
+
+    exit_code = main(["--repo-id", "old/data"], loader=loader)
+
+    assert exit_code == 2
+    assert "could not load old/data: The dataset you requested is in 2.1 format." in (
+        capsys.readouterr().err
+    )
+
+
 @pytest.mark.hub
 def test_real_so101_dataset_from_hub() -> None:
     pytest.importorskip("lerobot")
