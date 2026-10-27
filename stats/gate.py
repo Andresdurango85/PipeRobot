@@ -16,6 +16,9 @@ Verdict rule:
 
 Usage:
     uv run python -m stats.gate --candidate 38/50 --baseline 45/50
+    uv run python -m stats.gate --results out/results.json --baseline-file stats/baseline.json
+
+Exit codes: 0 PASS or WARN, 1 BLOCK, 2 invalid input files.
 """
 
 from __future__ import annotations
@@ -180,9 +183,11 @@ def format_result(result: GateResult) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    # Imported here: cli_inputs builds on this module, so a top-level import would be circular.
+    from stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
+
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--candidate", required=True, type=SuccessCount.parse, help="e.g. 38/50")
-    parser.add_argument("--baseline", required=True, type=SuccessCount.parse, help="e.g. 45/50")
+    add_input_arguments(parser)
     parser.add_argument("--confidence", type=float, default=DEFAULT_CONFIDENCE)
     parser.add_argument(
         "--tolerance",
@@ -192,7 +197,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    result = decide(args.candidate, args.baseline, args.confidence, args.tolerance)
+    try:
+        inputs = resolve_inputs(args)
+    except InputError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    result = decide(inputs.candidate, inputs.baseline, args.confidence, args.tolerance)
     print(format_result(result))
     return 1 if result.verdict is Verdict.BLOCK else 0
 

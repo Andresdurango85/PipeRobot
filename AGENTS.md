@@ -48,6 +48,9 @@ but not CI/CD or testing concepts.
   (`AGENTS.md`, `docs/STATUS.md`, `docs/decisions/`, `docs/knowledge/`) in **English**.
   `docs/learning/` holds Andrés's own course notes, in Spanish.
 - Typed Python, pytest, ruff; pinned dependencies with uv ([ADR 0002](docs/decisions/0002-python-tooling-and-pinning.md)).
+- Keep the generic gate core (`stats/`, `reports/`, `eval/results.py`) free of SO-101, LeRobot and
+  Isaac code; robot/task-specific code lives in `envs/`, `policies/` and evaluators
+  ([ADR 0015](docs/decisions/0015-generic-core-vs-robot-specific.md), enforced by a test).
 - Small, verifiable steps. Propose a plan before big changes. **Ask before installing anything
   heavy** (Isaac Sim, CUDA, multi-GB Docker images, the `lerobot` extra on a new machine).
 - Treat evaluation as a testing problem: flakiness, seeds, reproducibility and reports are

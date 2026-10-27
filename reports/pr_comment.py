@@ -5,29 +5,27 @@ comment on every push instead of adding a new one.
 
 Usage:
     uv run python -m reports.pr_comment --candidate 25/50 --baseline 45/50
-    uv run python -m reports.pr_comment --candidate 25/50 --baseline 45/50 \\
-        --failed-episodes failed.json --run-url "$RUN_URL" --commit "$GITHUB_SHA"
+    uv run python -m reports.pr_comment --results out/results.json \\
+        --baseline-file stats/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA"
 
-``failed.json`` is a list of objects: ``{"seed": 3, "scene": "...", "failure": "...",
-"video_url": "..."}``; only ``seed`` is required.
+With ``--results``, failed episodes (seed, scene, failure, video) come from the results file.
+Exit codes: 0 rendered (whatever the verdict; `stats.gate` decides the merge), 2 invalid inputs.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 
+from eval.results import EpisodeResult
+from stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
 from stats.gate import (
     DEFAULT_CONFIDENCE,
     DEFAULT_TOLERANCE,
     GateResult,
     Interval,
-    SuccessCount,
     Verdict,
     decide,
 )
@@ -40,25 +38,6 @@ VERDICT_HEADINGS = {
     Verdict.WARN: "⚠️ PipeRobot gate: WARN",
     Verdict.BLOCK: "❌ PipeRobot gate: BLOCK",
 }
-
-
-@dataclass(frozen=True)
-class FailedEpisode:
-    seed: int
-    scene: str | None = None
-    failure: str | None = None
-    video_url: str | None = None
-
-    @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> FailedEpisode:
-        if "seed" not in data:
-            raise ValueError(f"failed episode without 'seed': {dict(data)}")
-        return cls(
-            seed=int(data["seed"]),
-            scene=data.get("scene"),
-            failure=data.get("failure"),
-            video_url=data.get("video_url"),
-        )
 
 
 def _cell(text: str | None) -> str:
@@ -93,7 +72,7 @@ def _results_table(result: GateResult, commit: str | None) -> list[str]:
 
 
 def _failed_section(
-    failed: Sequence[FailedEpisode], total_failed: int, run_url: str | None
+    failed: Sequence[EpisodeResult], total_failed: int, run_url: str | None
 ) -> list[str]:
     if total_failed == 0:
         return []
@@ -135,7 +114,7 @@ def _explanation(result: GateResult) -> list[str]:
 
 def render_comment(
     result: GateResult,
-    failed_episodes: Sequence[FailedEpisode] = (),
+    failed_episodes: Sequence[EpisodeResult] = (),
     run_url: str | None = None,
     commit: str | None = None,
 ) -> str:
@@ -167,30 +146,28 @@ def render_comment(
     return "\n".join(lines) + "\n"
 
 
-def load_failed_episodes(path: Path) -> list[FailedEpisode]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
-        raise ValueError(f"{path}: expected a JSON list of failed episodes")
-    return [FailedEpisode.from_dict(item) for item in data]
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--candidate", required=True, type=SuccessCount.parse, help="e.g. 38/50")
-    parser.add_argument("--baseline", required=True, type=SuccessCount.parse, help="e.g. 45/50")
+    add_input_arguments(parser)
     parser.add_argument("--confidence", type=float, default=DEFAULT_CONFIDENCE)
     parser.add_argument("--tolerance", type=float, default=DEFAULT_TOLERANCE)
-    parser.add_argument("--failed-episodes", type=Path, help="JSON list of failed episodes")
     parser.add_argument("--run-url", help="Link to the GitHub Actions run")
     parser.add_argument("--commit", help="Commit SHA of the candidate")
     parser.add_argument("--output", type=Path, help="Write the comment here instead of stdout")
     args = parser.parse_args(argv)
 
-    result = decide(args.candidate, args.baseline, args.confidence, args.tolerance)
-    failed = load_failed_episodes(args.failed_episodes) if args.failed_episodes else []
-    comment = render_comment(result, failed, run_url=args.run_url, commit=args.commit)
+    try:
+        inputs = resolve_inputs(args)
+    except InputError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    result = decide(inputs.candidate, inputs.baseline, args.confidence, args.tolerance)
+    comment = render_comment(
+        result, inputs.failed_episodes, run_url=args.run_url, commit=args.commit
+    )
     if args.output:
-        args.output.write_text(comment, encoding="utf-8")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(comment, encoding="utf-8", newline="\n")
     else:
         sys.stdout.write(comment)
     # The verdict's exit code belongs to `stats.gate`; rendering the comment always succeeds.
