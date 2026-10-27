@@ -1,5 +1,5 @@
 {
   "name": "mock-policy",
-  "success_rate": 0.8,
+  "success_rate": 0.5,
   "description": "Stand-in policy for the mock evaluator until a real ACT policy runs in Isaac Lab-Arena (ADR 0014). Lowering success_rate simulates a regression."
 }
