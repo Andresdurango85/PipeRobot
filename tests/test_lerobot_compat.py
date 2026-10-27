@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import pytest
 
+# Skip before importing anything the `lerobot` extra brings (numpy, PIL): the CI job lacks them.
 image_writer = pytest.importorskip("lerobot.datasets.image_writer")
+np = pytest.importorskip("numpy")
 PIL_Image = pytest.importorskip("PIL.Image")
 
 
