@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Large artifacts: keep checkpoints and recordings on the Hugging Face Hub, not in git
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.mp4
+*.rrd
+outputs/
+runs/
+
+# Local env / secrets
+.env
+.env.*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

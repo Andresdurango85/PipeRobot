@@ -1,0 +1,47 @@
+[project]
+name = "so101-policy-ci"
+version = "0.1.0"
+description = "CI quality gate for robot policies: evaluate an SO-101 policy in simulation on every PR and block regressions."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[project.optional-dependencies]
+# Heavy: pulls torch + torchvision. Not installed in the lint/test CI job.
+lerobot = ["lerobot[dataset]==0.6.1"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "ruff>=0.14",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "W",
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM",
+    "PT",  # pytest style
+    "ANN", # type annotations required
+    "RUF",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["-ra", "--strict-markers", "-m", "not hub"]
+markers = [
+    "hub: needs network access to the Hugging Face Hub and the `lerobot` extra (run with -m hub)",
+]
