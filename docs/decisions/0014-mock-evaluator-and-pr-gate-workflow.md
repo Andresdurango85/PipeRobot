@@ -49,3 +49,6 @@ sticky comment, exit codes, artifacts) untested until late.
   job should own it.
 - The mock proves the plumbing, not the robot: no videos yet, and its numbers mean nothing about
   real policies.
+- Unit tests never read `policies/` or `stats/baseline.json`: judging the committed policy is
+  pr-gate's job alone. (A first version did, and the pre-push hook rejected a sabotaged policy
+  before pr-gate could, so the gate itself was never exercised.)

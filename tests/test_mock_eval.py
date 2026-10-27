@@ -1,23 +1,24 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
 from eval.mock_eval import evaluate, main
 from eval.results import load_results
-from stats.baseline import load_baseline
 from stats.gate import SuccessCount, Verdict, decide
 
-ROOT = Path(__file__).resolve().parent.parent
-MOCK_POLICY = ROOT / "policies" / "mock-policy.json"
+# Deliberately independent of policies/mock-policy.json and stats/baseline.json: judging the
+# committed policy is pr-gate's job, so changing it must never break the unit tests.
+REFERENCE_RATE = 0.8
 
 
-def _verdict_against_committed_baseline(success_rate: float) -> Verdict:
-    results = evaluate("candidate", success_rate)
-    candidate = SuccessCount(results.successes, results.trials)
-    return decide(candidate, load_baseline()).verdict
+def _verdict(candidate_rate: float) -> Verdict:
+    candidate, baseline = evaluate("candidate", candidate_rate), evaluate("base", REFERENCE_RATE)
+    return decide(
+        SuccessCount(candidate.successes, candidate.trials),
+        SuccessCount(baseline.successes, baseline.trials),
+    ).verdict
 
 
 def test_same_policy_gives_identical_results() -> None:
@@ -43,22 +44,21 @@ def test_failed_episodes_carry_scene_and_failure() -> None:
     assert all(episode.scene and episode.failure for episode in failed)
 
 
-# Phase 0 acceptance criterion, end to end on the mock: a deliberately worse policy is blocked,
-# the current one passes.
-def test_current_mock_policy_passes_the_gate() -> None:
-    rate = json.loads(MOCK_POLICY.read_text(encoding="utf-8"))["success_rate"]
-
-    assert _verdict_against_committed_baseline(rate) is Verdict.PASS
+# Phase 0 acceptance criterion on the mock: an unchanged policy passes, a sabotaged one is blocked.
+def test_unchanged_policy_passes() -> None:
+    assert _verdict(REFERENCE_RATE) is Verdict.PASS
 
 
 def test_sabotaged_policy_is_blocked() -> None:
-    assert _verdict_against_committed_baseline(0.5) is Verdict.BLOCK
+    assert _verdict(0.5) is Verdict.BLOCK
 
 
 def test_main_writes_results(tmp_path: Path) -> None:
+    policy = tmp_path / "policy.json"
+    policy.write_text('{"name": "p", "success_rate": 0.8}', encoding="utf-8")
     output = tmp_path / "out" / "results.json"
 
-    assert main(["--policy", str(MOCK_POLICY), "--episodes", "20", "--output", str(output)]) == 0
+    assert main(["--policy", str(policy), "--episodes", "20", "--output", str(output)]) == 0
     assert load_results(output).trials == 20
 
 
