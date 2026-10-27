@@ -71,6 +71,33 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   `lerobot.configs.types.FeatureType`, `lerobot.async_inference` (`policy_server`, `robot_client`).
   _(verified 2026-10-26, LeRobot 0.6.1, import check)_
 
+## Evaluation (`lerobot-eval`)
+
+- **`lerobot-eval --policy.path=<dir|repo> --env.type=pusht` runs on CPU** with
+  `--policy.device=cpu --policy.use_amp=false --eval.use_async_envs=false`; the PushT simulator
+  comes with the `pusht` extra (gym-pusht + pymunk, 2D). VQ-BeT: ~6 s per episode on the laptop
+  CPU, batch of 10 envs. _(verified 2026-10-27, LeRobot 0.6.1, `eval/lerobot_eval.py`)_
+- **`eval_info.json` (0.6.1) is per task**: `per_task[0].metrics` holds lists `successes`,
+  `max_rewards`, `sum_rewards`, `video_paths`; no seeds. Seeds are `--seed + episode index`
+  (default 1000). Videos: only the first 10 episodes (hardcoded). _(verified 2026-10-27, source)_
+- **Same seeds give identical outcomes in PushT** across separate runs.
+  _(verified 2026-10-27, two runs of 500 episodes, seeds 1000–1499, episode by episode)_
+- **PushT's reward is `coverage / 0.95`, capped at 1; success means coverage above 95 %.** So
+  `max_rewards` in `eval_info.json` is not the coverage: a failed episode with max reward 0.99 is
+  a near miss at ~94 % coverage. _(verified 2026-10-27, gym-pusht 0.1.8 source, `pusht.py`)_
+- **Policies published before LeRobot 0.4 fail to load** with
+  "requires migration to processor format": run
+  `python -m lerobot.processor.migrate_policy_normalization --pretrained-path <dir> --output-dir <dir>`.
+  In 0.6.1 that script crashes on tuple-typed config fields given as JSON lists (`crop_shape`);
+  `eval/lerobot_policy.py` wraps it with a fix. Old configs may also carry fields 0.6 rejects
+  (`lerobot/vqbet_pusht`: `mlp_hidden_dim`, unused in 0.6.1 code, safe to drop).
+  _(verified 2026-10-27, LeRobot 0.6.1, [ADR 0016](../decisions/0016-real-evaluator-lerobot-pusht.md))_
+- **`lerobot/vqbet_pusht` reaches 263/500 (52.6 %) with LeRobot 0.6.1** on seeds 1000–1499 and
+  270/500 on seeds 2000–2499 (model card: 285/500 with an older version; not significantly
+  different). Disjoint 50-episode windows of the same policy range from 18/50 to 33/50, and
+  10-episode windows from 2/10 to 9/10. ~43 min per 500 episodes on the laptop CPU.
+  _(verified 2026-10-27, [ADR 0016](../decisions/0016-real-evaluator-lerobot-pusht.md))_
+
 ## SO-100 / SO-101 naming
 
 - **Action and state are 6 joint target positions**: `shoulder_pan.pos`, `shoulder_lift.pos`,

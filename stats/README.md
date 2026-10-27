@@ -15,7 +15,8 @@ uv run python -m stats.gate --candidate 38/50 --baseline 45/50
 uv run python -m stats.gate --results out/results.json --baseline-file stats/baseline.json
 ```
 
-`baseline.json` holds the stored baseline as counts plus provenance (`baseline.py` loads it).
+`baseline.json` holds the mock policy's baseline; `baselines/<policy>.json` holds real ones (e.g.
+`baselines/vqbet-pusht.json`). All are counts plus provenance, loaded by `baseline.py`.
 Exit codes: 0 PASS/WARN, 1 BLOCK, 2 invalid input files.
 
 ## What 50 episodes can and cannot detect
