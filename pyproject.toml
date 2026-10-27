@@ -36,6 +36,7 @@ select = [
     "PT",  # pytest style
     "ANN", # type annotations required
     "RUF",
+    "S",   # flake8-bandit: insecure patterns (security)
 ]
 
 [tool.pytest.ini_options]
@@ -45,3 +46,7 @@ addopts = ["-ra", "--strict-markers", "-m", "not hub"]
 markers = [
     "hub: needs network access to the Hugging Face Hub and the `lerobot` extra (run with -m hub)",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: plain asserts are the point (S101); seeded `random` drives Monte Carlo checks, not crypto (S311).
+"tests/**" = ["S101", "S311"]

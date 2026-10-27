@@ -17,6 +17,8 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0007](0007-lf-line-endings.md) | LF line endings on every machine | Accepted |
 | [0008](0008-sticky-pr-comment-and-golden-file.md) | Sticky PR comment, tested with a golden file | Accepted |
 | [0009](0009-fail-loudly-on-unusable-data.md) | Unusable data never gives a green result | Accepted |
+| [0010](0010-main-branch-ruleset.md) | Main is protected by a ruleset; only the owner can bypass | Accepted |
+| [0011](0011-free-security-gates.md) | Free security gates: CodeQL, Dependabot, dependency review, ruff S rules | Accepted |
 
 ## Template
 
