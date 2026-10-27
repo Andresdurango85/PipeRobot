@@ -25,3 +25,7 @@ runs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Per-machine agent config (see CLAUDE.md)
+CLAUDE.local.md
+.claude/settings.local.json

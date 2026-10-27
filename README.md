@@ -44,8 +44,14 @@ PR changes policy ──▶ GPU runner (headless Isaac Sim)
 | `eval/` | Evaluation scripts, seeds and metrics |
 | `stats/` | Comparison against the baseline (confidence intervals) |
 | `reports/` | PR comment template |
+| `docs/STATUS.md` | Current state, next steps and hand-off between sessions |
+| `docs/decisions/` | Architecture Decision Records: why things are the way they are |
+| `docs/knowledge/` | Verified facts and gotchas (LeRobot, datasets, CI) |
 | `docs/learning/` | Course notes |
 | `.github/workflows/` | `ci.yml` (lint + tests) today; `pr-gate.yml` and `nightly.yml` later |
+
+Working on this repo, human or agent? Start with [AGENTS.md](AGENTS.md) and
+[docs/STATUS.md](docs/STATUS.md).
 
 ## Quick start
 
