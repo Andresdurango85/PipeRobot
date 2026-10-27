@@ -15,6 +15,16 @@ Lo importante no es resumir el curso sino anotar **qué cambia en el gate** por 
 | Líder / seguidor | El líder lo mueves tú con la mano; el seguidor copia sus movimientos y es el que ejecuta la tarea | — |
 | Sim-to-real | Entrenar/evaluar en simulación y comprobar que funciona en el robot físico | Staging vs. producción |
 | Semilla (seed) | Fija la aleatoriedad de la escena (posición de los tubos, luz) para que un episodio sea reproducible | Datos de prueba deterministas |
+| Grado de libertad (DOF) | Cada articulación que se puede mover de forma independiente; el SO-101 tiene 6 | Cada parámetro de entrada |
+| Efector final (end-effector) | Lo que está en la punta del brazo y actúa sobre el mundo: la pinza | — |
+| Cinemática directa / inversa (FK / IK) | FK: de ángulos a posición de la pinza (cálculo directo). IK: de posición deseada a ángulos (búsqueda; puede no tener solución o tener varias) | Función vs. su inversa |
+| Lazo de realimentación (feedback) | Medir el error entre objetivo y realidad y corregir en cada ciclo | Retry con backoff, pero continuo |
+| Ventana temporal (`delta_timestamps`) | Pedir al dataset varios instantes por muestra: historia de observaciones y acciones futuras | Contexto del test |
+| Action chunking | La política predice varias acciones futuras de una vez (la "AC" de ACT) | Un batch de pasos |
+| Behavioral cloning (BC) | La forma más simple de imitation learning: aprendizaje supervisado de observación → acción sobre demostraciones | Snapshot testing al revés: el "golden" es el humano |
+| Errores acumulados (covariate shift) | Un error pequeño lleva al robot a estados no vistos en el entrenamiento, donde falla más | Un test que pasa unitario y falla en e2e |
+| Recompensa (reward) | Número que en RL dice lo bien que va el agente; ACT no la usa | Una aserción con puntuación |
+| VLA | Modelo visión-lenguaje-acción: recibe imágenes e instrucción en texto y genera acciones (π0, SmolVLA, GR00T) | — |
 
 ## Plantilla de entrada
 
@@ -34,10 +44,17 @@ Lo importante no es resumir el curso sino anotar **qué cambia en el gate** por 
 
 - Enlace: https://huggingface.co/learn/robotics-course/en/unit0/1
 - Unidad actual: 0 (empezado el 2026-10-26).
+- Notas: [hf-robotics-course.md](hf-robotics-course.md). Hay resumen e impacto en el gate de las
+  unidades publicadas (0–2); las de RL, IL y foundation models aún no existen.
+
+### Robot Learning Tutorial (Hugging Face)
+
+- Enlace: https://huggingface.co/spaces/lerobot/robot-learning-tutorial
+- Base del curso anterior; ya cubre RL, imitation learning (ACT) y VLAs.
+- Notas: [robot-learning-tutorial.md](robot-learning-tutorial.md).
 
 ### Pendientes en la Fase 0
 
-- Robot Learning Tutorial (Hugging Face; base del curso anterior).
 - Isaac Sim.
 - Isaac Lab.
 - Ruta de NVIDIA "Train an SO-101 Robot From Sim-to-Real With NVIDIA Isaac".

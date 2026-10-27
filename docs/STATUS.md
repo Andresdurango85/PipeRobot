@@ -19,8 +19,6 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Done recently
 
-- 2026-10-26: repo published (`Andresdurango85/PipeRobot`, Apache-2.0), first CI run green.
-- 2026-10-26: PR #1, PR comment renderer + `dataset_stats` exit codes + public dataset notes.
 - 2026-10-26: memory system (AGENTS.md, ADRs, knowledge, STATUS, `/handoff`, docs tests), PR #3.
 - 2026-10-27: `main` ruleset with owner-only bypass ([ADR 0010](decisions/0010-main-branch-ruleset.md))
   and free security gates: CodeQL, Dependabot, dependency review, ruff `S`
@@ -33,6 +31,9 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 - 2026-10-27: `pr-gate.yml` end to end with a mock evaluator: results contract, stored baseline,
   sticky comment, BLOCK fails the job ([ADR 0014](decisions/0014-mock-evaluator-and-pr-gate-workflow.md));
   generic core vs SO-101 boundary enforced ([ADR 0015](decisions/0015-generic-core-vs-robot-specific.md)).
+- 2026-10-27: course notes for the HF Robotics Course (units 0–2) and the Robot Learning Tutorial
+  (RL, ACT, VLAs), each with its impact on the gate; ACT defaults verified on LeRobot 0.6.1
+  ([lerobot.md](knowledge/lerobot.md)).
 
 ## Next
 
@@ -40,7 +41,10 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 2. Home PC: clone, `uv sync`, `uv run prek install`, write its `CLAUDE.local.md`, record the GPU
    model. Then plan the Isaac Sim / Isaac Lab-Arena install (ask before installing; several GB).
 3. Replace the mock step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
-   results contract (with `video_url`s), on the self-hosted GPU runner.
+   results contract (with `video_url`s), on the self-hosted GPU runner. Evaluator requirements
+   from the tutorial: call `policy.reset()` every episode, load normalization stats from the
+   checkpoint, record `n_action_steps`/ensembling in the contract, seed torch as well as the scene
+   ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 5. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
@@ -52,4 +56,6 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Learning
 
-- Hugging Face Robotics Course: unit 0 ([docs/learning/](learning/README.md)).
+- Hugging Face Robotics Course: Andrés on unit 0; notes for units 0–2 in
+  [hf-robotics-course.md](learning/hf-robotics-course.md) (units 5–7 not published yet).
+- Robot Learning Tutorial: notes in [robot-learning-tutorial.md](learning/robot-learning-tutorial.md).
