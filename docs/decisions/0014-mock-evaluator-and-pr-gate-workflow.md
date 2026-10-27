@@ -45,6 +45,8 @@ sticky comment, exit codes, artifacts) untested until late.
   the mock and covered by `tests/test_mock_eval.py`.
 - Replacing the mock means replacing one workflow step; the job moves to the self-hosted GPU
   runner ([0005](0005-two-machine-setup.md)).
+- `pr-gate` is a required status check in the `main` ruleset, next to the two listed in
+  [0010](0010-main-branch-ruleset.md): a BLOCK verdict blocks the merge.
 - `stats/baseline.json` must be regenerated when the policy legitimately changes; later a nightly
   job should own it.
 - The mock proves the plumbing, not the robot: no videos yet, and its numbers mean nothing about

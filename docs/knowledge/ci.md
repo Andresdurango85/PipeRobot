@@ -35,12 +35,22 @@
 ## Repository rules
 
 - **`main` is protected by the ruleset `main`** ([ADR 0010](../decisions/0010-main-branch-ruleset.md)).
-  Required check names are the job names (`lint-and-test`, `dependency-review`): renaming a job
-  requires updating the ruleset. Inspect it with `gh api repos/Andresdurango85/PipeRobot/rulesets`.
+  Required check names are the job names (`lint-and-test`, `dependency-review`, `pr-gate`):
+  renaming a job requires updating the ruleset. Inspect it with
+  `gh api repos/Andresdurango85/PipeRobot/rulesets`. _(pr-gate added 2026-10-27)_
 - **The owner cannot approve his own PRs**, including those opened by agents with his account;
   merge them with the admin bypass (`gh pr merge <n> --admin`). _(GitHub behaviour, 2026-10-27)_
+- **Claude Code's auto mode refuses admin-bypass merges** ("Merge Without Review") even when the
+  owner asked in chat. Andrés merges in the GitHub UI ("Merge without waiting for requirements"),
+  or adds an explicit permission rule for `gh pr merge` to his Claude Code settings.
+  _(verified 2026-10-27, PRs #4 and #8)_
 
 ## Gotchas
+
+- **Two sessions must not share one working directory.** A parallel session switched this
+  checkout to its own branch mid-task. Each extra session works in its own worktree:
+  `git worktree add ../so101-wt-<topic> <branch>`, and `git worktree remove` it afterwards.
+  _(verified 2026-10-27)_
 
 - **A machine with the `lerobot` extra hides missing-import bugs in the lint/test job.** A test
   that imported `numpy` before `pytest.importorskip("lerobot...")` passed locally and failed in CI

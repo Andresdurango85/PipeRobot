@@ -36,7 +36,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Next
 
-1. Add `pr-gate` to the `main` ruleset's required checks (ask Andrés first).
+1. Run parallel agent sessions in separate git worktrees ([ci.md](knowledge/ci.md)).
 2. Home PC: clone, `uv sync`, `uv run prek install`, write its `CLAUDE.local.md`, record the GPU
    model. Then plan the Isaac Sim / Isaac Lab-Arena install (ask before installing; several GB).
 3. Replace the mock step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
