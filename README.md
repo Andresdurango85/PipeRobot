@@ -58,8 +58,8 @@ Working on this repo, human or agent? Start with [AGENTS.md](AGENTS.md) and
 Requires [uv](https://docs.astral.sh/uv/). uv installs Python 3.12 for you if needed.
 
 ```bash
-uv sync                 # dev tools only (ruff, pytest, pre-commit) — lightweight
-uv run pre-commit install   # git hooks: lint on commit, CI-equivalent checks on push
+uv sync                 # dev tools only (ruff, pytest, prek) — lightweight
+uv run prek install     # git hooks: lint on commit, CI-equivalent checks on push
 uv run ruff check .
 uv run pytest
 ```

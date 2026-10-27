@@ -90,13 +90,13 @@ The repo is the only memory shared by both machines and every agent
 ## Commands
 
 ```
-uv sync                       # light: ruff + pytest + pre-commit
-uv run pre-commit install     # once per clone: hooks on commit and push (ADR 0013)
+uv sync                       # light: ruff + pytest + prek
+uv run prek install           # once per clone: hooks on commit and push (ADR 0013)
 uv sync --extra lerobot       # adds LeRobot 0.6.1 + torch (GBs) — ask first on a new machine
 uv run ruff check . && uv run ruff format --check .
 uv run pytest                 # unit tests + docs checks (no network)
 uv run pytest -m hub          # tests that hit the Hugging Face Hub
-uv run pre-commit run --all-files --hook-stage pre-push   # what CI's lint-and-test job runs
+uv run prek run --all-files --hook-stage pre-push   # what CI's lint-and-test job runs
 ```
 
 Never bypass the hooks (`git commit/push --no-verify`). If a hook fails, fix the cause.
