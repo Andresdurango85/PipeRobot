@@ -1,0 +1,56 @@
+# Git hooks (ADR 0013). Install once per clone: `uv run pre-commit install`.
+# Hooks call tools through uv, so versions come from uv.lock, the same ones CI uses.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  - repo: local
+    hooks:
+      # --- On commit: fast, only the staged files ---
+      - id: ruff-check
+        name: ruff check --fix
+        entry: uv run --locked ruff check --fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: uv-lock-check
+        name: uv.lock matches pyproject.toml
+        entry: uv lock --check
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+
+      # --- On push: the same checks as the lint-and-test CI job, on the whole repo ---
+      - id: ci-ruff
+        name: "CI: ruff check"
+        entry: uv run --locked ruff check .
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: ci-ruff-format
+        name: "CI: ruff format --check"
+        entry: uv run --locked ruff format --check .
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: ci-pytest
+        # --isolated: a fresh env with only uv.lock's default deps (no `lerobot` extra), like CI.
+        # Catches imports that only work because the extra is installed on this machine.
+        name: "CI: pytest in a clean environment"
+        entry: uv run --isolated --locked pytest -q
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
