@@ -19,6 +19,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0009](0009-fail-loudly-on-unusable-data.md) | Unusable data never gives a green result | Accepted |
 | [0010](0010-main-branch-ruleset.md) | Main is protected by a ruleset; only the owner can bypass | Accepted |
 | [0011](0011-free-security-gates.md) | Free security gates: CodeQL, Dependabot, dependency review, ruff S rules | Accepted |
+| [0012](0012-dependency-vulnerability-triage.md) | Override Pillow above LeRobot's cap; accept five unreachable advisories | Accepted |
 
 ## Template
 

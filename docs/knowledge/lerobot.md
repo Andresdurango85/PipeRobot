@@ -8,6 +8,13 @@ Pinned version: 0.6.1 ([ADR 0002](../decisions/0002-python-tooling-and-pinning.m
 - **On a machine without CUDA, `uv sync --extra lerobot` installs the CPU build of torch**
   (torch 2.11.0+cpu); the whole `.venv` is ~1.1 GB, not the several GB of a CUDA build.
   _(verified 2026-10-26, LeRobot 0.6.1, Windows 11 laptop)_
+- **LeRobot 0.6.1 caps its dependencies tightly**: `torch<2.12`, `Pillow<13`, `setuptools<82`
+  (torch 2.11 needs it), `datasets<5`; datasets 4.8.5 adds `fsspec<=2026.2.0`. Security fixes
+  above those caps need a uv override ([ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)).
+  The same caps are on LeRobot's GitHub `main`. _(verified 2026-10-27, PyPI metadata + GitHub)_
+- **Pillow 13.0.0 works with LeRobot 0.6.1** for image conversion and PNG/TIFF writing, the only
+  formats `write_image` accepts (`.jpg` raises "Unsupported image file extension").
+  _(verified 2026-10-27, LeRobot 0.6.1, `tests/test_lerobot_compat.py`)_
 
 ## Datasets API
 

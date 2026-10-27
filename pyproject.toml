@@ -19,6 +19,8 @@ dev = [
 
 [tool.uv]
 package = false
+# Security: LeRobot 0.6.1 caps Pillow<13, but 13.0.0 fixes 41 advisories (5 critical). See ADR 0012.
+override-dependencies = ["pillow>=13.0.0"]
 
 [tool.ruff]
 line-length = 100

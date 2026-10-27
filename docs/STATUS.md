@@ -25,6 +25,9 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 - 2026-10-27: `main` ruleset with owner-only bypass ([ADR 0010](decisions/0010-main-branch-ruleset.md))
   and free security gates: CodeQL, Dependabot, dependency review, ruff `S`
   ([ADR 0011](decisions/0011-free-security-gates.md)). First CodeQL scan: 0 alerts.
+- 2026-10-27: Dependabot raised 46 alerts (all via LeRobot's caps). Pillow overridden to 13.0.0
+  (fixes 41, all critical); 5 unreachable ones accepted
+  ([ADR 0012](decisions/0012-dependency-vulnerability-triage.md)).
 
 ## Next
 
