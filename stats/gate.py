@@ -69,7 +69,7 @@ class Interval:
 
 
 class Verdict(StrEnum):
-    PASS = "pass"
+    PASS = "pass"  # noqa: S105 - a verdict name, not a password
     WARN = "warn"
     BLOCK = "block"
 

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-26 (laptop)
+Last updated: 2026-10-27 (laptop)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -21,12 +21,16 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 - 2026-10-26: repo published (`Andresdurango85/PipeRobot`, Apache-2.0), first CI run green.
 - 2026-10-26: PR #1, PR comment renderer + `dataset_stats` exit codes + public dataset notes.
-- 2026-10-26: this memory system (AGENTS.md, ADRs, knowledge, STATUS, `/handoff`, docs tests).
+- 2026-10-26: memory system (AGENTS.md, ADRs, knowledge, STATUS, `/handoff`, docs tests), PR #3.
+- 2026-10-27: `main` ruleset with owner-only bypass ([ADR 0010](decisions/0010-main-branch-ruleset.md))
+  and free security gates: CodeQL, Dependabot, dependency review, ruff `S`
+  ([ADR 0011](decisions/0011-free-security-gates.md)). First CodeQL scan: 0 alerts.
 
 ## Next
 
-1. Merge PR #1, then this memory-system PR (stacked on #1).
-2. Bump `astral-sh/setup-uv` v6 → v10 in its own small PR ([ci.md](knowledge/ci.md)).
+1. Review Dependabot's first PRs (expected: `setup-uv` v6 → v10, `checkout` v5 → v7); merge with
+   `gh pr merge <n> --admin` once the gates are green.
+2. Wire the gate into a workflow that posts the sticky PR comment (needs `pull-requests: write`).
 3. Home PC: clone, `uv sync`, write its `CLAUDE.local.md`, record the GPU model. Then plan the
    Isaac Sim / Isaac Lab-Arena install (ask before installing; several GB).
 4. `eval/`: define the episode-result format (JSON per episode: seed, scene, success, failure,
