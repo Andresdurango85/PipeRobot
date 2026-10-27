@@ -29,3 +29,12 @@ Lo importante no es resumir el curso sino anotar **qué cambia en el gate** por 
 ## Cursos
 
 <!-- Añade aquí cada curso: nombre, enlace, unidad actual. -->
+
+### Hugging Face Robotics Course
+
+- Enlace: https://huggingface.co/learn/robotics-course/en/unit0/1
+- Unidad actual: 0 (empezado el 2026-10-26).
+
+## Exploraciones
+
+- [Datasets públicos del SO-101](public-so101-datasets.md): qué contienen y qué implican para el gate.
