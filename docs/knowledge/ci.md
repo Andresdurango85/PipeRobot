@@ -10,6 +10,24 @@
 - `pr-gate.yml` (GPU, self-hosted runner on the home PC) and `nightly.yml` (larger baseline) do
   not exist yet; see [`../STATUS.md`](../STATUS.md).
 
+## Local hooks
+
+- **Git hooks mirror CI** ([ADR 0013](../decisions/0013-pre-commit-hooks-mirror-ci.md)), run by
+  prek from `.pre-commit-config.yaml`: ruff on commit; on push, ruff on the whole repo plus
+  `pytest` under `uv run --isolated --locked` (fresh env without the `lerobot` extra, like CI),
+  ~5 s. Install once per clone with `uv run prek install`.
+  _(verified 2026-10-27, prek 0.5.7, uv, Windows laptop)_
+- **pre-commit (the Python tool) cannot live in our lock with secure versions**: it needs
+  `virtualenv>=21.14.9` (four high advisories below that), which needs `packaging>=26.3`, while
+  LeRobot 0.6.1 caps `packaging<26`. prek is a Rust binary with no Python dependencies, so it
+  avoids the conflict. _(verified 2026-10-27, dependency-review on PR #7)_
+- **`uv run --isolated --locked` is the cheap way to reproduce the CI environment**: it builds a
+  throwaway env from `uv.lock` (default deps only, from uv's cache) in ~4 s.
+  _(verified 2026-10-27)_
+- **Use `uv add --dev <pkg> --no-sync` on a machine with extras installed**, then
+  `uv sync --extra lerobot`; a plain sync installs only the default deps.
+  _(verified 2026-10-27)_
+
 ## Repository rules
 
 - **`main` is protected by the ruleset `main`** ([ADR 0010](../decisions/0010-main-branch-ruleset.md)).

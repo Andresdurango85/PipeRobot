@@ -20,6 +20,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0010](0010-main-branch-ruleset.md) | Main is protected by a ruleset; only the owner can bypass | Accepted |
 | [0011](0011-free-security-gates.md) | Free security gates: CodeQL, Dependabot, dependency review, ruff S rules | Accepted |
 | [0012](0012-dependency-vulnerability-triage.md) | Override Pillow above LeRobot's cap; accept five unreachable advisories | Accepted |
+| [0013](0013-pre-commit-hooks-mirror-ci.md) | Git hooks with prek; pre-push mirrors CI in a clean environment | Accepted |
 
 ## Template
 

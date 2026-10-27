@@ -28,14 +28,16 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 - 2026-10-27: Dependabot raised 46 alerts (all via LeRobot's caps). Pillow overridden to 13.0.0
   (fixes 41, all critical); 5 unreachable ones accepted
   ([ADR 0012](decisions/0012-dependency-vulnerability-triage.md)).
+- 2026-10-27: git hooks with prek; pre-push runs the CI checks in a clean env
+  ([ADR 0013](decisions/0013-pre-commit-hooks-mirror-ci.md)).
 
 ## Next
 
 1. Review Dependabot's first PRs (expected: `setup-uv` v6 → v10, `checkout` v5 → v7); merge with
    `gh pr merge <n> --admin` once the gates are green.
 2. Wire the gate into a workflow that posts the sticky PR comment (needs `pull-requests: write`).
-3. Home PC: clone, `uv sync`, write its `CLAUDE.local.md`, record the GPU model. Then plan the
-   Isaac Sim / Isaac Lab-Arena install (ask before installing; several GB).
+3. Home PC: clone, `uv sync`, `uv run prek install`, write its `CLAUDE.local.md`, record the GPU
+   model. Then plan the Isaac Sim / Isaac Lab-Arena install (ask before installing; several GB).
 4. `eval/`: define the episode-result format (JSON per episode: seed, scene, success, failure,
    video path) that feeds `stats.gate` and `reports.pr_comment`.
 5. Look at the simulated rack dataset as training data for a first ACT policy
