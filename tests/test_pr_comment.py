@@ -6,13 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from reports.pr_comment import (
-    COMMENT_MARKER,
-    MAX_FAILED_LISTED,
-    FailedEpisode,
-    main,
-    render_comment,
-)
+from eval.results import EpisodeResult
+from reports.pr_comment import COMMENT_MARKER, MAX_FAILED_LISTED, main, render_comment
 from stats.gate import SuccessCount, decide
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
@@ -20,11 +15,12 @@ RUN_URL = "https://github.com/Andresdurango85/PipeRobot/actions/runs/1"
 COMMIT = "d70f397abcdef0123456789"
 
 
-def _failed(count: int) -> list[FailedEpisode]:
+def _failed(count: int) -> list[EpisodeResult]:
     # Reverse order on purpose: the comment must sort them by seed.
     return [
-        FailedEpisode(
+        EpisodeResult(
             seed=seed,
+            success=False,
             scene=f"rack_{seed % 3}",
             failure="tube dropped",
             video_url=f"https://example.org/episode_{seed}.mp4",
@@ -88,7 +84,7 @@ def test_failed_section_without_details() -> None:
 
 
 def test_table_cells_are_escaped() -> None:
-    episode = FailedEpisode(seed=1, scene="rack | dim\nlight", failure=None, video_url=None)
+    episode = EpisodeResult(seed=1, success=False, scene="rack | dim\nlight")
 
     comment = render_comment(decide(SuccessCount(49, 50), SuccessCount(45, 50)), [episode])
 
@@ -98,11 +94,6 @@ def test_table_cells_are_escaped() -> None:
 def test_more_failed_episodes_than_failures_is_an_error() -> None:
     with pytest.raises(ValueError, match="only failed 1"):
         render_comment(decide(SuccessCount(49, 50), SuccessCount(45, 50)), _failed(2))
-
-
-def test_failed_episode_requires_seed() -> None:
-    with pytest.raises(ValueError, match="seed"):
-        FailedEpisode.from_dict({"scene": "rack_0"})
 
 
 def test_explanation_uses_configured_tolerance() -> None:
@@ -123,21 +114,23 @@ def test_full_block_comment_matches_golden_file() -> None:
     assert comment == golden.read_text(encoding="utf-8")
 
 
-def test_main_writes_comment_and_succeeds_even_on_block(tmp_path: Path) -> None:
-    failed_json = tmp_path / "failed.json"
-    failed_json.write_text(json.dumps([{"seed": 7, "failure": "timeout"}]), encoding="utf-8")
-    output = tmp_path / "comment.md"
+def test_main_renders_from_results_file_and_succeeds_even_on_block(tmp_path: Path) -> None:
+    episodes = [{"seed": 7, "success": False, "failure": "timeout"}]
+    episodes += [{"seed": seed, "success": seed % 2 == 0} for seed in range(8, 57)]
+    results = tmp_path / "results.json"
+    results.write_text(json.dumps({"policy": "p", "episodes": episodes}), encoding="utf-8")
+    output = tmp_path / "out" / "comment.md"
 
-    exit_code = main(
-        [
-            "--candidate", "25/50",
-            "--baseline", "45/50",
-            "--failed-episodes", str(failed_json),
-            "--output", str(output),
-        ]
-    )  # fmt: skip
+    exit_code = main(["--results", str(results), "--baseline", "45/50", "--output", str(output)])
 
     assert exit_code == 0
     comment = output.read_text(encoding="utf-8")
     assert "## ❌ PipeRobot gate: BLOCK" in comment
     assert "| 7 | — | timeout | — |" in comment
+
+
+def test_main_returns_2_on_invalid_results(tmp_path: Path) -> None:
+    results = tmp_path / "results.json"
+    results.write_text('{"episodes": []}', encoding="utf-8")
+
+    assert main(["--results", str(results), "--baseline", "45/50"]) == 2

@@ -1,0 +1,66 @@
+name: pr-gate
+
+# Evaluate the policy, compare it with the stored baseline, post the sticky PR comment, and fail
+# on a regression (ADR 0014). Today the evaluator is the mock; Isaac Lab-Arena replaces that step
+# and the job moves to the self-hosted GPU runner (ADR 0005).
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write # sticky comment only
+    env:
+      RESULTS: out/results.json
+      COMMENT: out/comment.md
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (from uv.lock)
+        run: uv sync --locked
+
+      - name: Evaluate policy (mock evaluator, 50 seeded episodes)
+        run: uv run python -m eval.mock_eval --policy policies/mock-policy.json --output "$RESULTS"
+
+      - name: Render report
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          uv run python -m reports.pr_comment --results "$RESULTS" \
+            --baseline-file stats/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA" \
+            --output "$COMMENT"
+          cat "$COMMENT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post sticky PR comment
+        # Fork PRs get a read-only token: the report stays in the job summary instead.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: uv run python -m reports.sticky_comment --pr "$PR_NUMBER" --body-file "$COMMENT"
+
+      - name: Gate verdict (fails the job on BLOCK)
+        run: uv run python -m stats.gate --results "$RESULTS" --baseline-file stats/baseline.json
+
+      - name: Upload results and report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-gate-${{ github.event.pull_request.number }}
+          path: out/
+          retention-days: 14

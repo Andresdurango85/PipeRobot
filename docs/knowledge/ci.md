@@ -7,8 +7,12 @@
 - **`dependency-review.yml`**: fails a PR that adds a dependency with a high or critical
   advisory. **CodeQL** runs as GitHub's default setup (no workflow file; Settings → Code security).
   Both are merge gates ([ADR 0011](../decisions/0011-free-security-gates.md)).
-- `pr-gate.yml` (GPU, self-hosted runner on the home PC) and `nightly.yml` (larger baseline) do
-  not exist yet; see [`../STATUS.md`](../STATUS.md).
+- **`pr-gate.yml`**: mock evaluation → report (also in the job summary) → sticky comment → gate
+  verdict (fails on BLOCK) → artifact `pr-gate-<PR>` with results and report
+  ([ADR 0014](../decisions/0014-mock-evaluator-and-pr-gate-workflow.md)). Runs on
+  `ubuntu-latest` until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
+  token); the report is still in the job summary.
+- `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
 
 ## Local hooks
 

@@ -35,6 +35,17 @@ Lo importante no es resumir el curso sino anotar **qué cambia en el gate** por 
 - Enlace: https://huggingface.co/learn/robotics-course/en/unit0/1
 - Unidad actual: 0 (empezado el 2026-10-26).
 
+### Pendientes en la Fase 0
+
+- Robot Learning Tutorial (Hugging Face; base del curso anterior).
+- Isaac Sim.
+- Isaac Lab.
+- Ruta de NVIDIA "Train an SO-101 Robot From Sim-to-Real With NVIDIA Isaac".
+- Isaac Lab-Arena + LeRobot (evaluación).
+
+Práctica con hardware (al volver de viaje): armar el SO-101 (líder + seguidor), calibrar,
+teleoperar, grabar ~50 episodios y entrenar ACT.
+
 ## Exploraciones
 
 - [Datasets públicos del SO-101](public-so101-datasets.md): qué contienen y qué implican para el gate.

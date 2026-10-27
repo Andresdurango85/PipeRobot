@@ -21,6 +21,8 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0011](0011-free-security-gates.md) | Free security gates: CodeQL, Dependabot, dependency review, ruff S rules | Accepted |
 | [0012](0012-dependency-vulnerability-triage.md) | Override Pillow above LeRobot's cap; accept five unreachable advisories | Accepted |
 | [0013](0013-pre-commit-hooks-mirror-ci.md) | Git hooks with prek; pre-push mirrors CI in a clean environment | Accepted |
+| [0014](0014-mock-evaluator-and-pr-gate-workflow.md) | Mock evaluator and the pr-gate workflow, before the simulation exists | Accepted |
+| [0015](0015-generic-core-vs-robot-specific.md) | Keep the generic gate core separate from SO-101-specific code | Accepted |
 
 ## Template
 
