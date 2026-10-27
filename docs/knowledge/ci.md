@@ -20,6 +20,13 @@
 
 ## Gotchas
 
+- **A machine with the `lerobot` extra hides missing-import bugs in the lint/test job.** A test
+  that imported `numpy` before `pytest.importorskip("lerobot...")` passed locally and failed in CI
+  (no numpy there). Reproduce the CI environment in a throwaway venv before pushing tests that
+  touch optional dependencies:
+  `UV_PROJECT_ENVIRONMENT=<tmp-dir> uv sync --locked && UV_PROJECT_ENVIRONMENT=<tmp-dir> uv run --no-sync pytest`.
+  _(verified 2026-10-27, PR #6)_
+
 - **Stacked PRs: merge the second only after GitHub retargets it to `main`.** PR #2 was based on
   PR #1's branch; merging #2 seconds after #1 merged it into #1's branch, not `main`, and it had to
   be re-landed as #3. GitHub retargets the second PR when the first PR's branch is deleted, which
