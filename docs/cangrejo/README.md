@@ -21,7 +21,11 @@ just one arm. "Cangrejo" is Spanish for crab.
   - connects through spring contacts;
   - checks that the voltage rises, and retries if it does not.
 - **Wide, low base**: it hardly ever tips over, so v1 does not need to learn to get up.
-- **Out of scope for v1**: legs, stairs, heavy objects, voice.
+- **Sound**: a speaker and a microphone, so it can play sounds (status, low battery, a "found it"
+  chirp) and listen (detect a sound and turn its eyes towards it).
+- **Wi-Fi**: it joins the home network; the laptop streams the cameras and sends commands over it.
+- **Out of scope for v1**: legs, stairs, heavy objects, and understanding speech (voice commands
+  or conversation).
 
 ## Proposed hardware
 
@@ -35,6 +39,13 @@ just one arm. "Cangrejo" is Spanish for crab.
   drives the robot; the laptop receives the cameras and sends commands over Wi-Fi.
 - **Cameras**: 2 × Arducam OV5647 "spy" cameras (6 mm head, 300 mm ribbon cable), one per CSI
   connector on the Pi 5. Still to confirm: the 15-to-22-pin adapter.
+- **Wi-Fi**: built into the Raspberry Pi 5 (dual-band 802.11ac); no extra hardware.
+- **Audio**: the Pi 5 has no analog audio jack, so sound needs one of these (to choose):
+  - an I2S amplifier and speaker plus an I2S MEMS microphone, on the Pi's GPIO header;
+  - or a small USB audio adapter or USB speakerphone (simpler, takes a USB port).
+
+  The speaker amplifier draws from the 5 V rail, so size the Pi's regulator for it. Servo noise
+  will reach the microphone: mount it away from the wheels and shoulders.
 - **Power**: a 2S Li-ion battery with BMS and fuse; a 6 V regulator for the servos and a separate
   5 V regulator for the Pi, because a voltage drop would reboot the Pi.
 - **Body**: printed on a Bambu Lab X2D (256 × 256 × 260 mm build volume).
@@ -62,19 +73,30 @@ just one arm. "Cangrejo" is Spanish for crab.
 3. Bring the object to a person.
 4. Return to the charging dock on its own.
 
+## Privacy and the network
+
+- Microphone audio and camera images stay on the home network and the laptop. They never go into
+  a public dataset, Hub repo or CI artifact; recorded demonstrations are reviewed before sharing.
+- Listening is visible: an LED (or the eyes' pose) shows when the microphone is on.
+- Speaker volume has a software cap (the cat).
+- The robot keeps working when Wi-Fi drops: it stops the current motion safely and waits, and it
+  can still return to the dock on its own.
+
 ## Gate scenarios
 
 - Variations in lighting, object position and floor type (tile, rug).
 - A push in the middle of the task.
 - Docking from different starting points, with the dock partly hidden, or in low light.
-- Fault injection: one eye covered, a servo that responds slowly. The robot must fail safely.
+- Fault injection: one eye covered, a servo that responds slowly, the Wi-Fi link dropping, the
+  microphone muted. The robot must fail safely.
+- Sound: turning towards a sound with background noise (TV, music, its own servos).
 
 ## Versions and their gates
 
 | Version | Scope | Gate |
 | --- | --- | --- |
 | v0 · Digital twin | Design and simulation only; nothing bought | It moves and grasps in simulation |
-| v1a · Base and eyes | Wheels, cameras, charging dock | It drives sideways and docks to charge on its own |
+| v1a · Base, eyes and sound | Wheels, cameras, speaker, microphone, Wi-Fi, charging dock | It drives sideways, docks to charge on its own, and turns towards a sound |
 | v1b · Arms | Grippers, wrists, leader arms, teleoperation | 50 recorded demonstrations |
 | v1c · Autonomous | Pick up, put away, return to charge | The full task on the real robot |
 | v2 (future) | Eye tilt, a map of the house, maybe legs | — |
