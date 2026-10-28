@@ -5,8 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from stats.baseline import DEFAULT_BASELINE, BaselineError, load_baseline
+from stats.baseline import BaselineError, load_baseline
 from stats.gate import SuccessCount, main
+
+ROOT = Path(__file__).resolve().parent.parent
+# Every committed baseline: the mock's and the real policies'.
+COMMITTED_BASELINES = sorted(
+    [ROOT / "stats" / "baseline.json", *(ROOT / "stats" / "baselines").glob("*.json")]
+)
 
 
 def _results_file(tmp_path: Path, successes: int, trials: int = 50) -> Path:
@@ -22,19 +28,17 @@ def _baseline_file(tmp_path: Path, successes: int, trials: int = 50) -> Path:
     return path
 
 
-def test_committed_baseline_loads() -> None:
-    baseline = load_baseline(DEFAULT_BASELINE)
+def test_real_policy_baselines_are_committed() -> None:
+    # Guards the parametrized test below: an empty glob would skip it, not fail it.
+    assert len(COMMITTED_BASELINES) >= 2
 
-    assert baseline.trials >= 50  # Phase 0: at least 50 episodes
 
-
-@pytest.mark.parametrize(
-    "path", sorted((DEFAULT_BASELINE.parent / "baselines").glob("*.json")), ids=lambda p: p.stem
-)
-def test_committed_policy_baselines_load(path: Path) -> None:
+@pytest.mark.parametrize("path", COMMITTED_BASELINES, ids=lambda p: p.stem)
+def test_committed_baseline_loads(path: Path) -> None:
     baseline = load_baseline(path)
 
-    assert baseline.trials >= 50
+    assert isinstance(baseline, SuccessCount)
+    assert baseline.trials >= 50  # Phase 0: at least 50 episodes
 
 
 @pytest.mark.parametrize("content", ['{"trials": 50}', '{"successes": 60, "trials": 50}', "{"])
@@ -70,9 +74,3 @@ def test_gate_cli_returns_2_on_bad_baseline(
 def test_candidate_and_results_are_mutually_exclusive(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         main(["--candidate", "40/50", "--results", "r.json", "--baseline", "40/50"])
-
-
-def test_success_count_type_is_reused() -> None:
-    assert load_baseline(DEFAULT_BASELINE) == SuccessCount(
-        load_baseline(DEFAULT_BASELINE).successes, load_baseline(DEFAULT_BASELINE).trials
-    )
