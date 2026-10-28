@@ -46,12 +46,68 @@ just one arm. "Cangrejo" is Spanish for crab.
 
   The speaker amplifier draws from the 5 V rail, so size the Pi's regulator for it. Servo noise
   will reach the microphone: mount it away from the wheels and shoulders.
-- **Power**: a 2S Li-ion battery with BMS and fuse; a 6 V regulator for the servos and a separate
-  5 V regulator for the Pi, because a voltage drop would reboot the Pi.
+- **Power**: a 2S2P Li-ion pack of 21700 cells (about 7.2 V, 10 Ah, 72 Wh) with BMS and fuse; a
+  6 V regulator for the servos and a separate 5 V regulator for the Pi, because a voltage drop
+  would reboot the Pi. Details and estimates in [Energy](#energy).
 - **Body**: printed on a Bambu Lab X2D (256 × 256 × 260 mm build volume).
   - Chassis in PLA+/PETG; removable shell; TPU gripper tips; flexible eye stalks.
   - Cat-proof design: no small loose parts, internal cables, and gripper force limited in
     software.
+
+## Energy
+
+All figures are estimates to check against measurements (development flow, step 4).
+
+**Power budget**
+
+| Part | Resting | Working |
+| --- | ---: | ---: |
+| Raspberry Pi 5 (Wi-Fi, two cameras streaming to the laptop) | ~3–4 W | ~5–7 W |
+| 3 wheel servos | ~0 | ~5–9 W while driving |
+| 6 large arm servos (holding a pose) | ~0 (torque off) | ~3–6 W |
+| 6 small servos (wrists, grippers, eyes) | ~0.3 W | ~1–2 W |
+| Audio | ~0.1 W | ~0.5–1 W |
+| Regulator losses (~10–15 %) | ~0.5 W | ~2 W |
+| **Total** | **~4–5 W** | **~15–25 W average, 30–40 W peaks** |
+
+The policy runs on the laptop (LeKiwi-style), so the Pi does not pay for inference.
+
+**Battery: 2S2P 21700 Li-ion, ~72 Wh, ~280 g of cells**
+
+- Estimated runtime with ~70 % usable (it returns to the dock with a reserve): **~2.5–3.5 h
+  working**, much longer resting.
+- Under 100 Wh on purpose: above that, lithium batteries are restricted on flights and in parcel
+  shipping.
+- Cylindrical cells in a rigid holder, not LiPo pouches: safer with a cat in the house.
+- Cells rated for high discharge: several servos starting or stalling at once can draw over 10 A;
+  the BMS and the fuse are sized for it.
+- The 6 V buck regulator needs headroom above its output, and a 2S pack falls to ~6.0 V when
+  empty. Returning to the dock at ~20–25 % (~3.6 V per cell) keeps that headroom; the threshold is
+  measured as voltage under load, not only as a percentage.
+
+**Charging**
+
+- The BMS protects the pack but does not charge it. The robot carries a 2S charger (constant
+  current, then constant voltage to 8.4 V, with cell balancing); the dock only supplies DC through
+  the spring contacts, whose current rating limits the charge rate.
+- At 2 A a full charge takes about 5 h; at the 20–25 % return threshold, about 4 h.
+
+**Spending less (often 30–50 % more runtime)**
+
+- A rest pose: the arms fold onto the chassis and the servos release their torque. Holding the
+  arms up is the biggest idle cost.
+- Light arms: low infill, servos close to the shoulder.
+- Cameras by mode: lower resolution and frame rate while exploring or waiting; full quality only
+  when grasping.
+- The Pi powers down on the dock: the Pi 5 has a real-time clock and a low-power off state with a
+  scheduled wake-up.
+- Synchronous buck regulators (~90–95 % efficient), never linear regulators.
+
+**Charging between tasks**
+
+What matters for a home robot is runtime per mission, not total runtime: like a robot vacuum, it
+lives on the dock and leaves when there is something to do. An optional tool-free, cat-proof
+battery swap would not add runtime but would make a flat battery a 10-second fix.
 
 ## Development flow
 
@@ -87,6 +143,9 @@ just one arm. "Cangrejo" is Spanish for crab.
 - Variations in lighting, object position and floor type (tile, rug).
 - A push in the middle of the task.
 - Docking from different starting points, with the dock partly hidden, or in low light.
+- Battery: it finishes a task and reaches the dock with at least 20 % left, from the farthest
+  point of the home; if the battery runs low mid-task, it drops the task and goes to charge.
+  First in simulation with a power model, then measured on the real robot.
 - Fault injection: one eye covered, a servo that responds slowly, the Wi-Fi link dropping, the
   microphone muted. The robot must fail safely.
 - Sound: turning towards a sound with background noise (TV, music, its own servos).
