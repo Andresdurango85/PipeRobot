@@ -28,6 +28,15 @@ def test_committed_baseline_loads() -> None:
     assert baseline.trials >= 50  # Phase 0: at least 50 episodes
 
 
+@pytest.mark.parametrize(
+    "path", sorted((DEFAULT_BASELINE.parent / "baselines").glob("*.json")), ids=lambda p: p.stem
+)
+def test_committed_policy_baselines_load(path: Path) -> None:
+    baseline = load_baseline(path)
+
+    assert baseline.trials >= 50
+
+
 @pytest.mark.parametrize("content", ['{"trials": 50}', '{"successes": 60, "trials": 50}', "{"])
 def test_invalid_baseline_is_rejected(tmp_path: Path, content: str) -> None:
     path = tmp_path / "baseline.json"

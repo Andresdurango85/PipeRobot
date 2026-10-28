@@ -5,9 +5,13 @@ Pinned version: 0.6.1 ([ADR 0002](../decisions/0002-python-tooling-and-pinning.m
 ## Install
 
 - **LeRobot 0.6.1 requires Python 3.12 or newer.** _(verified 2026-10-26, LeRobot 0.6.1, PyPI metadata)_
-- **On a machine without CUDA, `uv sync --extra lerobot` installs the CPU build of torch**
-  (torch 2.11.0+cpu); the whole `.venv` is ~1.1 GB, not the several GB of a CUDA build.
-  _(verified 2026-10-26, LeRobot 0.6.1, Windows 11 laptop)_
+- **On Windows, `uv sync --extra lerobot` installs the CPU build of torch** (torch 2.11.0+cpu),
+  with or without an NVIDIA GPU: PyPI's Windows wheels are CPU-only. The whole `.venv` is
+  ~1.1 GB, not the several GB of a CUDA build.
+  _(verified 2026-10-26 on the laptop and 2026-10-27 on the home PC with an RTX 5060 Ti)_
+- **An RTX 5060 Ti (Blackwell, compute capability 12.0) runs `torch==2.11.0+cu128`** from
+  `https://download.pytorch.org/whl/cu128`. Installed by hand into a separate venv, outside the
+  lock (the index change is not decided). _(verified 2026-10-27, home PC, driver 610.88)_
 - **LeRobot 0.6.1 caps its dependencies tightly**: `torch<2.12`, `Pillow<13`, `setuptools<82`
   (torch 2.11 needs it), `datasets<5`; datasets 4.8.5 adds `fsspec<=2026.2.0`. Security fixes
   above those caps need a uv override ([ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)).
@@ -80,8 +84,18 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
 - **`eval_info.json` (0.6.1) is per task**: `per_task[0].metrics` holds lists `successes`,
   `max_rewards`, `sum_rewards`, `video_paths`; no seeds. Seeds are `--seed + episode index`
   (default 1000). Videos: only the first 10 episodes (hardcoded). _(verified 2026-10-27, source)_
-- **Same seeds give identical outcomes in PushT** across separate runs.
-  _(verified 2026-10-27, two runs of 500 episodes, seeds 1000–1499, episode by episode)_
+- **Same seeds give identical outcomes in PushT on CPU, on one platform** across separate runs.
+  _(verified 2026-10-27, laptop: two runs of 500 episodes, seeds 1000–1499, episode by episode;
+  home PC: 50- and 500-episode runs agree on the shared seeds)_ The home PC's CPU also gave
+  263/500 on seeds 1000–1499; per-episode equality with the laptop is not verified.
+- **On CUDA, `lerobot-eval` is not reproducible**: `lerobot/scripts/lerobot_eval.py:746-747`
+  sets `torch.backends.cudnn.benchmark = True` and `torch.backends.cuda.matmul.allow_tf32 = True`
+  unconditionally, and `set_seed` does not undo them. Two 50-episode runs on the same seeds gave
+  25/50 and 30/50; CPU vs CUDA flips 143 of 500 episodes (PushT is chaotic), though totals stay
+  within noise (263 vs 266). _(verified 2026-10-27, LeRobot 0.6.1, home PC)_
+- **PushT timings on the home PC** (Ryzen 9 5900XT, RTX 5060 Ti, batch of 10): 50 episodes in
+  1 min 49 s on CPU (including download and migration) and 1 min 24 s on CUDA; 500 episodes in
+  13 min 28 s on CPU and 9 min 37 s on CUDA. _(verified 2026-10-27, `eval/lerobot_eval.py`)_
 - **PushT's reward is `coverage / 0.95`, capped at 1; success means coverage above 95 %.** So
   `max_rewards` in `eval_info.json` is not the coverage: a failed episode with max reward 0.99 is
   a near miss at ~94 % coverage. _(verified 2026-10-27, gym-pusht 0.1.8 source, `pusht.py`)_

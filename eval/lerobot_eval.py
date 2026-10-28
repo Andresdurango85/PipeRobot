@@ -4,6 +4,8 @@ Runs `lerobot-eval` (LeRobot 0.6.1) in a subprocess, then converts its ``eval_in
 `eval/results.py`'s format, so `stats.gate` and `reports.pr_comment` work unchanged (ADR 0016).
 Episode ``i`` uses seed ``start_seed + i``, as `lerobot-eval` assigns them. `lerobot-eval` records
 videos of the first 10 episodes only; failed episodes among them get a video link.
+The gate runs on CPU: ``--device cuda`` is for exploring speed only, because `lerobot-eval`'s CUDA
+runs are not reproducible on the same seeds.
 
 Usage:
     uv run python -m eval.lerobot_eval --policy policies/pusht-vqbet.json --output out/results.json
@@ -33,13 +35,19 @@ def convert_eval_info(
 ) -> EvalResults:
     """Turn `lerobot-eval`'s single-task ``eval_info.json`` into the results contract."""
     tasks = info.get("per_task")
-    if not isinstance(tasks, list) or len(tasks) != 1:
+    if not isinstance(tasks, list) or len(tasks) != 1 or not isinstance(tasks[0], Mapping):
         raise ResultsError(f"expected exactly one task in eval_info, got {tasks!r:.200}")
     metrics = tasks[0].get("metrics", {})
+    if not isinstance(metrics, Mapping):
+        raise ResultsError(f"eval_info 'metrics' is not an object: {metrics!r:.200}")
     successes = metrics.get("successes")
     if not isinstance(successes, list):
         raise ResultsError("eval_info has no per-episode 'successes'")
     max_rewards = metrics.get("max_rewards") or [None] * len(successes)
+    if not isinstance(max_rewards, list) or len(max_rewards) != len(successes):
+        raise ResultsError(
+            f"eval_info has {len(successes)} 'successes' but 'max_rewards' is {max_rewards!r:.200}"
+        )
     n_videos = len(metrics.get("video_paths") or [])
 
     episodes = []
@@ -61,7 +69,13 @@ def convert_eval_info(
 
 
 def run_lerobot_eval(
-    policy_dir: Path, env: str, episodes: int, batch_size: int, start_seed: int, output_dir: Path
+    policy_dir: Path,
+    env: str,
+    episodes: int,
+    batch_size: int,
+    start_seed: int,
+    output_dir: Path,
+    device: str = "cpu",
 ) -> Path:
     shutil.rmtree(output_dir, ignore_errors=True)  # never mix with a previous run's videos
     command = [
@@ -73,7 +87,7 @@ def run_lerobot_eval(
         f"--eval.n_episodes={episodes}",
         f"--eval.batch_size={min(batch_size, episodes)}",
         "--eval.use_async_envs=false",
-        "--policy.device=cpu",
+        f"--policy.device={device}",
         "--policy.use_amp=false",
         f"--seed={start_seed}",
         f"--output_dir={output_dir}",
@@ -92,6 +106,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--episodes", type=int, default=DEFAULT_EPISODES)
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     parser.add_argument("--seed", type=int, default=DEFAULT_START_SEED, help="First episode seed")
+    parser.add_argument(
+        "--device", default="cpu", help="Torch device for the policy, e.g. cpu or cuda"
+    )
     parser.add_argument("--work-dir", type=Path, default=Path("out/lerobot"))
     parser.add_argument("--output", type=Path, required=True, help="Where to write results JSON")
     parser.add_argument("--videos-link", help="URL where failed-episode videos can be found")
@@ -101,9 +118,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         spec = PolicySpec.load(args.policy)
         policy_dir = prepare_policy(spec, args.work_dir / "policies")
         eval_info = run_lerobot_eval(
-            policy_dir, spec.env, args.episodes, args.batch_size, args.seed, args.work_dir / "eval"
+            policy_dir,
+            spec.env,
+            args.episodes,
+            args.batch_size,
+            args.seed,
+            args.work_dir / "eval",
+            args.device,
         )
-        info = json.loads(eval_info.read_text(encoding="utf-8"))
+        try:
+            info = json.loads(eval_info.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ResultsError(f"cannot read {eval_info}: {exc}") from exc
+        if not isinstance(info, Mapping):
+            raise ResultsError(f"{eval_info} is not a JSON object")
         results = convert_eval_info(info, spec.name, args.seed, args.videos_link)
     except ResultsError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

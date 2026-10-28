@@ -70,7 +70,16 @@ def test_no_link_without_videos_link() -> None:
 
 @pytest.mark.parametrize(
     "info",
-    [{}, {"per_task": []}, {"per_task": [{}, {}]}, {"per_task": [{"metrics": {}}]}],
+    [
+        {},
+        {"per_task": []},
+        {"per_task": [{}, {}]},
+        {"per_task": ["pusht"]},
+        {"per_task": [{"metrics": {}}]},
+        {"per_task": [{"metrics": []}]},
+        {"per_task": [{"metrics": {"successes": [True, False], "max_rewards": [1.0]}}]},
+        {"per_task": [{"metrics": {"successes": [True], "max_rewards": 1.0}}]},
+    ],
 )
 def test_malformed_eval_info_is_rejected(info: dict[str, Any]) -> None:
     with pytest.raises(ResultsError):

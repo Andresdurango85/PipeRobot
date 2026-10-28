@@ -30,9 +30,15 @@ proves the generic core works for a second robot without changes ([0015](0015-ge
   exact pipeline, not the model card's 285/500 (older LeRobot); the gate gives PASS between the
   two. A 500-episode baseline narrows its interval to ±4.4 pp, so a 50-episode PR run is compared
   against a nearly fixed reference.
-- PR runs use fixed seeds (1000–1049 by default). The simulator is deterministic by seed, so an
-  unchanged policy reproduces the same count on every PR and can never be blocked by sampling
-  luck. Rotating seeds belong in a nightly run, where variation is the point.
+- PR runs use fixed seeds (1000–1049 by default), on CPU. On one platform (OS, CPU torch build)
+  the evaluation is deterministic by seed, so an unchanged policy reproduces the same count on
+  every PR and cannot be blocked by sampling luck. That holds only while the PR runs and the
+  baseline come from the same platform: the baseline is re-measured on the gate's own runner
+  whenever that platform changes. Rotating seeds belong in a nightly run, where variation is the
+  point.
+- The gate evaluates on CPU, never on CUDA: `lerobot-eval` 0.6.1 turns on `cudnn.benchmark` and
+  TF32 unconditionally, so GPU runs are not reproducible even on the same seeds and machine.
+  `--device cuda` exists only to explore speed.
 
 ## Alternatives considered
 
@@ -45,7 +51,7 @@ proves the generic core works for a second robot without changes ([0015](0015-ge
 ## Consequences
 
 - Measured on the laptop CPU: 50 episodes in 5 min 16 s (~6 s per episode), within the 30-minute
-  budget. Same seeds gave identical outcomes across two runs: no flakiness from this simulator.
+  budget. Same seeds gave identical outcomes across two runs on that machine.
 - 500-episode runs (laptop CPU, ~43 min each, ~5.1 s per episode): seeds 1000–1499 gave 263/500
   twice, identical episode by episode; seeds 2000–2499 gave 270/500. The gate gives PASS in both
   directions between them and against the model card.
@@ -54,9 +60,19 @@ proves the generic core works for a second robot without changes ([0015](0015-ge
   BLOCKs at 19/50 or fewer, so one window in 20 (seeds 1350–1399, 18/50) would have blocked an
   unchanged policy. That is the false-alarm rate expected from 95 % intervals, and the reason for
   fixed PR seeds and for ≥ 50 episodes.
+- Determinism is per platform, not per seed (home PC: Windows 11, Ryzen 9 5900XT, RTX 5060 Ti):
+  - CPU, same `torch==2.11.0+cpu` wheel: 263/500 on seeds 1000–1499, the same total as the
+    laptop, in 13 min 28 s; its first 50 episodes matched a separate 50-episode run exactly.
+    Episode-by-episode equality with the laptop is not verified (one window reads 19/50 here
+    against 18/50 reported there).
+  - CUDA (`torch==2.11.0+cu128`): two 50-episode runs on the same seeds gave 25/50 and 30/50,
+    with 11 episodes flipped; 500 episodes gave 266/500 (gate: PASS) in 9 min 37 s.
+  - CPU vs CUDA on the same seeds: 143 of 500 episodes flip, while the totals stay within noise.
+    PushT is chaotic, so float-level differences change single episodes. A paired same-seed
+    comparison is therefore only valid with the platform held fixed, never across machines.
 - With a 263/500 baseline and 50 PR episodes, the gate BLOCKs a drop from 53 % to 38 % or lower
   and WARNs at 40–42 %. Smaller regressions need more episodes, or a paired comparison on the
-  same seeds (future work).
+  same seeds on the same platform (future work).
 - In PushT the reward is `coverage / 0.95`, capped at 1, and success needs coverage above 95 %.
   A failure with max reward 0.99 is a near miss at ~94 % coverage, not a solved task. Of 467
   failures, 37 never put any of the T on the target (reward 0) and 188 reached 0.90 or more.

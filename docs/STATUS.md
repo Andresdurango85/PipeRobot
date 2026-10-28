@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-27 (laptop)
+Last updated: 2026-10-27 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -38,26 +38,33 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
   ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). Overnight 3 × 500 episodes:
   baseline 263/500, identical on re-run, 270/500 on new seeds, all PASS against each other and
   the model card. One 50-episode window in 20 would falsely BLOCK, so PR runs use fixed seeds.
+- 2026-10-27 (home PC, RTX 5060 Ti): PushT on CPU gave 263/500 again (13.5 min); on CUDA,
+  same seeds are not reproducible (25/50 vs 30/50) because `lerobot-eval` forces
+  `cudnn.benchmark` and TF32. The gate stays on CPU; the baseline is per platform (ADR 0016).
 
 ## Next
 
 1. Switch `pr-gate` from the mock to PushT: CPU-only torch wheels on Linux runners, cache the
    policy download, link failed-episode videos (ask Andrés about the dependency index change).
-   Then a nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops.
-2. Home PC: clone, `uv sync`, `uv run prek install`, write its `CLAUDE.local.md`, record the GPU
-   model. Then plan the Isaac Sim / Isaac Lab-Arena install (ask before installing; several GB).
+   Re-measure the 500-episode baseline on the runner itself. Then a nightly run on rotating seeds,
+   and a paired same-seed comparison (same platform only) to catch smaller drops.
+2. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing; several
+   GB). The home PC is set up: `uv sync` with the LeRobot extras, prek hooks, `CLAUDE.local.md`.
 3. Replace the mock step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
    results contract (with `video_url`s), on the self-hosted GPU runner. Evaluator requirements
    from the tutorial: call `policy.reset()` every episode, load normalization stats from the
    checkpoint, record `n_action_steps`/ensembling in the contract, seed torch as well as the scene
-   ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
+   ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)). It will run on CUDA, so
+   first measure whether deterministic torch settings make same-seed runs reproducible
+   ([lerobot.md](knowledge/lerobot.md)); if not, PR runs need more episodes instead of fixed seeds.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 5. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
 
 ## Open questions for Andrés
 
-- Home PC GPU model (RTX 3070 8 GB is the Isaac Sim minimum).
+- Do the laptop's 500-episode results (`out/`, seeds 1000–1499) still exist? Comparing them
+  with the home PC's would show whether two Windows CPUs agree episode by episode.
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
 
 ## Learning
