@@ -24,6 +24,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0014](0014-mock-evaluator-and-pr-gate-workflow.md) | Mock evaluator and the pr-gate workflow, before the simulation exists | Accepted |
 | [0015](0015-generic-core-vs-robot-specific.md) | Keep the generic gate core separate from SO-101-specific code | Accepted |
 | [0016](0016-real-evaluator-lerobot-pusht.md) | First real evaluator: a pinned LeRobot policy in the PushT simulator, on CPU | Accepted |
+| [0017](0017-pr-gate-pusht-on-github-runners.md) | pr-gate evaluates the PushT policy on GitHub-hosted runners, with CPU-only torch | Accepted |
 
 ## Template
 

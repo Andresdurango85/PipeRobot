@@ -1,0 +1,66 @@
+name: baseline
+
+# Measure a policy's baseline on the same GitHub-hosted runner type that pr-gate uses, because
+# same seeds give the same episodes only on the same platform (ADR 0016, ADR 0017). Run it by
+# hand, then commit the counts from the artifact to stats/baselines/ in a PR.
+on:
+  workflow_dispatch:
+    inputs:
+      episodes:
+        description: Number of episodes
+        default: "500"
+      seed:
+        description: First episode seed (pr-gate uses 1000)
+        default: "1000"
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      POLICY: policies/pusht-vqbet.json
+      BASELINE: stats/baselines/vqbet-pusht.json
+      WORK_DIR: work/lerobot
+      EPISODES: ${{ inputs.episodes }}
+      SEED: ${{ inputs.seed }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (from uv.lock, CPU-only torch)
+        run: uv sync --locked --extra sim-pusht
+
+      - name: Record the runner's CPU
+        run: |
+          echo "Runner: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) CPUs" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache the prepared policy
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.WORK_DIR }}/policies
+          key: policy-${{ hashFiles('policies/pusht-vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
+
+      - name: Evaluate policy
+        run: |
+          uv run python -m eval.lerobot_eval --policy "$POLICY" --work-dir "$WORK_DIR" \
+            --episodes "$EPISODES" --seed "$SEED" --output out/results.json
+
+      - name: Compare with the committed baseline
+        # Informational: a new baseline should agree with the old one; the verdict does not fail.
+        run: |
+          uv run python -m stats.gate --results out/results.json --baseline-file "$BASELINE" \
+            | tee -a "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: baseline-${{ github.run_id }}
+          path: out/
+          retention-days: 30

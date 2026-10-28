@@ -9,12 +9,12 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 | Done-criterion | State |
 | --- | --- |
-| GPU workflow, headless, < 30 min per PR | Not started (needs the home PC) |
+| GPU workflow, headless, < 30 min per PR | **Headless on CPU**: PushT gate on `ubuntu-latest` in ~2–3 min ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)); GPU runner pending Isaac |
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min); SO-101 scenes pending ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)) |
 | Statistical verdict vs. baseline | **Done**: `stats/gate.py` + `stats/baseline.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
-| Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment); videos pending the simulation |
+| Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started (Andrés is travelling, no hardware) |
-| Deliberately worse PR blocked, normal PR passes | **Done with the mock** (tests + demo PR); repeat with the real policy |
+| Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
 | README reproducible in 30 min | Not started |
 
 ## Done recently
@@ -42,16 +42,19 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
   same seeds are not reproducible (25/50 vs 30/50) because `lerobot-eval` forces
   `cudnn.benchmark` and TF32. The gate stays on CPU; the baseline is per platform (ADR 0016).
   Laptop vs home PC CPU: same total, 6 of 500 near-miss episodes flip ([lerobot.md](knowledge/lerobot.md)).
+- 2026-10-27: `pr-gate` runs the real PushT policy on `ubuntu-latest` with CPU-only torch
+  ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)): PASS in ~2–3 min, 27/50 or
+  29/50 depending on the runner's CPU model (2 near misses flip). Demo PR #14 (temperature 2.0)
+  was blocked at 4/50.
 
 ## Next
 
-1. Switch `pr-gate` from the mock to PushT: CPU-only torch wheels on Linux runners, cache the
-   policy download, link failed-episode videos (ask Andrés about the dependency index change).
-   Re-measure the 500-episode baseline on the runner itself. Then a nightly run on rotating seeds,
-   and a paired same-seed comparison (same platform only) to catch smaller drops.
+1. Run `baseline.yml` (500 episodes) on `main` and commit the runner's counts to
+   `stats/baselines/vqbet-pusht.json`. Then a nightly run on rotating seeds, and a paired
+   same-seed comparison (same platform only; check the logged CPU model) to catch smaller drops.
 2. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing; several
    GB). The home PC is set up: `uv sync` with the LeRobot extras, prek hooks, `CLAUDE.local.md`.
-3. Replace the mock step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
+3. Replace the PushT step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
    results contract (with `video_url`s), on the self-hosted GPU runner. Evaluator requirements
    from the tutorial: call `policy.reset()` every episode, load normalization stats from the
    checkpoint, record `n_action_steps`/ensembling in the contract, seed torch as well as the scene

@@ -7,16 +7,21 @@ Policies published before LeRobot 0.4 need two fixes (ADR 0016):
   `migrate_policy_normalization`, working around a bug in 0.6.1 where list values for
   tuple-typed fields (e.g. ``crop_shape``) crash the config serializer.
 
-The prepared policy is cached per revision, so repeated runs reuse it.
+A spec can also override config values (``config_overrides``), e.g. an inference setting such
+as VQ-BeT's ``bet_softmax_temperature``: a policy change that needs no retraining (ADR 0017).
+
+The prepared policy is cached per revision and config changes, so repeated runs reuse it.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import shutil
 import sys
 import typing
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -35,6 +40,15 @@ class PolicySpec:
     env: str
     drop_config_fields: tuple[str, ...] = field(default_factory=tuple)
     migrate_legacy_normalization: bool = False
+    config_overrides: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def cache_name(self) -> str:
+        """Directory name of the prepared policy: changes whenever the prepared files would."""
+        changes = json.dumps(
+            [self.drop_config_fields, self.config_overrides], sort_keys=True
+        ).encode()
+        return f"{self.name}-{self.revision[:12]}-{hashlib.sha256(changes).hexdigest()[:8]}"
 
     @classmethod
     def load(cls, path: Path) -> PolicySpec:
@@ -47,6 +61,7 @@ class PolicySpec:
                 env=str(data["env"]),
                 drop_config_fields=tuple(data.get("drop_config_fields", ())),
                 migrate_legacy_normalization=bool(data.get("migrate_legacy_normalization")),
+                config_overrides=dict(data.get("config_overrides", {})),
             )
         except (OSError, ValueError, KeyError, TypeError) as exc:
             raise ResultsError(f"invalid policy spec {path}: {exc}") from exc
@@ -78,23 +93,33 @@ def _migrate(source: Path, target: Path) -> None:
         migration.main()
 
 
-def prepare_policy(spec: PolicySpec, cache_dir: Path) -> Path:
-    """Return a local directory with the policy ready for `lerobot-eval`."""
+def _download(spec: PolicySpec) -> Path:
     from huggingface_hub import snapshot_download
 
-    prepared = cache_dir / f"{spec.name}-{spec.revision[:12]}"
+    return Path(
+        snapshot_download(spec.repo_id, revision=spec.revision, allow_patterns=list(POLICY_FILES))
+    )
+
+
+def prepare_policy(
+    spec: PolicySpec, cache_dir: Path, download: Callable[[PolicySpec], Path] = _download
+) -> Path:
+    """Return a local directory with the policy ready for `lerobot-eval`."""
+    prepared = cache_dir / spec.cache_name
     if (prepared / "model.safetensors").exists():
         return prepared
 
-    downloaded = Path(
-        snapshot_download(spec.repo_id, revision=spec.revision, allow_patterns=list(POLICY_FILES))
-    )
+    downloaded = download(spec)
     staging = cache_dir / f"{prepared.name}-staging"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
     config = json.loads((downloaded / "config.json").read_text(encoding="utf-8"))
     for name in spec.drop_config_fields:
         config.pop(name, None)
+    unknown = sorted(set(spec.config_overrides) - config.keys())
+    if unknown:
+        raise ResultsError(f"config_overrides for fields the policy does not have: {unknown}")
+    config.update(spec.config_overrides)
     (staging / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     shutil.copy2(downloaded / "model.safetensors", staging / "model.safetensors")
 
