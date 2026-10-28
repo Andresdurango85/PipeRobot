@@ -25,7 +25,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0015](0015-generic-core-vs-robot-specific.md) | Keep the generic gate core separate from SO-101-specific code | Accepted |
 | [0016](0016-real-evaluator-lerobot-pusht.md) | First real evaluator: a pinned LeRobot policy in the PushT simulator, on CPU | Accepted |
 | [0017](0017-pr-gate-pusht-on-github-runners.md) | pr-gate evaluates the PushT policy on GitHub-hosted runners, with CPU-only torch | Accepted |
-| [0019](0019-core-adapters-robots-layout.md) | Three layers: generic core, framework adapters, and one folder per robot | Proposed |
+| [0019](0019-core-adapters-robots-layout.md) | Three layers: an installable core, framework adapters, and one folder per robot | Accepted |
 | [0018](0018-no-required-review-for-the-owner.md) | Main needs a pull request and green checks, but no approving review | Accepted |
 
 ## Template

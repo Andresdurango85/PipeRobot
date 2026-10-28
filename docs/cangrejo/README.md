@@ -88,8 +88,11 @@ just one arm. "Cangrejo" is Spanish for crab.
 ## Priority rules
 
 - The SO-101 Phase 0 comes first. No crab hardware is bought until the Phase 0 gate is met.
-- v0 is design and simulation only, so it can run in parallel with the work that follows
-  Phase 0.
+- v0 is design and simulation only, so it can start now, in parallel with Phase 0, as long as it
+  does not delay it.
+- The crab's design files (CAD exports, URDF/MJCF, meshes) and their license live in a private
+  repo, not here. Its gate runs there, installing this repo's `piperobot` package
+  ([ADR 0019](../decisions/0019-core-adapters-robots-layout.md)).
 - The gate code must stay generic. The crab is the second robot to use it, so everything
   specific to the SO-101 must stay isolated
   ([ADR 0015](../decisions/0015-generic-core-vs-robot-specific.md)).
