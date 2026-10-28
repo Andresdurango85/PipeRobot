@@ -82,7 +82,7 @@ just one arm. "Cangrejo" is Spanish for crab.
 ## Licensing
 
 - The design is 100 % our own.
-- Do not reuse parts of the Microduck: its models are CC BY-NC-SA, which forbids commercial use.
+- Do not reuse parts of the Microduck: its models are CC BY-NC-SA.
 - Check the license of LeKiwi, or of any other project, before taking anything from it.
 
 ## Priority rules
