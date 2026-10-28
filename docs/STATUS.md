@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-27 (home PC)
+Last updated: 2026-10-28 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -19,56 +19,43 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Done recently
 
-- 2026-10-26: memory system (AGENTS.md, ADRs, knowledge, STATUS, `/handoff`, docs tests), PR #3.
-- 2026-10-27: `main` ruleset with owner-only bypass ([ADR 0010](decisions/0010-main-branch-ruleset.md))
-  and free security gates: CodeQL, Dependabot, dependency review, ruff `S`
-  ([ADR 0011](decisions/0011-free-security-gates.md)). First CodeQL scan: 0 alerts.
-- 2026-10-27: Dependabot raised 46 alerts (all via LeRobot's caps). Pillow overridden to 13.0.0
-  (fixes 41, all critical); 5 unreachable ones accepted
-  ([ADR 0012](decisions/0012-dependency-vulnerability-triage.md)).
-- 2026-10-27: git hooks with prek; pre-push runs the CI checks in a clean env
-  ([ADR 0013](decisions/0013-pre-commit-hooks-mirror-ci.md)).
-- 2026-10-27: `pr-gate.yml` end to end with a mock evaluator: results contract, stored baseline,
-  sticky comment, BLOCK fails the job ([ADR 0014](decisions/0014-mock-evaluator-and-pr-gate-workflow.md));
-  generic core vs SO-101 boundary enforced ([ADR 0015](decisions/0015-generic-core-vs-robot-specific.md)).
-- 2026-10-27: course notes for the HF Robotics Course (units 0–2) and the Robot Learning Tutorial
-  (RL, ACT, VLAs), each with its impact on the gate; ACT defaults verified on LeRobot 0.6.1
+Older items are in git history and the ADRs (0001–0015: memory, tooling, statistics, rulesets,
+security gates, hooks, mock gate, core boundary).
+
+- 2026-10-27: first real evaluator, `lerobot/vqbet_pusht` in PushT on CPU
+  ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). Same seeds reproduce only on one
+  platform: CPUs flip 6–10 near misses per 500 episodes, CUDA is not reproducible at all
   ([lerobot.md](knowledge/lerobot.md)).
-- 2026-10-27: first real evaluator: `lerobot/vqbet_pusht` in PushT on CPU, 50 episodes in ~5 min
-  ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). Overnight 3 × 500 episodes:
-  baseline 263/500, identical on re-run, 270/500 on new seeds, all PASS against each other and
-  the model card. One 50-episode window in 20 would falsely BLOCK, so PR runs use fixed seeds.
-- 2026-10-27 (home PC, RTX 5060 Ti): PushT on CPU gave 263/500 again (13.5 min); on CUDA,
-  same seeds are not reproducible (25/50 vs 30/50) because `lerobot-eval` forces
-  `cudnn.benchmark` and TF32. The gate stays on CPU; the baseline is per platform (ADR 0016).
-  Laptop vs home PC CPU: same total, 6 of 500 near-miss episodes flip ([lerobot.md](knowledge/lerobot.md)).
-- 2026-10-27: `pr-gate` runs the real PushT policy on `ubuntu-latest` with CPU-only torch
-  ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)): PASS in ~2–3 min, 27/50 or
-  29/50 depending on the runner's CPU model (2 near misses flip). Demo PR #14 (temperature 2.0)
-  was blocked at 4/50.
-- 2026-10-27: baseline re-measured on the runner with `baseline.yml`: 265/500 (EPYC 7763), and
-  267/500 on an EPYC 9V74 ([lerobot.md](knowledge/lerobot.md)).
+- 2026-10-27: `pr-gate` runs it on `ubuntu-latest` with CPU-only torch in ~2–3 min
+  ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)); demo PR #14 (sampling
+  temperature 2.0) was blocked at 4/50. Baseline re-measured on the runner: 265/500.
+- 2026-10-28: `main` needs a PR and green checks but no approving review
+  ([ADR 0018](decisions/0018-no-required-review-for-the-owner.md)); agents merge with a plain
+  `gh pr merge --merge`.
+- 2026-10-28: [Project Cangrejo](cangrejo/README.md), a crab-shaped robot as the gate's second
+  robot; v0 (digital twin) can start now. Restructure plan accepted
+  ([ADR 0019](decisions/0019-core-adapters-robots-layout.md)).
 
 ## Next
 
-1. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops.
-   Runner CPUs vary and flip 6–10 near misses per 500 episodes, so the paired test must tolerate
-   them or compare only runs on the same logged CPU model.
-2. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing; several
-   GB). The home PC is set up: `uv sync` with the LeRobot extras, prek hooks, `CLAUDE.local.md`.
-3. Replace the PushT step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
-   results contract (with `video_url`s), on the self-hosted GPU runner. Evaluator requirements
-   from the tutorial: call `policy.reset()` every episode, load normalization stats from the
-   checkpoint, record `n_action_steps`/ensembling in the contract, seed torch as well as the scene
-   ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)). It will run on CUDA, so
-   first measure whether deterministic torch settings make same-seed runs reproducible
-   ([lerobot.md](knowledge/lerobot.md)); if not, PR runs need more episodes instead of fixed seeds.
-4. Look at the simulated rack dataset as training data for a first ACT policy
+1. Restructure per ADR 0019 in three PRs: (1) allow-list architecture test and no default
+   baseline in the core (this PR); (2) data into `robots/`; (3) the installable `piperobot`
+   package with a clean-install check.
+2. Create the crab's private repo (design files, its gate) and start v0 in Onshape.
+3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
+   must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
+4. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing). The
+   Isaac evaluator runs on CUDA: first measure whether deterministic torch settings make
+   same-seed runs reproducible; it must call `policy.reset()` every episode, load normalization
+   stats from the checkpoint and seed torch as well as the scene
+   ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
+5. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
+6. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
 
 ## Open questions for Andrés
 
+- Name of the new private repo for the crab's design files and its gate (ADR 0019).
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
 
 ## Learning

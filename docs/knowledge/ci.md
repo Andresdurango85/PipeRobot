@@ -47,6 +47,9 @@
 - **The owner cannot approve his own PRs**, including those opened by agents with his account.
   With a required review that meant merging through the admin bypass (`gh pr merge <n> --admin`),
   hence ADR 0018. _(GitHub behaviour, 2026-10-27)_
+- **With 0 required approvals, PRs merge with a plain `gh pr merge <n> --merge`** once the checks
+  pass, and Claude Code's auto mode allows it. "Require review from Code Owners" is still on in the
+  ruleset and does not block it. _(verified 2026-10-28, PR #17)_
 - **Claude Code's auto mode refuses admin-bypass merges** ("Merge Without Review") even when the
   owner asked in chat and even with a `Bash(gh pr merge:*)` allow rule in
   `.claude/settings.local.json`. It also refuses editing the ruleset through the API ("CI Bypass"):
