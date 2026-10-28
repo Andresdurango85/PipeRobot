@@ -3,7 +3,12 @@
   "repo_id": "lerobot/vqbet_pusht",
   "revision": "15c2d0af889c401c7e5db7a07499d3b498afc276",
   "env": "pusht",
-  "drop_config_fields": ["mlp_hidden_dim"],
+  "drop_config_fields": [
+    "mlp_hidden_dim"
+  ],
   "migrate_legacy_normalization": true,
-  "description": "Official LeRobot VQ-BeT policy for the PushT 2D simulator (CPU-friendly). Published at LeRobot < 0.4, so it is converted locally to the 0.6 processor format (ADR 0016)."
+  "description": "Official LeRobot VQ-BeT policy for the PushT 2D simulator (CPU-friendly). Published at LeRobot < 0.4, so it is converted locally to the 0.6 processor format (ADR 0016).",
+  "config_overrides": {
+    "bet_softmax_temperature": 2.0
+  }
 }
