@@ -55,4 +55,6 @@ evaluator now exists: `lerobot/vqbet_pusht` in PushT on CPU, ~1.6 s per episode 
   same-seed comparison must check the logged CPU model.
 - A Linux machine with a GPU (e.g. for Isaac) would also get CPU-only torch from this marker; it
   needs its own source (a CUDA extra) when that machine exists.
-- Docs-only PRs also pay the evaluation (~minutes per PR).
+- Measured on the first runs: the whole `pr-gate` job takes 2 min 8 s on a no-op PR (27/50, PASS,
+  identical episodes to the home PC) and 3 min 5 s on the demo PR, which was blocked at 4/50
+  (failed episodes run the full 300 steps). Docs-only PRs pay those minutes too.
