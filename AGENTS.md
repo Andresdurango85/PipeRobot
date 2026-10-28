@@ -42,6 +42,20 @@ but not CI/CD or testing concepts.
 - Machines: see [ADR 0005](docs/decisions/0005-two-machine-setup.md). Home PC with RTX does the
   heavy work; the travel laptop has no RTX and little RAM (no heavy builds or suites there).
 
+## Project Cangrejo
+
+A crab-shaped home robot of our own (omni-wheel base, two arms with grippers, two camera eyes on
+stalks, self-docking charger): the second robot the gate validates, proof that the pipeline is not
+tied to the SO-101. Full context: [docs/cangrejo/README.md](docs/cangrejo/README.md). Priority
+rules:
+
+- The SO-101 Phase 0 comes first; no crab hardware is bought until the Phase 0 gate is met.
+- v0 (digital twin: design and simulation only) can start now, without delaying Phase 0.
+- Its design files live in a private repo, never here; its gate runs there with the `piperobot`
+  package ([ADR 0019](docs/decisions/0019-core-adapters-robots-layout.md)).
+- The gate code stays generic; everything SO-101-specific stays isolated
+  ([ADR 0015](docs/decisions/0015-generic-core-vs-robot-specific.md)).
+
 ## How to work
 
 - Talk to Andrés in **Spanish**. Code, identifiers, comments, commits, PRs and shared docs
