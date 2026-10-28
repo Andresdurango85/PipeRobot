@@ -38,16 +38,20 @@
 
 ## Repository rules
 
-- **`main` is protected by the ruleset `main`** ([ADR 0010](../decisions/0010-main-branch-ruleset.md)).
+- **`main` is protected by the ruleset `main`** ([ADR 0010](../decisions/0010-main-branch-ruleset.md),
+  [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md): PR and green checks required,
+  no approving review).
   Required check names are the job names (`lint-and-test`, `dependency-review`, `pr-gate`):
   renaming a job requires updating the ruleset. Inspect it with
   `gh api repos/Andresdurango85/PipeRobot/rulesets`. _(pr-gate added 2026-10-27)_
-- **The owner cannot approve his own PRs**, including those opened by agents with his account;
-  merge them with the admin bypass (`gh pr merge <n> --admin`). _(GitHub behaviour, 2026-10-27)_
+- **The owner cannot approve his own PRs**, including those opened by agents with his account.
+  With a required review that meant merging through the admin bypass (`gh pr merge <n> --admin`),
+  hence ADR 0018. _(GitHub behaviour, 2026-10-27)_
 - **Claude Code's auto mode refuses admin-bypass merges** ("Merge Without Review") even when the
-  owner asked in chat. Andrés merges in the GitHub UI ("Merge without waiting for requirements"),
-  or adds an explicit permission rule for `gh pr merge` to his Claude Code settings.
-  _(verified 2026-10-27, PRs #4 and #8)_
+  owner asked in chat and even with a `Bash(gh pr merge:*)` allow rule in
+  `.claude/settings.local.json`. It also refuses editing the ruleset through the API ("CI Bypass"):
+  Andrés changes rulesets in the GitHub UI.
+  _(verified 2026-10-27 on PRs #4 and #8; 2026-10-28 on PRs #11–#13 and the ruleset)_
 
 ## Gotchas
 

@@ -1,6 +1,6 @@
 # 0010. Main is protected by a ruleset; only the owner can bypass
 
-- Status: Accepted
+- Status: Superseded by 0018
 - Date: 2026-10-27
 
 ## Context

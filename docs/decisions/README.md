@@ -17,7 +17,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0007](0007-lf-line-endings.md) | LF line endings on every machine | Accepted |
 | [0008](0008-sticky-pr-comment-and-golden-file.md) | Sticky PR comment, tested with a golden file | Accepted |
 | [0009](0009-fail-loudly-on-unusable-data.md) | Unusable data never gives a green result | Accepted |
-| [0010](0010-main-branch-ruleset.md) | Main is protected by a ruleset; only the owner can bypass | Accepted |
+| [0010](0010-main-branch-ruleset.md) | Main is protected by a ruleset; only the owner can bypass | Superseded by [0018](0018-no-required-review-for-the-owner.md) |
 | [0011](0011-free-security-gates.md) | Free security gates: CodeQL, Dependabot, dependency review, ruff S rules | Accepted |
 | [0012](0012-dependency-vulnerability-triage.md) | Override Pillow above LeRobot's cap; accept five unreachable advisories | Accepted |
 | [0013](0013-pre-commit-hooks-mirror-ci.md) | Git hooks with prek; pre-push mirrors CI in a clean environment | Accepted |
@@ -25,6 +25,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0015](0015-generic-core-vs-robot-specific.md) | Keep the generic gate core separate from SO-101-specific code | Accepted |
 | [0016](0016-real-evaluator-lerobot-pusht.md) | First real evaluator: a pinned LeRobot policy in the PushT simulator, on CPU | Accepted |
 | [0017](0017-pr-gate-pusht-on-github-runners.md) | pr-gate evaluates the PushT policy on GitHub-hosted runners, with CPU-only torch | Accepted |
+| [0018](0018-no-required-review-for-the-owner.md) | Main needs a pull request and green checks, but no approving review | Accepted |
 
 ## Template
 
