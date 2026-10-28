@@ -108,10 +108,10 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
 - **PushT timings on the home PC** (Ryzen 9 5900XT, RTX 5060 Ti, batch of 10): 50 episodes in
   1 min 49 s on CPU (including download and migration) and 1 min 24 s on CUDA; 500 episodes in
   13 min 28 s on CPU and 9 min 37 s on CUDA. _(verified 2026-10-27, `eval/lerobot_eval.py`)_
-- **On `ubuntu-latest` (AMD EPYC 9V45, 4 CPUs), 50 PushT episodes take 1 min 49 s** (first run,
-  no policy cache) and match the home PC's Windows CPU run episode by episode (27/50, seeds
-  1000–1049). A 500-episode runner run is still needed to compare beyond 50.
-  _(verified 2026-10-27, CI run 40620220880)_
+- **On `ubuntu-latest` (4 CPUs), 50 PushT episodes take ~2 min**, and the runner's CPU model
+  varies between runs. AMD EPYC 9V45: 27/50, identical episode by episode to the home PC's Windows
+  CPU (seeds 1000–1049). AMD EPYC 7763: 29/50, the same except 2 near misses (max reward 0.99)
+  that succeeded. _(verified 2026-10-27, CI runs 40620220880 and 40620999554)_
 - **`bet_softmax_temperature` (VQ-BeT sampling temperature, 0.1 in `lerobot/vqbet_pusht`)
   degrades PushT smoothly**: 50 episodes give 26/50 at 0.5, 20/50 at 1.0, 5/50 at 2.0 (4/50 on
   the CI runner) and 1/50 at 5.0. _(verified 2026-10-27, home PC CPU and CI run 40620542208)_

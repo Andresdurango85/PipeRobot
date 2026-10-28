@@ -43,8 +43,9 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
   `cudnn.benchmark` and TF32. The gate stays on CPU; the baseline is per platform (ADR 0016).
   Laptop vs home PC CPU: same total, 6 of 500 near-miss episodes flip ([lerobot.md](knowledge/lerobot.md)).
 - 2026-10-27: `pr-gate` runs the real PushT policy on `ubuntu-latest` with CPU-only torch
-  ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)): 27/50 PASS in 2 min 8 s, the
-  same 50 episodes as the home PC. Demo PR #14 (temperature 2.0) was blocked at 4/50.
+  ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)): PASS in ~2–3 min, 27/50 or
+  29/50 depending on the runner's CPU model (2 near misses flip). Demo PR #14 (temperature 2.0)
+  was blocked at 4/50.
 
 ## Next
 

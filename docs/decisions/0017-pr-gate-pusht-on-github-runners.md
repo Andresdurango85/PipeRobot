@@ -50,9 +50,10 @@ evaluator now exists: `lerobot/vqbet_pusht` in PushT on CPU, ~1.6 s per episode 
 - Sampling temperature on the home PC CPU, 50 episodes vs the 263/500 baseline: 0.5 gives 26/50
   (PASS), 1.0 gives 20/50 (WARN, −12.6 pp), 2.0 gives 5/50 (BLOCK), 5.0 gives 1/50 (BLOCK). A
   50-episode run misses a drop like the one at 1.0, as ADR 0016 predicts.
-- GitHub-hosted runners do not guarantee one CPU model, so a no-op PR may flip a few near-miss
-  episodes between runs. That is harmless for the unpaired gate (BLOCK needs ~−15 pp) but a paired
-  same-seed comparison must check the logged CPU model.
+- GitHub-hosted runners do not guarantee one CPU model. Two runs of this PR landed on an AMD EPYC
+  9V45 (27/50) and an EPYC 7763 (29/50): 2 near-miss episodes (max reward 0.99) flipped. That is
+  harmless for the unpaired gate (BLOCK needs ~−15 pp), but a no-op PR's count can move by a few
+  episodes, and a paired same-seed comparison must check the logged CPU model.
 - A Linux machine with a GPU (e.g. for Isaac) would also get CPU-only torch from this marker; it
   needs its own source (a CUDA extra) when that machine exists.
 - Measured on the first runs: the whole `pr-gate` job takes 2 min 8 s on a no-op PR (27/50, PASS,
