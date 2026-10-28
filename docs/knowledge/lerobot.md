@@ -112,6 +112,10 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   varies between runs. AMD EPYC 9V45: 27/50, identical episode by episode to the home PC's Windows
   CPU (seeds 1000–1049). AMD EPYC 7763: 29/50, the same except 2 near misses (max reward 0.99)
   that succeeded. _(verified 2026-10-27, CI runs 40620220880 and 40620999554)_
+- **500 PushT episodes (seeds 1000–1499) on four platforms**: laptop and home PC (Windows) 263/500,
+  `ubuntu-latest` EPYC 7763 265/500 in 21 min 44 s, EPYC 9V74 267/500 in 17 min 21 s. Any two
+  platforms differ in 6–10 near-miss episodes; totals stay within 0.8 pp. The committed baseline is
+  the EPYC 7763 run. _(verified 2026-10-27, `baseline.yml` runs 40621897268 and 40621909121)_
 - **`bet_softmax_temperature` (VQ-BeT sampling temperature, 0.1 in `lerobot/vqbet_pusht`)
   degrades PushT smoothly**: 50 episodes give 26/50 at 0.5, 20/50 at 1.0, 5/50 at 2.0 (4/50 on
   the CI runner) and 1/50 at 5.0. _(verified 2026-10-27, home PC CPU and CI run 40620542208)_

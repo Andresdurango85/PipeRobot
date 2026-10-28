@@ -1,12 +1,13 @@
 {
   "policy": "vqbet-pusht",
   "evaluator": "lerobot-eval",
-  "successes": 263,
+  "successes": 265,
   "trials": 500,
   "seeds": "1000-1499",
   "lerobot": "0.6.1",
   "policy_revision": "15c2d0af889c401c7e5db7a07499d3b498afc276",
+  "platform": "ubuntu-latest, AMD EPYC 7763, 4 CPUs, torch 2.11.0+cpu",
   "updated": "2026-10-27",
-  "how": "uv run python -m eval.lerobot_eval --policy policies/pusht-vqbet.json --episodes 500 --output out/results.json",
-  "reference": "Re-run on the same seeds: identical, episode by episode. Seeds 2000-2499: 270/500. Model card: 285/500 (older LeRobot). The gate gives PASS between any two of them."
+  "how": "baseline.yml (workflow_dispatch, 500 episodes, seed 1000), run 40621897268",
+  "reference": "Same seeds elsewhere: 267/500 on an EPYC 9V74 runner (run 40621909121), 263/500 on the home PC and the laptop (Windows CPU). 6-10 near-miss episodes flip between platforms (ADR 0016, ADR 0017). Model card: 285/500 (older LeRobot)."
 }

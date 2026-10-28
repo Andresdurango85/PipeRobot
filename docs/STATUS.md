@@ -46,12 +46,14 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
   ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)): PASS in ~2–3 min, 27/50 or
   29/50 depending on the runner's CPU model (2 near misses flip). Demo PR #14 (temperature 2.0)
   was blocked at 4/50.
+- 2026-10-27: baseline re-measured on the runner with `baseline.yml`: 265/500 (EPYC 7763), and
+  267/500 on an EPYC 9V74 ([lerobot.md](knowledge/lerobot.md)).
 
 ## Next
 
-1. Run `baseline.yml` (500 episodes) on `main` and commit the runner's counts to
-   `stats/baselines/vqbet-pusht.json`. Then a nightly run on rotating seeds, and a paired
-   same-seed comparison (same platform only; check the logged CPU model) to catch smaller drops.
+1. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops.
+   Runner CPUs vary and flip 6–10 near misses per 500 episodes, so the paired test must tolerate
+   them or compare only runs on the same logged CPU model.
 2. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing; several
    GB). The home PC is set up: `uv sync` with the LeRobot extras, prek hooks, `CLAUDE.local.md`.
 3. Replace the PushT step in `pr-gate.yml` with an Isaac Lab-Arena evaluator that writes the same
