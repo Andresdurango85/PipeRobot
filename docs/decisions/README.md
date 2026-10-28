@@ -27,6 +27,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0017](0017-pr-gate-pusht-on-github-runners.md) | pr-gate evaluates the PushT policy on GitHub-hosted runners, with CPU-only torch | Accepted |
 | [0019](0019-core-adapters-robots-layout.md) | Three layers: an installable core, framework adapters, and one folder per robot | Accepted |
 | [0018](0018-no-required-review-for-the-owner.md) | Main needs a pull request and green checks, but no approving review | Accepted |
+| [0020](0020-self-hosted-gpu-runner.md) | A self-hosted GPU runner on the home PC, native Windows, trusted code only | Proposed |
 
 ## Template
 
