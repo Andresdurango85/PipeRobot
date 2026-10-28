@@ -86,8 +86,14 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   (default 1000). Videos: only the first 10 episodes (hardcoded). _(verified 2026-10-27, source)_
 - **Same seeds give identical outcomes in PushT on CPU, on one platform** across separate runs.
   _(verified 2026-10-27, laptop: two runs of 500 episodes, seeds 1000–1499, episode by episode;
-  home PC: 50- and 500-episode runs agree on the shared seeds)_ The home PC's CPU also gave
-  263/500 on seeds 1000–1499; per-episode equality with the laptop is not verified.
+  home PC: 50- and 500-episode runs agree on the shared seeds)_
+- **Two Windows CPUs with the same `torch==2.11.0+cpu` wheel do not agree episode by episode**:
+  laptop and home PC both gave 263/500 on seeds 1000–1499, but 6 episodes flip (3 each way), all
+  near misses at max reward 0.97–1.00. So the 50-episode window 1350–1399 reads 18/50 on the
+  laptop and 19/50 on the home PC. Cross-machine float differences only flip borderline episodes
+  (6/500), far fewer than CPU vs CUDA (143/500), but a baseline still has to be measured on the
+  gate's own platform ([ADR 0016](../decisions/0016-real-evaluator-lerobot-pusht.md)).
+  _(verified 2026-10-27, per-episode results of both machines)_
 - **On CUDA, `lerobot-eval` is not reproducible**: `lerobot/scripts/lerobot_eval.py:746-747`
   sets `torch.backends.cudnn.benchmark = True` and `torch.backends.cuda.matmul.allow_tf32 = True`
   unconditionally, and `set_seed` does not undo them. Two 50-episode runs on the same seeds gave

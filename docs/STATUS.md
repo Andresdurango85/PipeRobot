@@ -41,6 +41,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 - 2026-10-27 (home PC, RTX 5060 Ti): PushT on CPU gave 263/500 again (13.5 min); on CUDA,
   same seeds are not reproducible (25/50 vs 30/50) because `lerobot-eval` forces
   `cudnn.benchmark` and TF32. The gate stays on CPU; the baseline is per platform (ADR 0016).
+  Laptop vs home PC CPU: same total, 6 of 500 near-miss episodes flip ([lerobot.md](knowledge/lerobot.md)).
 
 ## Next
 
@@ -63,8 +64,6 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Open questions for Andrés
 
-- Do the laptop's 500-episode results (`out/`, seeds 1000–1499) still exist? Comparing them
-  with the home PC's would show whether two Windows CPUs agree episode by episode.
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
 
 ## Learning
