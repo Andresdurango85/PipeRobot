@@ -10,6 +10,8 @@ dependencies = []
 [project.optional-dependencies]
 # Heavy: pulls torch + torchvision. Not installed in the lint/test CI job.
 lerobot = ["lerobot[dataset]==0.6.1"]
+# Real evaluation in the PushT 2D simulator (CPU only): gym-pusht, video encoding. ADR 0016.
+sim-pusht = ["lerobot[dataset,evaluation,pusht]==0.6.1"]
 
 [dependency-groups]
 dev = [
