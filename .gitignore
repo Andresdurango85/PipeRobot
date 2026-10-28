@@ -14,6 +14,7 @@ __pycache__/
 *.mp4
 *.rrd
 outputs/
+work/
 out/
 out-*.log
 runs/

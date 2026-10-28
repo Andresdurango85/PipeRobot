@@ -1,8 +1,8 @@
 name: pr-gate
 
 # Evaluate the policy, compare it with the stored baseline, post the sticky PR comment, and fail
-# on a regression (ADR 0014). Today the evaluator is the mock; Isaac Lab-Arena replaces that step
-# and the job moves to the self-hosted GPU runner (ADR 0005).
+# on a regression (ADR 0014). The evaluator is the real PushT policy on CPU (ADR 0016, ADR 0017);
+# Isaac Lab-Arena replaces it later, on the self-hosted GPU runner (ADR 0005).
 on:
   pull_request:
 
@@ -16,13 +16,16 @@ concurrency:
 jobs:
   pr-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30 # Phase 0 budget per PR
     permissions:
       contents: read
       pull-requests: write # sticky comment only
     env:
       RESULTS: out/results.json
       COMMENT: out/comment.md
+      POLICY: policies/pusht-vqbet.json
+      BASELINE: stats/baselines/vqbet-pusht.json
+      WORK_DIR: work/lerobot # outside out/, so the cached policy is not uploaded
     steps:
       - uses: actions/checkout@v7
 
@@ -30,11 +33,27 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies (from uv.lock)
-        run: uv sync --locked
+      - name: Install dependencies (from uv.lock, CPU-only torch)
+        run: uv sync --locked --extra sim-pusht
 
-      - name: Evaluate policy (mock evaluator, 50 seeded episodes)
-        run: uv run python -m eval.mock_eval --policy policies/mock-policy.json --output "$RESULTS"
+      - name: Record the runner's CPU
+        # Same seeds give the same episodes only on the same platform (ADR 0016).
+        run: |
+          echo "Runner: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) CPUs" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache the prepared policy
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.WORK_DIR }}/policies
+          key: policy-${{ hashFiles('policies/pusht-vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
+
+      - name: Evaluate policy (PushT, 50 fixed-seed episodes on CPU)
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          uv run python -m eval.lerobot_eval --policy "$POLICY" --work-dir "$WORK_DIR" \
+            --output "$RESULTS" --videos-link "$RUN_URL#artifacts"
+          cp -r "$WORK_DIR/eval/videos" out/
 
       - name: Render report
         env:
@@ -42,7 +61,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           uv run python -m reports.pr_comment --results "$RESULTS" \
-            --baseline-file stats/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA" \
+            --baseline-file "$BASELINE" --run-url "$RUN_URL" --commit "$HEAD_SHA" \
             --output "$COMMENT"
           cat "$COMMENT" >> "$GITHUB_STEP_SUMMARY"
 
@@ -55,7 +74,7 @@ jobs:
         run: uv run python -m reports.sticky_comment --pr "$PR_NUMBER" --body-file "$COMMENT"
 
       - name: Gate verdict (fails the job on BLOCK)
-        run: uv run python -m stats.gate --results "$RESULTS" --baseline-file stats/baseline.json
+        run: uv run python -m stats.gate --results "$RESULTS" --baseline-file "$BASELINE"
 
       - name: Upload results and report
         if: always()

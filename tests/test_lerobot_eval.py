@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from eval.lerobot_eval import convert_eval_info
-from eval.lerobot_policy import PolicySpec, _coerce_tuple_fields
+from eval.lerobot_policy import PolicySpec, _coerce_tuple_fields, prepare_policy
 from eval.results import ResultsError
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -91,6 +91,48 @@ def test_committed_policy_spec_is_pinned() -> None:
 
     assert len(spec.revision) == 40  # a full commit SHA, never a branch name
     assert spec.env == "pusht"
+
+
+def test_config_overrides_change_the_cache_name() -> None:
+    base = PolicySpec(name="p", repo_id="o/p", revision="a" * 40, env="pusht")
+    hotter = dataclasses.replace(base, config_overrides={"bet_softmax_temperature": 1.0})
+
+    assert base.cache_name != hotter.cache_name  # never reuse a policy prepared without them
+    assert base.cache_name == dataclasses.replace(base).cache_name
+
+
+def test_config_override_of_an_unknown_field_is_rejected(tmp_path: Path) -> None:
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    (snapshot / "config.json").write_text(json.dumps({"type": "vqbet"}), encoding="utf-8")
+    (snapshot / "model.safetensors").write_bytes(b"")
+    spec = PolicySpec(
+        name="p", repo_id="o/p", revision="a" * 40, env="pusht", config_overrides={"tempreture": 1}
+    )
+
+    with pytest.raises(ResultsError, match="tempreture"):
+        prepare_policy(spec, tmp_path / "cache", download=lambda _: snapshot)
+
+
+def test_config_overrides_are_written_to_the_prepared_config(tmp_path: Path) -> None:
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    config = {"type": "vqbet", "bet_softmax_temperature": 0.1, "mlp_hidden_dim": 1}
+    (snapshot / "config.json").write_text(json.dumps(config), encoding="utf-8")
+    (snapshot / "model.safetensors").write_bytes(b"")
+    spec = PolicySpec(
+        name="p",
+        repo_id="o/p",
+        revision="a" * 40,
+        env="pusht",
+        drop_config_fields=("mlp_hidden_dim",),
+        config_overrides={"bet_softmax_temperature": 1.0},
+    )
+
+    prepared = prepare_policy(spec, tmp_path / "cache", download=lambda _: snapshot)
+
+    written = json.loads((prepared / "config.json").read_text(encoding="utf-8"))
+    assert written == {"type": "vqbet", "bet_softmax_temperature": 1.0}
 
 
 def test_invalid_policy_spec_is_rejected(tmp_path: Path) -> None:

@@ -7,11 +7,15 @@
 - **`dependency-review.yml`**: fails a PR that adds a dependency with a high or critical
   advisory. **CodeQL** runs as GitHub's default setup (no workflow file; Settings → Code security).
   Both are merge gates ([ADR 0011](../decisions/0011-free-security-gates.md)).
-- **`pr-gate.yml`**: mock evaluation → report (also in the job summary) → sticky comment → gate
-  verdict (fails on BLOCK) → artifact `pr-gate-<PR>` with results and report
-  ([ADR 0014](../decisions/0014-mock-evaluator-and-pr-gate-workflow.md)). Runs on
-  `ubuntu-latest` until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
+- **`pr-gate.yml`**: PushT evaluation on CPU (50 fixed-seed episodes) → report (also in the job
+  summary) → sticky comment → gate verdict (fails on BLOCK) → artifact `pr-gate-<PR>` with
+  results, report and the videos of the first 10 episodes
+  ([ADR 0014](../decisions/0014-mock-evaluator-and-pr-gate-workflow.md),
+  [ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). Runs on `ubuntu-latest` with
+  CPU-only torch until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
   token); the report is still in the job summary.
+- **`baseline.yml`**: manual (`workflow_dispatch`) run of N episodes on the same runner type, to
+  measure a baseline where the gate runs; its counts are committed to `stats/baselines/` by PR.
 - `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
 
 ## Local hooks
