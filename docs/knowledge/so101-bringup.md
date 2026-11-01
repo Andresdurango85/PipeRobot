@@ -49,7 +49,7 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
 ## 1. Before the electronics arrive
 
 - **Clean the printed parts**: remove all support material (a small screwdriver under the
-  supports works). _(verified 2026-11-01, docs/lerobot/so101)_
+  supports works). _(verified 2026-11-01, docs/lerobot/so101 (main))_
 - **Sort and label the leader's 6 servos by gear ratio** (the ratio is on the motor's label) into
   three bins, and write the target joint and ID on each with tape. Mixing them up is the
   easy mistake: `setup-motors` writes an ID to whatever motor is plugged in, whatever its ratio.
@@ -61,11 +61,11 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
   | 1/147 | 3 | `wrist_flex` (4), `wrist_roll` (5), `gripper` (6) |
 
   The follower's 6 servos are all 1/345, so any of them fits any joint; label them by joint
-  anyway (IDs 1–6 as above). _(verified 2026-11-01, docs/lerobot/so101 table; IDs from LeRobot
+  anyway (IDs 1–6 as above). _(verified 2026-11-01, docs/lerobot/so101 (main) table; IDs from LeRobot
   0.6.1 `so_follower.py`, `so_leader.py`)_
 - **Do not assemble yet.** IDs are set one motor at a time on a bare bus (step 4); the docs
   advise putting one 3-pin cable in each motor as it is placed. _(verified 2026-11-01,
-  docs/lerobot/so101)_
+  docs/lerobot/so101 (main))_
 - **Decide on Windows Developer Mode** for the training PC: without it `lerobot-train` crashes at
   its first checkpoint (step 11).
 - **Test the cameras now**, if you have them: plug the C920 and the wrist camera and run
@@ -83,7 +83,7 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
 | `gripper` | 6 | 1/147 |
 
 The mix lets the leader hold its own weight while staying light to move by hand. This matches
-the 1× 1/345, 2× 1/191, 3× 1/147 set in AGENTS.md. _(verified 2026-11-01, docs/lerobot/so101;
+the 1× 1/345, 2× 1/191, 3× 1/147 set in AGENTS.md. _(verified 2026-11-01, docs/lerobot/so101 (main);
 joint-to-ID mapping from LeRobot 0.6.1 `so_leader.py`)_
 
 ## 3. Find each arm's COM port
@@ -116,7 +116,7 @@ lerobot-setup-motors --teleop.type=so101_leader --teleop.port=COM4
 - For the leader, plug the motor whose ratio matches the prompted joint (step 2).
 - If it fails, check the supply, the USB cable and the 3-pin cable. On a Waveshare board, both
   jumpers go on channel `B` (USB). Check the cabling before every Enter: the supply cable can come
-  loose while you handle the board. _(verified 2026-11-01, docs/lerobot/so101)_
+  loose while you handle the board. _(verified 2026-11-01, docs/lerobot/so101 (main))_
 - Afterwards, chain the motors and connect the board to `shoulder_pan` (ID 1). Then assemble.
 
 Unverified until hardware.
@@ -138,7 +138,7 @@ lerobot-calibrate --teleop.type=so101_leader --teleop.port=COM4 --teleop.id=pipe
 - On connect, the follower's gripper is limited to 50 % torque and current to avoid burning it out.
 
 _(verified 2026-11-01, LeRobot 0.6.1, `so_follower.py`/`so_leader.py` `calibrate` and
-`configure`; procedure also in docs/lerobot/so101)_. On Windows, Enter during the sweep is read
+`configure`; procedure also in docs/lerobot/so101 (main))_. On Windows, Enter during the sweep is read
 with `msvcrt.kbhit()`, which needs a real console window: unverified until hardware whether the
 VS Code terminal works; if Enter does nothing, run it from Windows Terminal.
 
@@ -174,7 +174,7 @@ lerobot-teleoperate `
 ```
 
 - It calibrates any arm that has no calibration for its `id` before starting.
-  _(verified 2026-11-01, docs/lerobot/il_robots)_
+  _(verified 2026-11-01, docs/lerobot/il_robots (main))_
 - Defaults: `--fps=60`, `--display_mode=rerun`. Camera fields: `index_or_path`, `width`,
   `height`, `fps`, plus `fourcc`, `rotation`, `backend`. `--robot.max_relative_target` caps each
   step's motion for safety (default none). _(verified 2026-11-01, LeRobot 0.6.1, `--help`,
@@ -202,18 +202,20 @@ lerobot-record `
   keep it out of the git repo. `repo_id` uses the `<user>/<name>` form even for local datasets.
   _(verified 2026-11-01, LeRobot 0.6.1, `lerobot-record --help`)_
 - Keys: Right arrow or `n` ends the episode or reset early; Left arrow or `r` re-records it;
-  Escape or `q` stops and saves. _(verified 2026-11-01, docs/lerobot/il_robots)_. On Windows these
-  come from a `pynput` global listener (from `hardware`); the terminal fallback exists only on
-  POSIX. _(verified 2026-11-01, LeRobot 0.6.1, `utils/keyboard_input.py`)_. Unverified until
-  hardware: whether keys pressed in another window also count, as a global listener suggests.
+  Escape or `q` stops and saves (case-insensitive). On Windows these come from a `pynput` global
+  listener (from `hardware`); the terminal fallback exists only on POSIX.
+  _(verified 2026-11-01, LeRobot 0.6.1, `utils/keyboard_input.py` `init_keyboard_listener`)_.
+  Unverified until hardware: whether keys pressed in another window also count, as a global
+  listener suggests. If so, typing an `n`, `r` or `q` anywhere ends or discards the episode, so
+  don't type in other windows while recording.
 - To add episodes, re-run with `--resume=true`; `num_episodes` then counts the additional
   episodes. To start over, delete the dataset folder. _(verified 2026-11-01,
-  docs/lerobot/il_robots; `--resume` in 0.6.1 `--help`)_
+  docs/lerobot/il_robots (main); `--resume` in 0.6.1 `--help`)_
 - **`lerobot-record` no longer runs policies** and rejects dataset names starting with `eval_`
   (reserved for `lerobot-rollout`, step 12). _(verified 2026-11-01, LeRobot 0.6.1,
   `lerobot_record.py`)_
 - The docs suggest at least 50 episodes, about 10 per object position, with fixed cameras and a
-  consistent grasp. _(verified 2026-11-01, docs/lerobot/il_robots)_
+  consistent grasp. _(verified 2026-11-01, docs/lerobot/il_robots (main))_
 
 ## 9. Visualize a recorded episode with Rerun
 
@@ -253,8 +255,10 @@ lerobot-train `
   elevated shell, that raises `[WinError 1314] A required privilege is not held by the client`,
   hours into a run (first save at step 20,000 by default). The checkpoint files are written just
   before, so they survive. Enable Developer Mode first, or check it with a short run using a
-  small `--save_freq`. _(verified 2026-11-01, LeRobot 0.6.1, `lerobot_train.py:703`,
-  `common/train_utils.py`; the WinError reproduced with `Path.symlink_to` on the home PC)_
+  small `--save_freq`. If `last` is missing, use the numbered step directory instead in the
+  resume and `--policy.path` commands. _(verified 2026-11-01, LeRobot 0.6.1,
+  `lerobot_train.py:703`, `common/train_utils.py`; the WinError reproduced with `Path.symlink_to`
+  on the home PC from the agent's shell; confirm from a plain PowerShell window)_
 - `--policy.device` and the ACT options (`--policy.chunk_size`, `--policy.n_action_steps`, ...)
   appear in `--help` only with `--policy.type=act`. _(verified 2026-11-01, LeRobot 0.6.1,
   `lerobot-train --policy.type=act --help`)_
@@ -268,7 +272,7 @@ lerobot-train `
   `<output_dir>\checkpoints\<step>\pretrained_model`, with `last` pointing at the newest.
   Resume with `--config_path=<output_dir>/checkpoints/last/pretrained_model/train_config.json
   --resume=true`. _(verified 2026-11-01, LeRobot 0.6.1, `configs/train.py`; layout and resume
-  from docs/lerobot/il_robots)_
+  from docs/lerobot/il_robots (main))_
 - ACT's defaults (chunk of 100 actions, open-loop) and the `reset()` rule are in
   [lerobot.md](lerobot.md#policies-act). Training time on the RTX 5060 Ti is unverified
   ("several hours" per the docs).
