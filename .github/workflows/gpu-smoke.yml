@@ -31,7 +31,7 @@ jobs:
         # checks $LASTEXITCODE itself. Files for GitHub are written as UTF-8 with Out-File.
         shell: powershell
     env:
-      POLICY: policies/pusht-vqbet.json
+      POLICY: robots/pusht/policies/vqbet.json
       RESULTS: out/results.json
       WORK_DIR: work/lerobot
       TORCH_INDEX: https://download.pytorch.org/whl/cu128 # Blackwell needs CUDA >= 12.8
