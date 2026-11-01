@@ -6,7 +6,7 @@ comment on every push instead of adding a new one.
 Usage:
     uv run python -m reports.pr_comment --candidate 25/50 --baseline 45/50
     uv run python -m reports.pr_comment --results out/results.json \\
-        --baseline-file stats/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA"
+        --baseline-file robots/mock/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA"
 
 With ``--results``, failed episodes (seed, scene, failure, video) come from the results file.
 Exit codes: 0 rendered (whatever the verdict; `stats.gate` decides the merge), 2 invalid inputs.

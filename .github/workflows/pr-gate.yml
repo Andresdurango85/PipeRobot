@@ -23,8 +23,8 @@ jobs:
     env:
       RESULTS: out/results.json
       COMMENT: out/comment.md
-      POLICY: policies/pusht-vqbet.json
-      BASELINE: stats/baselines/vqbet-pusht.json
+      POLICY: robots/pusht/policies/vqbet.json
+      BASELINE: robots/pusht/baselines/vqbet.json
       WORK_DIR: work/lerobot # outside out/, so the cached policy is not uploaded
     steps:
       - uses: actions/checkout@v7
@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.WORK_DIR }}/policies
-          key: policy-${{ hashFiles('policies/pusht-vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
+          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
 
       - name: Evaluate policy (PushT, 50 fixed-seed episodes on CPU)
         env:

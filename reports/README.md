@@ -5,7 +5,7 @@ intervals, and the failed episodes (seed, scene, failure, link to the video), th
 
 ```
 uv run python -m reports.pr_comment --results out/results.json \
-    --baseline-file stats/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA" --output comment.md
+    --baseline-file robots/mock/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA" --output comment.md
 uv run python -m reports.sticky_comment --pr 12 --body-file comment.md   # needs GITHUB_TOKEN
 ```
 

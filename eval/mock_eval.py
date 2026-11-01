@@ -7,7 +7,7 @@ any other episode, like a real regression. The output follows the contract in `e
 so the rest of the gate does not know it is a mock.
 
 Usage:
-    uv run python -m eval.mock_eval --policy policies/mock-policy.json --output out/results.json
+    uv run python -m eval.mock_eval --policy robots/mock/policy.json --output out/results.json
 """
 
 from __future__ import annotations

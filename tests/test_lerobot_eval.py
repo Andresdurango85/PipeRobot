@@ -87,7 +87,7 @@ def test_malformed_eval_info_is_rejected(info: dict[str, Any]) -> None:
 
 
 def test_committed_policy_spec_is_pinned() -> None:
-    spec = PolicySpec.load(ROOT / "policies" / "pusht-vqbet.json")
+    spec = PolicySpec.load(ROOT / "robots" / "pusht" / "policies" / "vqbet.json")
 
     assert len(spec.revision) == 40  # a full commit SHA, never a branch name
     assert spec.env == "pusht"

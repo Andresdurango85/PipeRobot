@@ -8,7 +8,8 @@ The gate runs on CPU: ``--device cuda`` is for exploring speed only, because `le
 runs are not reproducible on the same seeds.
 
 Usage:
-    uv run python -m eval.lerobot_eval --policy policies/pusht-vqbet.json --output out/results.json
+    uv run python -m eval.lerobot_eval --policy robots/pusht/policies/vqbet.json \\
+        --output out/results.json
 """
 
 from __future__ import annotations

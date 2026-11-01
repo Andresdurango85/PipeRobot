@@ -11,7 +11,7 @@ from stats.gate import SuccessCount, main
 ROOT = Path(__file__).resolve().parent.parent
 # Every committed baseline: the mock's and the real policies'.
 COMMITTED_BASELINES = sorted(
-    [ROOT / "stats" / "baseline.json", *(ROOT / "stats" / "baselines").glob("*.json")]
+    [*ROOT.glob("robots/*/baseline.json"), *ROOT.glob("robots/*/baselines/*.json")]
 )
 
 
@@ -33,7 +33,9 @@ def test_real_policy_baselines_are_committed() -> None:
     assert len(COMMITTED_BASELINES) >= 2
 
 
-@pytest.mark.parametrize("path", COMMITTED_BASELINES, ids=lambda p: p.stem)
+@pytest.mark.parametrize(
+    "path", COMMITTED_BASELINES, ids=lambda p: p.relative_to(ROOT / "robots").as_posix()
+)
 def test_committed_baseline_loads(path: Path) -> None:
     baseline = load_baseline(path)
 

@@ -57,7 +57,7 @@ tutorial es un snippet para grabar un dataset con el brazo líder (`snippets/ch1
 
 - **La distribución de variaciones de escena es parte de la especificación del test.** Igual que
   en DR, si el evaluador cambia qué se aleatoriza o cuánto, la tasa de éxito cambia sin que cambie
-  la política. Por eso el baseline guardado (`stats/baseline.json`) solo es comparable con la
+  la política. Por eso el baseline guardado (`robots/<robot>/baselines/`) solo es comparable con la
   misma configuración del evaluador; conviene versionarla junto al baseline.
 - **El gate necesita un detector de éxito aunque la política no use recompensa.** En sim sale de
   la pose del tubo. En el robot real, un **clasificador de éxito por cámara** (la misma idea que el
