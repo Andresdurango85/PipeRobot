@@ -13,7 +13,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min); SO-101 scenes pending ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)) |
 | Statistical verdict vs. baseline | **Done**: `stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
-| Real-arm test, 20 attempts | Not started (Andrés is travelling, no hardware) |
+| Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md) |
 | Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
 | README reproducible in 30 min | Not started |
 
@@ -40,6 +40,9 @@ a plain `gh pr merge --merge`).
   user, trusted code only; fork PRs need approval for all external contributors) and the
   non-required `gpu-smoke` workflow: 50 PushT episodes on CUDA, job in ~2 min warm
   ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md), [ci.md](knowledge/ci.md)).
+- 2026-11-01: SO-101 bring-up runbook for LeRobot 0.6.1 on Windows, checked against the installed
+  package ([so101-bringup.md](knowledge/so101-bringup.md)); the hardware steps are unverified
+  until the electronics arrive.
 
 ## Next
 
@@ -62,6 +65,10 @@ a plain `gh pr merge --merge`).
 ## Open questions for Andrés
 
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
+- How do the SO-101 hardware deps (LeRobot extras `feetech`, `hardware`, `viz`, `training`) enter
+  `pyproject.toml`: extras or a dependency group (ADR 0019)? Install only after that.
+- Enable Windows Developer Mode on the home PC? `lerobot-train` needs symlinks
+  ([so101-bringup.md](knowledge/so101-bringup.md#11-train-act-locally-on-the-gpu)).
 
 ## Learning
 
