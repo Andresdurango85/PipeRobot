@@ -16,6 +16,11 @@
   token); the report is still in the job summary.
 - **`baseline.yml`**: manual (`workflow_dispatch`) run of N episodes on the same runner type, to
   measure a baseline where the gate runs; its counts are committed to `robots/<robot>/baselines/` by PR.
+- **`gpu-smoke.yml`**: on every same-repo PR (and by hand), on the self-hosted GPU runner:
+  `nvidia-smi`, torch sees CUDA, 50 PushT episodes on CUDA, count and time in the job summary.
+  Not required and not a gate ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
+  First run 3 min 3 s (CUDA torch downloaded), warm re-run 2 min 5 s: install 16 s, evaluation
+  83 s. _(verified 2026-11-01, run 41345428882, attempts 1 and 2)_
 - `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
 
 ## Local hooks
@@ -55,6 +60,43 @@
   `.claude/settings.local.json`. It also refuses editing the ruleset through the API ("CI Bypass"):
   Andrés changes rulesets in the GitHub UI.
   _(verified 2026-10-27 on PRs #4 and #8; 2026-10-28 on PRs #11–#13 and the ruleset)_
+
+## Self-hosted runners
+
+- **GitHub says self-hosted runners "should almost never be used for public repositories"**:
+  any user can open a PR and compromise the machine, and `--ephemeral` (de-register after one
+  job) is only a partial mitigation. Our rules are in
+  [ADR 0020](../decisions/0020-self-hosted-gpu-runner.md).
+  _(verified 2026-10-28, GitHub docs "Secure use reference")_
+- **A fork PR's `pull_request` workflow runs the PR's own workflow files**, so it can target any
+  runner label; only the repo's fork approval setting stops it. The options are approval for
+  first-time contributors new to GitHub, for first-time contributors, or for all external
+  contributors; the first two skip anyone with a merged PR or commit. `pull_request_target` runs
+  regardless of the setting. Check it with
+  `gh api repos/<owner>/<repo>/actions/permissions/fork-pr-contributor-approval`.
+  _(verified 2026-10-28, GitHub docs "Managing GitHub Actions settings for a repository")_
+- ~~This repo's fork approval is `first_time_contributors`.~~ _(verified 2026-10-28, API)_
+- **This repo's fork approval is `all_external_contributors`**, set by the owner in the UI for
+  the GPU runner. _(verified 2026-11-01, API)_
+- **The runner app needs only outbound HTTPS on 443** to GitHub's domains, auto-updates by
+  default, and stops receiving jobs if not updated within 30 days. A job with no matching online
+  runner waits in the queue up to 24 h. Windows 10/11 64-bit and Windows Server are supported.
+  _(verified 2026-10-28, GitHub docs "Self-hosted runners reference")_
+
+- **Registering a Windows runner as a service**: `config.cmd --unattended --runasservice
+  --windowslogonaccount <PC>\<user> --windowslogonpassword <pw>`. `config.cmd` is a batch file,
+  so a password with cmd metacharacters (`& ^ % ! < > |`) arrives altered and the runner reports
+  "Invalid windows credentials entered"; an alphanumeric password works. An empty password
+  fails with "Invalid configuration provided for windowslogonpassword". Both failures happen
+  after the runner is registered, leaving it offline with no service: delete `.runner`,
+  `.credentials` and `.credentials_rsaparams` and run `config.cmd` again with `--replace`.
+  A 404 from `actions/runner-registration` means the registration token expired (1 h) or is
+  not this repo's. _(verified 2026-11-01, runner 2.338.2, Windows 11)_
+- **`shell: powershell` on a self-hosted Windows runner is Windows PowerShell 5.1** when `pwsh`
+  is not installed: `>>` and `Tee-Object` write UTF-16, so `GITHUB_ENV` and
+  `GITHUB_STEP_SUMMARY` are written with `Out-File -Append -Encoding utf8`. The service user has
+  no Developer Mode, so `huggingface_hub` warns that it cannot symlink and copies cache files
+  instead (harmless). _(verified 2026-11-01, run 41345428882)_
 
 ## Gotchas
 

@@ -1,0 +1,101 @@
+name: gpu-smoke
+
+# Prove the self-hosted GPU runner works headless (ADR 0020): the GPU is visible, torch sees
+# CUDA, and a short PushT evaluation runs on it within the Phase 0 budget. Not a required check
+# and not a gate: CUDA runs of lerobot-eval are not reproducible on the same seeds (ADR 0016), so
+# the count is reported, never compared with the CPU baseline.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gpu-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gpu-smoke:
+    # Trusted code only: no fork or Dependabot PRs on the home PC (ADR 0020).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]')
+    runs-on: [self-hosted, Windows, gpu]
+    timeout-minutes: 30 # Phase 0 budget per PR
+    defaults:
+      run:
+        # Windows PowerShell 5.1 (no pwsh on the runner). Each step sets ErrorActionPreference to
+        # Continue, so progress that uv and lerobot write to stderr does not fail the step, and
+        # checks $LASTEXITCODE itself. Files for GitHub are written as UTF-8 with Out-File.
+        shell: powershell
+    env:
+      POLICY: robots/pusht/policies/vqbet.json
+      RESULTS: out/results.json
+      WORK_DIR: work/lerobot
+      TORCH_INDEX: https://download.pytorch.org/whl/cu128 # Blackwell needs CUDA >= 12.8
+    steps:
+      - name: Start the clock
+        run: |
+          "JOB_START=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" |
+            Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false # the uv cache stays on the runner; no upload of GBs of CUDA wheels
+          cache-local-path: ${{ runner.tool_cache }}/uv-cache
+
+      - name: Check the GPU
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $gpu = nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+          if ($LASTEXITCODE -ne 0) { throw "nvidia-smi failed" }
+          $line = "Runner: $env:RUNNER_NAME, GPU: $gpu"
+          $line; $line | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+      - name: Install dependencies (uv.lock, then CUDA torch over it)
+        # The lock has CPU-only torch on Windows (ADR 0017); swap in the cu128 build of the same
+        # versions, so pyproject.toml and uv.lock stay untouched (ADR 0020).
+        run: |
+          $ErrorActionPreference = 'Continue'
+          uv sync --locked --extra sim-pusht
+          if ($LASTEXITCODE -ne 0) { throw "uv sync failed" }
+          $versions = uv run --no-sync python -c "import importlib.metadata as m; print(m.version('torch'), m.version('torchvision'))"
+          $torch, $vision = $versions.Split(' ')
+          uv pip install --reinstall-package torch --reinstall-package torchvision `
+            "torch==$torch+cu128" "torchvision==$vision+cu128" --index-url $env:TORCH_INDEX
+          if ($LASTEXITCODE -ne 0) { throw "CUDA torch install failed" }
+
+      - name: Check that torch sees CUDA
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $line = uv run --no-sync python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print(f'torch {torch.__version__}, CUDA {torch.version.cuda}, {torch.cuda.get_device_name(0)}')"
+          if ($LASTEXITCODE -ne 0) { throw "torch does not see CUDA" }
+          $line; $line | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+      - name: Evaluate policy (PushT, 50 episodes on CUDA)
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $eval = Measure-Command {
+            uv run --no-sync python -m eval.lerobot_eval --policy $env:POLICY --device cuda `
+              --work-dir $env:WORK_DIR --output $env:RESULTS | Out-Host
+          }
+          if ($LASTEXITCODE -ne 0) { throw "evaluation failed" }
+          $counts = uv run --no-sync python -c "from pathlib import Path; from eval.results import load_results; r = load_results(Path('$env:RESULTS')); print(f'{r.successes}/{r.trials}')"
+          $total = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [int64]$env:JOB_START
+          @(
+            "PushT on CUDA: $counts successes (not comparable with the CPU baseline)",
+            "Evaluation: $([int]$eval.TotalSeconds) s; job so far: $total s"
+          ) | Tee-Object -Variable lines
+          $lines | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gpu-smoke-${{ github.run_id }}
+          path: out/
+          retention-days: 14

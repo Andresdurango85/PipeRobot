@@ -19,3 +19,4 @@ out" goes, so nobody (human or agent) pays that hour twice.
 | [lerobot.md](lerobot.md) | LeRobot 0.6 APIs, dataset format, install notes |
 | [datasets.md](datasets.md) | Public SO-101 datasets: what they contain and their pitfalls |
 | [ci.md](ci.md) | GitHub Actions, runners, Hub access from CI |
+| [isaac.md](isaac.md) | Isaac Sim, Isaac Lab, Isaac Lab-Arena: platforms and NVIDIA's SO-101 course |
