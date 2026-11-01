@@ -72,9 +72,12 @@
   runner label; only the repo's fork approval setting stops it. The options are approval for
   first-time contributors new to GitHub, for first-time contributors, or for all external
   contributors; the first two skip anyone with a merged PR or commit. `pull_request_target` runs
-  regardless of the setting. This repo had `first_time_contributors`
-  (`gh api repos/<owner>/<repo>/actions/permissions/fork-pr-contributor-approval`).
+  regardless of the setting. Check it with
+  `gh api repos/<owner>/<repo>/actions/permissions/fork-pr-contributor-approval`.
   _(verified 2026-10-28, GitHub docs "Managing GitHub Actions settings for a repository")_
+- ~~This repo's fork approval is `first_time_contributors`.~~ _(verified 2026-10-28, API)_
+- **This repo's fork approval is `all_external_contributors`**, set by the owner in the UI for
+  the GPU runner. _(verified 2026-11-01, API)_
 - **The runner app needs only outbound HTTPS on 443** to GitHub's domains, auto-updates by
   default, and stops receiving jobs if not updated within 30 days. A job with no matching online
   runner waits in the queue up to 24 h. Windows 10/11 64-bit and Windows Server are supported.
