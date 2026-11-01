@@ -24,11 +24,40 @@ and the GPU runner ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
   x86_64**, Python 3.12, Isaac Sim 6.2 (5.1 and older unsupported). Its default torch is 2.11.0
   for CUDA 13.0 (`cu130` index), which needs driver ≥ 580.65.06 (Linux) or ≥ 580.88 (Windows).
   _(verified 2026-10-28, docs.nvidia.com/isaaclab installation page)_
-- **Isaac Lab-Arena (`main` docs) runs on Isaac Sim 6.0.1 and Isaac Lab 3.0.0** and names no OS;
-  its hardware needs are Isaac Sim's. Two installs: `./docker/run_docker.sh` (Docker, includes
-  cuRobo reachability checks) or native `uv sync --extra dev` (no cuRobo). Both need
-  `OMNI_KIT_ACCEPT_EULA=YES` and `ACCEPT_EULA=Y`. Whether the native install works on Windows is
-  unverified. _(verified 2026-10-28, IsaacLab-Arena docs, quickstart/installation)_
+- ~~**Isaac Lab-Arena (`main` docs) runs on Isaac Sim 6.0.1 and Isaac Lab 3.0.0** and names no
+  OS~~; its hardware needs are Isaac Sim's. Two installs: `./docker/run_docker.sh` (Docker,
+  includes cuRobo reachability checks) or native `uv sync --extra dev` (no cuRobo). Both need
+  `OMNI_KIT_ACCEPT_EULA=YES` and `ACCEPT_EULA=Y`.
+  _(verified 2026-10-28, IsaacLab-Arena docs, quickstart/installation)_
+- **Isaac Lab-Arena supports Linux only**: its README requires "Linux (Ubuntu 22.04+)" and does
+  not mention Windows. `main` targets Isaac Lab 3.0.0 + Isaac Sim 6.2.0; `release/0.3.1`, the
+  recommended stable branch, targets Isaac Lab 3.0.0 EA + Isaac Sim 6.1.0; Python ≥ 3.12. The
+  README names Franka and Unitree G1 embodiments, not the SO-101, and evaluates policies served
+  behind a server (GR00T, π0.5, custom). _(verified 2026-11-01, IsaacLab-Arena README on GitHub)_
+
+## Installing on Windows
+
+- **Isaac Sim 6.2 installs from pip**: `isaacsim[all,extscache]==6.2.0.0` from
+  `https://pypi.nvidia.com`, Python 3.12, after `torch==2.11.0` from the `cu128` or `cu130`
+  index, in a dedicated environment (it pins Newton, Warp, MuJoCo and others). Windows may need
+  long-path support. The first `isaacsim` import asks to accept the EULA, unless
+  `OMNI_KIT_ACCEPT_EULA` is `YES`, `Y` or `1`. Headless in scripts: `SimulationApp({"headless":
+  True})`. The docs give no download or install size.
+  _(verified 2026-11-01, Isaac Sim docs "Python Environment Installation")_
+- **Isaac Lab 3.0 on Windows 11**: clone `release/3.0.0` after enabling long paths, then
+  `uv run --extra isaacsim isaaclab ...` from the checkout (recommended; picks the `cu130` torch
+  build), or install Isaac Sim 6.2.0.0 and torch 2.11.0 / torchvision 0.26.0 (`cu130`) into a
+  venv and run `isaaclab.bat -i`. Physics backends: Newton (`physics=newton_mjwarp`, default, no
+  Isaac Sim), OV PhysX (`--extra ovphysx`, no Isaac Sim), Isaac Sim PhysX
+  (`physics=isaacsim_physx`, needs Isaac Sim); the `kit` visualizer needs Isaac Sim. Headless:
+  `--viz none`. The first Kit launch can take over ten minutes. No disk figure is given.
+  _(verified 2026-11-01, Isaac Lab installation page, Release 3.0)_
+- **LeIsaac (LightwheelAI, SO-101 tasks in Isaac Lab) supports up to Isaac Sim 5.1 / Isaac Lab
+  2.3.0** (Python 3.11, torch 2.7.0 `cu128`); its install steps use `apt`, and its docs name no
+  OS. _(verified 2026-11-01, LeIsaac docs "Installation")_
+- **NVIDIA's `so101-typing-task` is the SO-101 on an Isaac Lab 3.0.0-based runtime** (patched,
+  source revision 6f991d4becf7), "Linux x86-64 only" via Docker; "Windows and ARM have not been
+  validated". _(verified 2026-11-01, Isaac Lab docs, SO-101 keyboard typing page)_
 
 ## NVIDIA's SO-101 course
 
@@ -42,3 +71,7 @@ and the GPU runner ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
   socket mounts, `--gpus all`, `--privileged`) and does not use Isaac Lab-Arena. This
   `lerobot_eval` is the course's own CLI, not LeRobot 0.6.1's `lerobot-eval`. It prints a live
   success rate; no fixed episode count. _(verified 2026-10-28, course page "Sim Evaluation")_
+- **The course's code is `isaac-sim/Sim-to-Real-SO-101-Workshop`** (Apache-2.0): Isaac Lab
+  tasks such as `Lerobot-So101-Teleop-Vials-To-Rack` in `source/sim_to_real_so101`, tested on
+  "Ubuntu Linux >22.04", set up only through Docker (`docker/sim/Dockerfile`).
+  _(verified 2026-11-01, repository README)_
