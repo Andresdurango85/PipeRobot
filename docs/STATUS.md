@@ -11,7 +11,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | --- | --- |
 | GPU workflow, headless, < 30 min per PR | **Done for PushT**: `gpu-smoke` on the self-hosted RTX runner, ~2–3 min per PR, not a gate ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)); the gate stays on CPU ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)). Isaac's time on it not yet measured |
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min); SO-101 scenes pending ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)) |
-| Statistical verdict vs. baseline | **Done**: `stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
+| Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md) |
 | Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
@@ -43,11 +43,13 @@ a plain `gh pr merge --merge`).
 - 2026-11-01: SO-101 bring-up runbook for LeRobot 0.6.1 on Windows, checked against the installed
   package ([so101-bringup.md](knowledge/so101-bringup.md)); the hardware steps are unverified
   until the electronics arrive.
+- 2026-11-01: ADR 0019 done: the gate is the installable `piperobot` package (core + adapters,
+  `uv_build`, flat layout) with a `clean-install` CI job; `dataset_stats.py` moved to
+  `robots/so101/tools/`. Coded by Codex, reviewed by Claude ([ci.md](knowledge/ci.md)).
 
 ## Next
 
-1. ADR 0019 PR 3: the installable `piperobot` package (core + adapters) with a clean-install
-   check; `eval/dataset_stats.py` moves to `robots/so101/tools/`.
+1. Dispatch `baseline.yml` with 50 episodes to confirm the moved evaluator (ADR 0019).
 2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.

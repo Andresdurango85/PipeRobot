@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from reports.pr_comment import COMMENT_MARKER
-from reports.sticky_comment import BOT_LOGIN, PAGE_SIZE, main, upsert_sticky_comment
+from piperobot.reports.pr_comment import COMMENT_MARKER
+from piperobot.reports.sticky_comment import BOT_LOGIN, PAGE_SIZE, main, upsert_sticky_comment
 
 REPO = "owner/repo"
 BODY = f"{COMMENT_MARKER}\n## ✅ PipeRobot gate: PASS\n"

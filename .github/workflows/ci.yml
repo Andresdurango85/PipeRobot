@@ -35,3 +35,52 @@ jobs:
 
       - name: Pytest
         run: uv run pytest
+
+  clean-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Check wheel contents
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel, = Path("dist").glob("*.whl")
+          metadata = wheel.stem.rsplit("-", 3)[0] + ".dist-info"
+          with ZipFile(wheel) as archive:
+              unexpected = [
+                  name for name in archive.namelist()
+                  if name.split("/", 1)[0] not in {"piperobot", metadata}
+              ]
+          if unexpected:
+              raise SystemExit(f"Unexpected wheel contents: {unexpected}")
+          PY
+
+      - name: Install without extras or dev dependencies
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/piperobot-clean"
+          uv pip install --python "$RUNNER_TEMP/piperobot-clean/bin/python" --no-deps dist/*.whl
+
+      - name: Import every installed module outside the checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/piperobot-clean/bin/python" -I - <<'PY'
+          import importlib
+          import pkgutil
+          import piperobot
+
+          for module in pkgutil.walk_packages(piperobot.__path__, prefix="piperobot."):
+              importlib.import_module(module.name)
+          PY

@@ -4,8 +4,8 @@ Only the dataset metadata (``meta/`` folder: info.json, episodes, tasks, stats) 
 downloaded, never the videos, so this is cheap to run.
 
 Usage:
-    uv run python -m eval.dataset_stats
-    uv run python -m eval.dataset_stats --repo-id lerobot/svla_so101_pickplace --json
+    uv run python -m robots.so101.tools.dataset_stats
+    uv run python -m robots.so101.tools.dataset_stats --repo-id lerobot/svla_so101_pickplace --json
 
 Exit codes: 0 OK, 1 metadata loaded but failed a sanity check, 2 metadata could not be loaded
 (e.g. old v2.1 format or missing version tag).

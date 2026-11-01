@@ -3,11 +3,13 @@
 It "runs" a policy described by a JSON file (``{"name": ..., "success_rate": 0.8}``) for N
 episodes. Each episode's outcome is derived from its seed only, so results are deterministic
 (no flakiness), and lowering ``success_rate`` turns some successes into failures without changing
-any other episode, like a real regression. The output follows the contract in `eval/results.py`,
+any other episode, like a real regression. The output follows the contract in
+`piperobot/results.py`,
 so the rest of the gate does not know it is a mock.
 
 Usage:
-    uv run python -m eval.mock_eval --policy robots/mock/policy.json --output out/results.json
+    uv run python -m piperobot.adapters.mock.evaluate --policy robots/mock/policy.json \\
+        --output out/results.json
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from eval.results import EpisodeResult, EvalResults, ResultsError, save_results
+from piperobot.results import EpisodeResult, EvalResults, ResultsError, save_results
 
 DEFAULT_EPISODES = 50
 # Scene variations the real evaluation will randomize (rack position, lighting, tube pose).

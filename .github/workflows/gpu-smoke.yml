@@ -61,7 +61,7 @@ jobs:
         # versions, so pyproject.toml and uv.lock stay untouched (ADR 0020).
         run: |
           $ErrorActionPreference = 'Continue'
-          uv sync --locked --extra sim-pusht
+          uv sync --locked --extra lerobot --group sim-pusht
           if ($LASTEXITCODE -ne 0) { throw "uv sync failed" }
           $versions = uv run --no-sync python -c "import importlib.metadata as m; print(m.version('torch'), m.version('torchvision'))"
           $torch, $vision = $versions.Split(' ')
@@ -80,11 +80,11 @@ jobs:
         run: |
           $ErrorActionPreference = 'Continue'
           $eval = Measure-Command {
-            uv run --no-sync python -m eval.lerobot_eval --policy $env:POLICY --device cuda `
+            uv run --no-sync python -m piperobot.adapters.lerobot.evaluate --policy $env:POLICY --device cuda `
               --work-dir $env:WORK_DIR --output $env:RESULTS | Out-Host
           }
           if ($LASTEXITCODE -ne 0) { throw "evaluation failed" }
-          $counts = uv run --no-sync python -c "from pathlib import Path; from eval.results import load_results; r = load_results(Path('$env:RESULTS')); print(f'{r.successes}/{r.trials}')"
+          $counts = uv run --no-sync python -c "from pathlib import Path; from piperobot.results import load_results; r = load_results(Path('$env:RESULTS')); print(f'{r.successes}/{r.trials}')"
           $total = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [int64]$env:JOB_START
           @(
             "PushT on CUDA: $counts successes (not comparable with the CPU baseline)",

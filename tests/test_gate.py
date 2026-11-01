@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from stats.gate import (
+from piperobot.stats.gate import (
     Interval,
     SuccessCount,
     Verdict,

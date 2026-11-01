@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from stats.gate import SuccessCount
+from piperobot.stats.gate import SuccessCount
 
 
 class BaselineError(ValueError):

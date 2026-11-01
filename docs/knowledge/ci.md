@@ -127,3 +127,21 @@
   ([ADR 0007](../decisions/0007-lf-line-endings.md)). _(verified 2026-10-26)_
 - **Editing the sticky PR comment needs `pull-requests: write`** in the workflow permissions
   ([ADR 0008](../decisions/0008-sticky-pr-comment-and-golden-file.md)). Not yet exercised.
+
+## Packaging the `piperobot` distribution
+
+- **A flat layout needs `[tool.uv.build-backend] module-root = ""`**; `uv_build` expects `src/`
+  by default. With `module-name = "piperobot"`, `uv build --wheel` ships only `piperobot/`
+  (README files inside the package included) plus `.dist-info`; `robots/`, `tests/` and `docs/`
+  stay out. _(verified 2026-11-01, uv 0.10.8, `uv_build>=0.10.8,<0.11`)_
+- **`clean-install` in `ci.yml`** installs only the wheel in a fresh venv and imports every
+  module with `python -I` from outside the checkout, so an eager `import lerobot` or a file
+  missing from the wheel fails CI. Locally on Windows: 14 modules import with no extras.
+  _(verified 2026-11-01)_
+- **Codex's Windows sandbox** (CLI 0.166, `windows.sandbox = "elevated"`) runs as separate
+  `CodexSandbox*` users: it cannot follow uv's minor-version junction
+  (`cpython-3.12-windows-x86_64-none`), so point the venv's `pyvenv.cfg` `home` at the real
+  `cpython-3.12.12-...` folder; and folders that Python creates with mode 0o700 (pytest's temp
+  dirs) are private to whichever user created them, so run pytest with
+  `-p no:cacheprovider --basetemp=.venv\pytest-tmp`. It cannot run `uv` (no cache access) or
+  write git metadata in a worktree. _(verified 2026-11-01)_

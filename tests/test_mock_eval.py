@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from eval.mock_eval import evaluate, main
-from eval.results import load_results
-from stats.gate import SuccessCount, Verdict, decide
+from piperobot.adapters.mock.evaluate import evaluate, main
+from piperobot.results import load_results
+from piperobot.stats.gate import SuccessCount, Verdict, decide
 
 # Deliberately independent of robots/mock/policy.json and robots/mock/baseline.json: judging the
 # committed policy is pr-gate's job, so changing it must never break the unit tests.

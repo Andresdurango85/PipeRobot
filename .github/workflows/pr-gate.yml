@@ -34,7 +34,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies (from uv.lock, CPU-only torch)
-        run: uv sync --locked --extra sim-pusht
+        run: uv sync --locked --extra lerobot --group sim-pusht
 
       - name: Record the runner's CPU
         # Same seeds give the same episodes only on the same platform (ADR 0016).
@@ -45,13 +45,13 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.WORK_DIR }}/policies
-          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
+          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'piperobot/adapters/lerobot/policy.py') }}
 
       - name: Evaluate policy (PushT, 50 fixed-seed episodes on CPU)
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          uv run python -m eval.lerobot_eval --policy "$POLICY" --work-dir "$WORK_DIR" \
+          uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" --work-dir "$WORK_DIR" \
             --output "$RESULTS" --videos-link "$RUN_URL#artifacts"
           cp -r "$WORK_DIR/eval/videos" out/
 
@@ -60,7 +60,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          uv run python -m reports.pr_comment --results "$RESULTS" \
+          uv run python -m piperobot.reports.pr_comment --results "$RESULTS" \
             --baseline-file "$BASELINE" --run-url "$RUN_URL" --commit "$HEAD_SHA" \
             --output "$COMMENT"
           cat "$COMMENT" >> "$GITHUB_STEP_SUMMARY"
@@ -71,10 +71,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: uv run python -m reports.sticky_comment --pr "$PR_NUMBER" --body-file "$COMMENT"
+        run: uv run python -m piperobot.reports.sticky_comment --pr "$PR_NUMBER" --body-file "$COMMENT"
 
       - name: Gate verdict (fails the job on BLOCK)
-        run: uv run python -m stats.gate --results "$RESULTS" --baseline-file "$BASELINE"
+        run: uv run python -m piperobot.stats.gate --results "$RESULTS" --baseline-file "$BASELINE"
 
       - name: Upload results and report
         if: always()
