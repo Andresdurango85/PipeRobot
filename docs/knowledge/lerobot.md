@@ -105,6 +105,10 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   unconditionally, and `set_seed` does not undo them. Two 50-episode runs on the same seeds gave
   25/50 and 30/50; CPU vs CUDA flips 143 of 500 episodes (PushT is chaotic), though totals stay
   within noise (263 vs 266). _(verified 2026-10-27, LeRobot 0.6.1, home PC)_
+- **Two CUDA runs on the self-hosted runner gave 25/50 both times, but 10 of the 50 episodes
+  flipped** between them (seeds 1000–1049, RTX 5060 Ti, `torch 2.11.0+cu128`): equal totals
+  hide episode-level non-reproducibility. _(verified 2026-11-01, gpu-smoke run 41345428882,
+  attempts 1 and 2)_
 - **PushT timings on the home PC** (Ryzen 9 5900XT, RTX 5060 Ti, batch of 10): 50 episodes in
   1 min 49 s on CPU (including download and migration) and 1 min 24 s on CUDA; 500 episodes in
   13 min 28 s on CPU and 9 min 37 s on CUDA. _(verified 2026-10-27, `eval/lerobot_eval.py`)_

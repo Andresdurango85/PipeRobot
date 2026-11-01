@@ -1,6 +1,6 @@
 # 0020. A self-hosted GPU runner on the home PC, native Windows, trusted code only
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-28
 
 ## Context
@@ -94,3 +94,7 @@ The security forces:
   a second drive is part of the Isaac install plan.
 - A PushT smoke run proves the runner is wired; it does not prove that an Isaac evaluation fits
   in 30 minutes.
+- Measured on the first runs (2026-11-01): the runner, as a service under the dedicated user,
+  sees the GPU (driver 610.88) and `torch 2.11.0+cu128` sees CUDA 12.8. The `gpu-smoke` job takes
+  3 min 3 s cold and 2 min 5 s warm (evaluation 83–90 s). Both runs gave 25/50, with 10 of the
+  50 episodes flipped between them: CUDA stays out of the gate.
