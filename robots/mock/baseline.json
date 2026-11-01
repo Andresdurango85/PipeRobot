@@ -4,5 +4,5 @@
   "successes": 43,
   "trials": 50,
   "updated": "2026-10-27",
-  "how": "uv run python -m eval.mock_eval --policy policies/mock-policy.json --output out/results.json (success_rate 0.8)"
+  "how": "uv run python -m eval.mock_eval --policy robots/mock/policy.json --output out/results.json (success_rate 0.8)"
 }

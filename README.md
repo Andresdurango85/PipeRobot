@@ -39,8 +39,7 @@ PR changes policy ──▶ GPU runner (headless Isaac Sim)
 
 | Path | Purpose |
 | --- | --- |
-| `policies/` | Policy checkpoints or links to the Hugging Face Hub |
-| `envs/` | Isaac Lab / Isaac Lab-Arena environment configuration |
+| `robots/` | One folder per robot: policy specs (links to the Hugging Face Hub), baselines, environment configuration |
 | `eval/` | Evaluation scripts, seeds and metrics |
 | `stats/` | Comparison against the baseline (confidence intervals) |
 | `reports/` | PR comment template |

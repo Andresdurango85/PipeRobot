@@ -16,7 +16,7 @@ Verdict rule:
 
 Usage:
     uv run python -m stats.gate --candidate 38/50 --baseline 45/50
-    uv run python -m stats.gate --results out/results.json --baseline-file stats/baseline.json
+    uv run python -m stats.gate --results out/results.json --baseline-file robots/mock/baseline.json
 
 Exit codes: 0 PASS or WARN, 1 BLOCK, 2 invalid input files.
 """

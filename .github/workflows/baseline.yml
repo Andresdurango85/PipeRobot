@@ -2,7 +2,7 @@ name: baseline
 
 # Measure a policy's baseline on the same GitHub-hosted runner type that pr-gate uses, because
 # same seeds give the same episodes only on the same platform (ADR 0016, ADR 0017). Run it by
-# hand, then commit the counts from the artifact to stats/baselines/ in a PR.
+# hand, then commit the counts from the artifact to robots/<robot>/baselines/ in a PR.
 on:
   workflow_dispatch:
     inputs:
@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      POLICY: policies/pusht-vqbet.json
-      BASELINE: stats/baselines/vqbet-pusht.json
+      POLICY: robots/pusht/policies/vqbet.json
+      BASELINE: robots/pusht/baselines/vqbet.json
       WORK_DIR: work/lerobot
       EPISODES: ${{ inputs.episodes }}
       SEED: ${{ inputs.seed }}
@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.WORK_DIR }}/policies
-          key: policy-${{ hashFiles('policies/pusht-vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
+          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
 
       - name: Evaluate policy
         run: |

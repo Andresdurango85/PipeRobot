@@ -15,7 +15,7 @@
   CPU-only torch until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
   token); the report is still in the job summary.
 - **`baseline.yml`**: manual (`workflow_dispatch`) run of N episodes on the same runner type, to
-  measure a baseline where the gate runs; its counts are committed to `stats/baselines/` by PR.
+  measure a baseline where the gate runs; its counts are committed to `robots/<robot>/baselines/` by PR.
 - `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
 
 ## Local hooks

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-10-28 (home PC)
+Last updated: 2026-11-01 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -11,7 +11,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | --- | --- |
 | GPU workflow, headless, < 30 min per PR | **Headless on CPU**: PushT gate on `ubuntu-latest` in ~2–3 min ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)); GPU runner pending Isaac |
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min); SO-101 scenes pending ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)) |
-| Statistical verdict vs. baseline | **Done**: `stats/gate.py` + `stats/baseline.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
+| Statistical verdict vs. baseline | **Done**: `stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started (Andrés is travelling, no hardware) |
 | Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
@@ -35,13 +35,15 @@ security gates, hooks, mock gate, core boundary).
 - 2026-10-28: [Project Cangrejo](cangrejo/README.md), a crab-shaped robot as the gate's second
   robot; v0 (digital twin) can start now. Restructure plan accepted
   ([ADR 0019](decisions/0019-core-adapters-robots-layout.md)).
+- 2026-11-01: ADR 0019 PRs 1 and 2 done: allow-list architecture test, no default baseline in the
+  core, and per-robot data in [`robots/`](../robots/README.md) (policy specs, baselines, SO-101
+  envs). The crab's private repo exists.
 
 ## Next
 
-1. Restructure per ADR 0019 in three PRs: (1) allow-list architecture test and no default
-   baseline in the core (this PR); (2) data into `robots/`; (3) the installable `piperobot`
-   package with a clean-install check.
-2. Create the crab's private repo (design files, its gate) and start v0 in Onshape.
+1. ADR 0019 PR 3: the installable `piperobot` package (core + adapters) with a clean-install
+   check; `eval/dataset_stats.py` moves to `robots/so101/tools/`.
+2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
 4. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing). The
@@ -55,7 +57,6 @@ security gates, hooks, mock gate, core boundary).
 
 ## Open questions for Andrés
 
-- Name of the new private repo for the crab's design files and its gate (ADR 0019).
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
 
 ## Learning

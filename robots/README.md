@@ -1,16 +1,34 @@
-# policies
+# robots
 
-Policy checkpoints or, preferably, links to the Hugging Face Hub (weights are not committed to git).
+One folder per robot whose files are public: data and configuration, little code
+([ADR 0019](../docs/decisions/0019-core-adapters-robots-layout.md)). Policy specs point to
+checkpoints on the Hugging Face Hub; weights are not committed to git. Baselines are counts plus
+provenance, loaded by `stats/baseline.py` and always passed explicitly with `--baseline-file`.
 
-- `mock-policy.json`: stand-in "policy" for the mock evaluator (`eval/mock_eval.py`), used by the
-  tests and for local demos ([ADR 0014](../docs/decisions/0014-mock-evaluator-and-pr-gate-workflow.md)).
+## mock
+
+A test fixture, not gated ([ADR 0014](../docs/decisions/0014-mock-evaluator-and-pr-gate-workflow.md)).
+
+- `policy.json`: stand-in "policy" for the mock evaluator (`eval/mock_eval.py`), for local demos.
   Its `success_rate` drives the simulated outcomes. `pr-gate` no longer evaluates it.
-- `pusht-vqbet.json`: the first real policy, `lerobot/vqbet_pusht` pinned to a commit SHA, for
-  the PushT simulator ([ADR 0016](../docs/decisions/0016-real-evaluator-lerobot-pusht.md)). Run it
-  with `uv sync --extra lerobot --extra sim-pusht` and
-  `uv run python -m eval.lerobot_eval --policy policies/pusht-vqbet.json --output out/results.json`
-  (~5 min on CPU). Its baseline is `stats/baselines/vqbet-pusht.json`, measured over 500 episodes
-  (`--episodes 500`, ~43 min on the laptop CPU). It is the policy `pr-gate` evaluates
-  ([ADR 0017](../docs/decisions/0017-pr-gate-pusht-on-github-runners.md)). `config_overrides`
-  changes config values without retraining (e.g. `bet_softmax_temperature`); if a change is a
-  legitimate new baseline, re-measure `stats/baselines/vqbet-pusht.json` with `baseline.yml`.
+- `baseline.json`: the mock policy's baseline.
+
+## pusht
+
+The PushT simulator, the task `pr-gate` evaluates
+([ADR 0016](../docs/decisions/0016-real-evaluator-lerobot-pusht.md),
+[ADR 0017](../docs/decisions/0017-pr-gate-pusht-on-github-runners.md)).
+
+- `policies/vqbet.json`: the first real policy, `lerobot/vqbet_pusht` pinned to a commit SHA. Run
+  it with `uv sync --extra lerobot --extra sim-pusht` and
+  `uv run python -m eval.lerobot_eval --policy robots/pusht/policies/vqbet.json --output out/results.json`
+  (~5 min on CPU). `config_overrides` changes config values without retraining (e.g.
+  `bet_softmax_temperature`).
+- `baselines/vqbet.json`: its baseline, measured with `baseline.yml` on the runner type `pr-gate`
+  uses (500 episodes, ~43 min on the laptop CPU). If a policy change is a legitimate new baseline,
+  re-measure it with `baseline.yml` and commit the counts by PR.
+
+## so101
+
+The SO-101 tube-to-rack task. `envs/` will hold the Isaac Lab / Isaac Lab-Arena environment
+configuration.

@@ -43,7 +43,7 @@ Todos los que cargan comparten 30 FPS y la misma acción de 6 dimensiones:
    comprobar compatibilidad con nuestra política hay que mirar la dimensión y los nombres de la
    acción, no la etiqueta.
 4. **Los nombres de las cámaras cambian entre datasets** (side/up, side/top, external/wrist). Una
-   política entrenada espera claves concretas; la configuración del entorno en `envs/` tendrá que
+   política entrenada espera claves concretas; la configuración del entorno en `robots/so101/envs/` tendrá que
    mapear las cámaras de la simulación a esas claves, y el gate debería fallar si falta alguna.
 5. **Presupuesto de tiempo.** Los episodios duran 8–11 s (máximo ~15 s). 50 episodios ≈ 7–13 min
    de tiempo simulado. Si Isaac Sim corre cerca de tiempo real en la RTX de casa, cabe en los

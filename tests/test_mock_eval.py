@@ -8,7 +8,7 @@ from eval.mock_eval import evaluate, main
 from eval.results import load_results
 from stats.gate import SuccessCount, Verdict, decide
 
-# Deliberately independent of policies/mock-policy.json and stats/baseline.json: judging the
+# Deliberately independent of robots/mock/policy.json and robots/mock/baseline.json: judging the
 # committed policy is pr-gate's job, so changing it must never break the unit tests.
 REFERENCE_RATE = 0.8
 
