@@ -7,9 +7,9 @@ from typing import Any
 
 import pytest
 
-from eval.lerobot_eval import convert_eval_info
-from eval.lerobot_policy import PolicySpec, _coerce_tuple_fields, prepare_policy
-from eval.results import ResultsError
+from piperobot.adapters.lerobot.evaluate import convert_eval_info
+from piperobot.adapters.lerobot.policy import PolicySpec, _coerce_tuple_fields, prepare_policy
+from piperobot.results import ResultsError
 
 ROOT = Path(__file__).resolve().parent.parent
 LINK = "https://github.com/o/r/actions/runs/1"

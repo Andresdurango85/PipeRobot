@@ -62,9 +62,10 @@ rules:
   (`AGENTS.md`, `docs/STATUS.md`, `docs/decisions/`, `docs/knowledge/`) in **English**.
   `docs/learning/` holds Andrés's own course notes, in Spanish.
 - Typed Python, pytest, ruff; pinned dependencies with uv ([ADR 0002](docs/decisions/0002-python-tooling-and-pinning.md)).
-- Keep the generic gate core (`stats/`, `reports/`, `eval/results.py`) free of SO-101, LeRobot and
-  Isaac code; robot/task-specific data lives in `robots/`, and code in evaluators
-  ([ADR 0015](docs/decisions/0015-generic-core-vs-robot-specific.md), enforced by a test).
+- Keep the generic gate core (`piperobot/` outside `piperobot/adapters/`) free of SO-101, LeRobot
+  and Isaac code; framework code lives in `piperobot/adapters/`, robot/task-specific data in
+  `robots/` ([ADR 0015](docs/decisions/0015-generic-core-vs-robot-specific.md),
+  [ADR 0019](docs/decisions/0019-core-adapters-robots-layout.md), enforced by a test).
 - Small, verifiable steps. Propose a plan before big changes. **Ask before installing anything
   heavy** (Isaac Sim, CUDA, multi-GB Docker images, the `lerobot` extra on a new machine).
 - Treat evaluation as a testing problem: flakiness, seeds, reproducibility and reports are

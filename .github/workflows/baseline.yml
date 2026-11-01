@@ -34,7 +34,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies (from uv.lock, CPU-only torch)
-        run: uv sync --locked --extra sim-pusht
+        run: uv sync --locked --extra lerobot --group sim-pusht
 
       - name: Record the runner's CPU
         run: |
@@ -44,17 +44,17 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.WORK_DIR }}/policies
-          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'eval/lerobot_policy.py') }}
+          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'piperobot/adapters/lerobot/policy.py') }}
 
       - name: Evaluate policy
         run: |
-          uv run python -m eval.lerobot_eval --policy "$POLICY" --work-dir "$WORK_DIR" \
+          uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" --work-dir "$WORK_DIR" \
             --episodes "$EPISODES" --seed "$SEED" --output out/results.json
 
       - name: Compare with the committed baseline
         # Informational: a new baseline should agree with the old one; the verdict does not fail.
         run: |
-          uv run python -m stats.gate --results out/results.json --baseline-file "$BASELINE" \
+          uv run python -m piperobot.stats.gate --results out/results.json --baseline-file "$BASELINE" \
             | tee -a "$GITHUB_STEP_SUMMARY" || true
 
       - name: Upload results

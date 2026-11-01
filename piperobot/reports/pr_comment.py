@@ -4,12 +4,13 @@ The comment starts with a hidden marker so the workflow can find and update its 
 comment on every push instead of adding a new one.
 
 Usage:
-    uv run python -m reports.pr_comment --candidate 25/50 --baseline 45/50
-    uv run python -m reports.pr_comment --results out/results.json \\
+    uv run python -m piperobot.reports.pr_comment --candidate 25/50 --baseline 45/50
+    uv run python -m piperobot.reports.pr_comment --results out/results.json \\
         --baseline-file robots/mock/baseline.json --run-url "$RUN_URL" --commit "$HEAD_SHA"
 
 With ``--results``, failed episodes (seed, scene, failure, video) come from the results file.
-Exit codes: 0 rendered (whatever the verdict; `stats.gate` decides the merge), 2 invalid inputs.
+Exit codes: 0 rendered (whatever the verdict; `piperobot.stats.gate` decides the merge),
+2 invalid inputs.
 """
 
 from __future__ import annotations
@@ -19,9 +20,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from eval.results import EpisodeResult
-from stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
-from stats.gate import (
+from piperobot.results import EpisodeResult
+from piperobot.stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
+from piperobot.stats.gate import (
     DEFAULT_CONFIDENCE,
     DEFAULT_TOLERANCE,
     GateResult,
@@ -170,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.write_text(comment, encoding="utf-8", newline="\n")
     else:
         sys.stdout.write(comment)
-    # The verdict's exit code belongs to `stats.gate`; rendering the comment always succeeds.
+    # The verdict's exit code belongs to `piperobot.stats.gate`; rendering always succeeds.
     return 0
 
 

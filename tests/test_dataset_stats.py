@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from eval.dataset_stats import DatasetMeta, format_summary, main, summarize
+TOOL = Path(__file__).resolve().parent.parent / "robots/so101/tools/dataset_stats.py"
+SPEC = importlib.util.spec_from_file_location("dataset_stats", TOOL)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"cannot load {TOOL}")
+DATASET_STATS = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = DATASET_STATS
+SPEC.loader.exec_module(DATASET_STATS)
+DatasetMeta = DATASET_STATS.DatasetMeta
+format_summary = DATASET_STATS.format_summary
+main = DATASET_STATS.main
+summarize = DATASET_STATS.summarize
 
 SO101_JOINTS = [
     "shoulder_pan.pos",
@@ -158,9 +171,8 @@ def test_main_returns_2_when_dataset_cannot_be_loaded(capsys: pytest.CaptureFixt
 @pytest.mark.hub
 def test_real_so101_dataset_from_hub() -> None:
     pytest.importorskip("lerobot")
-    from eval.dataset_stats import DEFAULT_REPO_ID, load_metadata
 
-    summary = summarize(load_metadata(DEFAULT_REPO_ID))
+    summary = summarize(DATASET_STATS.load_metadata(DATASET_STATS.DEFAULT_REPO_ID))
 
     assert summary.num_episodes > 0
     assert summary.action_dim == 6  # SO-101: 5 arm joints + gripper

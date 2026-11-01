@@ -15,8 +15,9 @@ Verdict rule:
 - PASS: otherwise.
 
 Usage:
-    uv run python -m stats.gate --candidate 38/50 --baseline 45/50
-    uv run python -m stats.gate --results out/results.json --baseline-file robots/mock/baseline.json
+    uv run python -m piperobot.stats.gate --candidate 38/50 --baseline 45/50
+    uv run python -m piperobot.stats.gate --results out/results.json \\
+        --baseline-file robots/mock/baseline.json
 
 Exit codes: 0 PASS or WARN, 1 BLOCK, 2 invalid input files.
 """
@@ -184,7 +185,7 @@ def format_result(result: GateResult) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     # Imported here: cli_inputs builds on this module, so a top-level import would be circular.
-    from stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
+    from piperobot.stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     add_input_arguments(parser)

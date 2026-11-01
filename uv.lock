@@ -760,6 +760,48 @@ wheels = [
 ]
 
 [[package]]
+name = "piperobot"
+version = "0.1.0"
+source = { editable = "." }
+
+[package.optional-dependencies]
+lerobot = [
+    { name = "lerobot", extra = ["dataset"] },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
+    { name = "torchvision", version = "0.26.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+    { name = "torchvision", version = "0.26.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "prek" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+sim-pusht = [
+    { name = "lerobot", extra = ["dataset", "evaluation", "pusht"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lerobot", extras = ["dataset"], marker = "extra == 'lerobot'", specifier = ">=0.6.1,<0.7" },
+    { name = "torch", marker = "sys_platform == 'linux' and extra == 'lerobot'", specifier = ">=2.11,<2.12", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torch", marker = "sys_platform != 'linux' and extra == 'lerobot'", specifier = ">=2.11,<2.12" },
+    { name = "torchvision", marker = "sys_platform == 'linux' and extra == 'lerobot'", specifier = ">=0.26,<0.27", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "torchvision", marker = "sys_platform != 'linux' and extra == 'lerobot'", specifier = ">=0.26,<0.27" },
+]
+provides-extras = ["lerobot"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "prek", specifier = ">=0.5" },
+    { name = "pytest", specifier = ">=8.4" },
+    { name = "ruff", specifier = ">=0.14" },
+]
+sim-pusht = [{ name = "lerobot", extras = ["dataset", "evaluation", "pusht"], specifier = ">=0.6.1,<0.7" }]
+
+[[package]]
 name = "pluggy"
 version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1034,56 +1076,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
-]
-
-[[package]]
-name = "so101-policy-ci"
-version = "0.1.0"
-source = { virtual = "." }
-
-[package.optional-dependencies]
-lerobot = [
-    { name = "lerobot", extra = ["dataset"] },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
-    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
-    { name = "torchvision", version = "0.26.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
-    { name = "torchvision", version = "0.26.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
-]
-sim-pusht = [
-    { name = "lerobot", extra = ["dataset", "evaluation", "pusht"] },
-    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
-    { name = "torch", version = "2.11.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
-    { name = "torchvision", version = "0.26.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
-    { name = "torchvision", version = "0.26.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'linux'" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "prek" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "lerobot", extras = ["dataset"], marker = "extra == 'lerobot'", specifier = "==0.6.1" },
-    { name = "lerobot", extras = ["dataset", "evaluation", "pusht"], marker = "extra == 'sim-pusht'", specifier = "==0.6.1" },
-    { name = "torch", marker = "sys_platform == 'linux' and extra == 'lerobot'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "torch", marker = "sys_platform == 'linux' and extra == 'sim-pusht'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "torch", marker = "sys_platform != 'linux' and extra == 'lerobot'", specifier = "==2.11.0" },
-    { name = "torch", marker = "sys_platform != 'linux' and extra == 'sim-pusht'", specifier = "==2.11.0" },
-    { name = "torchvision", marker = "sys_platform == 'linux' and extra == 'lerobot'", specifier = "==0.26.0", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "torchvision", marker = "sys_platform == 'linux' and extra == 'sim-pusht'", specifier = "==0.26.0", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "torchvision", marker = "sys_platform != 'linux' and extra == 'lerobot'", specifier = "==0.26.0" },
-    { name = "torchvision", marker = "sys_platform != 'linux' and extra == 'sim-pusht'", specifier = "==0.26.0" },
-]
-provides-extras = ["lerobot", "sim-pusht"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "prek", specifier = ">=0.5" },
-    { name = "pytest", specifier = ">=8.4" },
-    { name = "ruff", specifier = ">=0.14" },
 ]
 
 [[package]]

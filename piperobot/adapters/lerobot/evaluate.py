@@ -1,14 +1,16 @@
 """Evaluate a pinned LeRobot policy in a LeRobot simulator and write the results contract.
 
 Runs `lerobot-eval` (LeRobot 0.6.1) in a subprocess, then converts its ``eval_info.json`` into
-`eval/results.py`'s format, so `stats.gate` and `reports.pr_comment` work unchanged (ADR 0016).
+`piperobot/results.py`'s format, so `piperobot.stats.gate` and `piperobot.reports.pr_comment`
+work unchanged (ADR 0016).
 Episode ``i`` uses seed ``start_seed + i``, as `lerobot-eval` assigns them. `lerobot-eval` records
 videos of the first 10 episodes only; failed episodes among them get a video link.
 The gate runs on CPU: ``--device cuda`` is for exploring speed only, because `lerobot-eval`'s CUDA
 runs are not reproducible on the same seeds.
 
 Usage:
-    uv run python -m eval.lerobot_eval --policy robots/pusht/policies/vqbet.json \\
+    uv run python -m piperobot.adapters.lerobot.evaluate \\
+        --policy robots/pusht/policies/vqbet.json \\
         --output out/results.json
 """
 
@@ -23,8 +25,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from eval.lerobot_policy import PolicySpec, prepare_policy
-from eval.results import EpisodeResult, EvalResults, ResultsError, save_results
+from piperobot.adapters.lerobot.policy import PolicySpec, prepare_policy
+from piperobot.results import EpisodeResult, EvalResults, ResultsError, save_results
 
 DEFAULT_EPISODES = 50
 DEFAULT_BATCH_SIZE = 10

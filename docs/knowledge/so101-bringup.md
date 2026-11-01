@@ -18,7 +18,7 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
 
 ## 0. Prerequisites
 
-- **Today only `lerobot-find-cameras` runs.** The repo's `lerobot` and `sim-pusht` extras do not
+- **Today only `lerobot-find-cameras` runs.** The repo's `lerobot` extra and `sim-pusht` dependency group do not
   include the hardware dependencies. Missing, by LeRobot extra:
   - `feetech`: `feetech-servo-sdk`, `pyserial`, `deepdiff`. Needed by `find-port`,
     `setup-motors`, `calibrate`, `teleoperate`, `record`, `replay` and `rollout`.

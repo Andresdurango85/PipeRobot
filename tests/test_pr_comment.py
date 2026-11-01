@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from eval.results import EpisodeResult
-from reports.pr_comment import COMMENT_MARKER, MAX_FAILED_LISTED, main, render_comment
-from stats.gate import SuccessCount, decide
+from piperobot.reports.pr_comment import COMMENT_MARKER, MAX_FAILED_LISTED, main, render_comment
+from piperobot.results import EpisodeResult
+from piperobot.stats.gate import SuccessCount, decide
 
 GOLDEN_DIR = Path(__file__).parent / "golden"
 RUN_URL = "https://github.com/Andresdurango85/PipeRobot/actions/runs/1"

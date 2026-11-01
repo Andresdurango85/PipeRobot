@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from stats.baseline import BaselineError, load_baseline
-from stats.gate import SuccessCount, main
+from piperobot.stats.baseline import BaselineError, load_baseline
+from piperobot.stats.gate import SuccessCount, main
 
 ROOT = Path(__file__).resolve().parent.parent
 # Every committed baseline: the mock's and the real policies'.

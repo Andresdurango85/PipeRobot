@@ -11,11 +11,11 @@ Success-rate comparison against the stored baseline, with confidence intervals.
   **PASS** otherwise. Exit code is 1 only on BLOCK.
 
 ```
-uv run python -m stats.gate --candidate 38/50 --baseline 45/50
-uv run python -m stats.gate --results out/results.json --baseline-file robots/mock/baseline.json
+uv run python -m piperobot.stats.gate --candidate 38/50 --baseline 45/50
+uv run python -m piperobot.stats.gate --results out/results.json --baseline-file robots/mock/baseline.json
 ```
 
-Baselines are per-robot data in [`robots/`](../robots/README.md) (e.g.
+Baselines are per-robot data in [`robots/`](../../robots/README.md) (e.g.
 `robots/pusht/baselines/vqbet.json`): counts plus provenance, loaded by `baseline.py`.
 Exit codes: 0 PASS/WARN, 1 BLOCK, 2 invalid input files.
 

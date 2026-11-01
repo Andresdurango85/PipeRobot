@@ -14,12 +14,7 @@ from pathlib import Path
 
 import pytest
 
-PACKAGES = ("eval", "stats", "reports")
-# The core: the results contract, the statistics and the reports. Standard library only.
-CORE_MODULES = ("eval", "eval.results")
-CORE_PACKAGES = ("stats", "reports")
-# Framework adapters and developer tools: may import the core and LeRobot, torch, the Hub.
-ADAPTERS = ("eval.mock_eval", "eval.lerobot_eval", "eval.lerobot_policy", "eval.dataset_stats")
+PACKAGES = ("piperobot",)
 
 
 def _modules() -> dict[str, Path]:
@@ -41,9 +36,9 @@ MODULES = _modules()
 
 
 def _layer(name: str) -> str:
-    if name in ADAPTERS:
+    if name == "piperobot.adapters" or name.startswith("piperobot.adapters."):
         return "adapter"
-    if name in CORE_MODULES or any(name == p or name.startswith(f"{p}.") for p in CORE_PACKAGES):
+    if name == "piperobot" or name.startswith("piperobot."):
         return "core"
     return "unassigned"
 
@@ -76,7 +71,7 @@ def test_every_layer_has_modules() -> None:
 
 @pytest.mark.parametrize("name", sorted(MODULES))
 def test_module_is_assigned_to_a_layer(name: str) -> None:
-    # A new module must be placed in CORE or ADAPTERS on purpose (ADR 0015).
+    # Every discovered module must belong to a layer (ADR 0019).
     assert _layer(name) != "unassigned"
 
 
@@ -92,3 +87,10 @@ def test_relative_imports_are_resolved(tmp_path: Path) -> None:
     source.write_text("from . import x\nfrom .y import z\nfrom ..w import v\n", encoding="utf-8")
 
     assert _imports("a.b.mod", source) == {"a.b", "a.b.y", "a.w"}
+
+
+@pytest.mark.parametrize("name", sorted(n for n in MODULES if _layer(n) == "adapter"))
+def test_adapters_do_not_import_robots(name: str) -> None:
+    bad = {module for module in _imports(name, MODULES[name]) if module.split(".")[0] == "robots"}
+
+    assert bad == set()

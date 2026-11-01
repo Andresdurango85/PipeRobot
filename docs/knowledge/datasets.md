@@ -1,7 +1,7 @@
 # Public SO-101 datasets
 
 Full exploration notes (in Spanish): [`../learning/public-so101-datasets.md`](../learning/public-so101-datasets.md).
-Run any dataset through `uv run python -m eval.dataset_stats --repo-id <id>` first
+Run any dataset through `uv run python -m robots.so101.tools.dataset_stats --repo-id <id>` first
 ([ADR 0009](../decisions/0009-fail-loudly-on-unusable-data.md) explains the exit codes).
 
 ## Catalogue
@@ -14,7 +14,7 @@ Run any dataset through `uv run python -m eval.dataset_stats --repo-id <id>` fir
 | `youliangtan/so101-table-cleanup` | Real | — | — | — | v2.1 format (exit 2) |
 | `aswinkumar99/so101-eval-gallery` | — | — | — | — | No version tag (exit 2) |
 
-_(all verified 2026-10-26, LeRobot 0.6.1, `eval/dataset_stats.py`)_
+_(all verified 2026-10-26, LeRobot 0.6.1, `robots/so101/tools/dataset_stats.py`)_
 
 ## Facts
 

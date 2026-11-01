@@ -30,10 +30,10 @@ Pinned version: 0.6.1 ([ADR 0002](../decisions/0002-python-tooling-and-pinning.m
 
 - **`LeRobotDatasetMetadata` is imported from `lerobot.datasets`** and downloads only the `meta/`
   folder (info.json, episodes parquet, tasks, stats), never videos. Cheap to run anywhere.
-  _(verified 2026-10-26, LeRobot 0.6.1, `eval/dataset_stats.py`)_
+  _(verified 2026-10-26, LeRobot 0.6.1, `robots/so101/tools/dataset_stats.py`)_
 - **`meta.episodes` behaves like a Hugging Face `datasets.Dataset`**: column access with
   `episodes["length"]` gives the frame count of each episode.
-  _(verified 2026-10-26, LeRobot 0.6.1, `eval/dataset_stats.py`)_
+  _(verified 2026-10-26, LeRobot 0.6.1, `robots/so101/tools/dataset_stats.py`)_
 - **LeRobot 0.6 reads only dataset format v3.0.** A v2.1 dataset fails with "The dataset you
   requested (...) is in 2.1 format" and suggests
   `python -m lerobot.scripts.convert_dataset_v21_to_v30 --repo-id=<id>`.
@@ -86,7 +86,7 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
 - **`lerobot-eval --policy.path=<dir|repo> --env.type=pusht` runs on CPU** with
   `--policy.device=cpu --policy.use_amp=false --eval.use_async_envs=false`; the PushT simulator
   comes with the `pusht` extra (gym-pusht + pymunk, 2D). VQ-BeT: ~6 s per episode on the laptop
-  CPU, batch of 10 envs. _(verified 2026-10-27, LeRobot 0.6.1, `eval/lerobot_eval.py`)_
+  CPU, batch of 10 envs. _(verified 2026-10-27, LeRobot 0.6.1, `piperobot/adapters/lerobot/evaluate.py`)_
 - **`eval_info.json` (0.6.1) is per task**: `per_task[0].metrics` holds lists `successes`,
   `max_rewards`, `sum_rewards`, `video_paths`; no seeds. Seeds are `--seed + episode index`
   (default 1000). Videos: only the first 10 episodes (hardcoded). _(verified 2026-10-27, source)_
@@ -111,7 +111,7 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   attempts 1 and 2)_
 - **PushT timings on the home PC** (Ryzen 9 5900XT, RTX 5060 Ti, batch of 10): 50 episodes in
   1 min 49 s on CPU (including download and migration) and 1 min 24 s on CUDA; 500 episodes in
-  13 min 28 s on CPU and 9 min 37 s on CUDA. _(verified 2026-10-27, `eval/lerobot_eval.py`)_
+  13 min 28 s on CPU and 9 min 37 s on CUDA. _(verified 2026-10-27, `piperobot/adapters/lerobot/evaluate.py`)_
 - **On `ubuntu-latest` (4 CPUs), 50 PushT episodes take ~2 min**, and the runner's CPU model
   varies between runs. AMD EPYC 9V45: 27/50, identical episode by episode to the home PC's Windows
   CPU (seeds 1000–1049). AMD EPYC 7763: 29/50, the same except 2 near misses (max reward 0.99)
@@ -130,7 +130,7 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   "requires migration to processor format": run
   `python -m lerobot.processor.migrate_policy_normalization --pretrained-path <dir> --output-dir <dir>`.
   In 0.6.1 that script crashes on tuple-typed config fields given as JSON lists (`crop_shape`);
-  `eval/lerobot_policy.py` wraps it with a fix. Old configs may also carry fields 0.6 rejects
+  `piperobot/adapters/lerobot/policy.py` wraps it with a fix. Old configs may also carry fields 0.6 rejects
   (`lerobot/vqbet_pusht`: `mlp_hidden_dim`, unused in 0.6.1 code, safe to drop).
   _(verified 2026-10-27, LeRobot 0.6.1, [ADR 0016](../decisions/0016-real-evaluator-lerobot-pusht.md))_
 - **`lerobot/vqbet_pusht` reaches 263/500 (52.6 %) with LeRobot 0.6.1** on seeds 1000–1499 and

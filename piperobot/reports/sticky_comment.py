@@ -4,7 +4,7 @@ The comment is found by the hidden marker on its first line and by its author (t
 so a human comment that quotes the marker is never overwritten.
 
 Usage (in a workflow, with GITHUB_TOKEN and GITHUB_REPOSITORY set):
-    uv run python -m reports.sticky_comment --pr 12 --body-file out/comment.md
+    uv run python -m piperobot.reports.sticky_comment --pr 12 --body-file out/comment.md
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
-from reports.pr_comment import COMMENT_MARKER
+from piperobot.reports.pr_comment import COMMENT_MARKER
 
 API_URL = "https://api.github.com"
 BOT_LOGIN = "github-actions[bot]"

@@ -1,4 +1,4 @@
-"""Command-line inputs shared by `stats.gate` and `reports.pr_comment`.
+"""Command-line inputs shared by `piperobot.stats.gate` and `piperobot.reports.pr_comment`.
 
 The candidate comes from counts (``--candidate 38/50``) or an evaluation results file
 (``--results``); the baseline from counts (``--baseline 45/50``) or the stored baseline file
@@ -11,9 +11,9 @@ import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from eval.results import EpisodeResult, ResultsError, load_results
-from stats.baseline import BaselineError, load_baseline
-from stats.gate import SuccessCount
+from piperobot.results import EpisodeResult, ResultsError, load_results
+from piperobot.stats.baseline import BaselineError, load_baseline
+from piperobot.stats.gate import SuccessCount
 
 InputError = (ResultsError, BaselineError)
 

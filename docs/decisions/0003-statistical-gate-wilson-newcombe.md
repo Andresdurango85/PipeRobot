@@ -33,7 +33,7 @@ Implemented in `stats/gate.py`:
 - When the policy is unchanged, the gate blocks ~2% of PRs (simulated, n = 50 each side).
 - With 50 episodes per side it reliably catches only large regressions (80% to 50% is blocked
   ~89% of the time; 80% to 70% only ~22%). See the power table in
-  [`stats/README.md`](../../stats/README.md).
+  [`stats/README.md`](../../piperobot/stats/README.md).
 - The cheapest way to gain power is a larger baseline (e.g. 200 episodes, built nightly), since it
   is evaluated once and reused by every PR.
 - Verified against Newcombe's published examples in `tests/test_gate.py`.

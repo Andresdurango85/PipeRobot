@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from eval.results import ResultsError
+from piperobot.results import ResultsError
 
 POLICY_FILES = ("config.json", "model.safetensors")
 
