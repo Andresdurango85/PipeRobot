@@ -18,23 +18,31 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
 
 ## 0. Prerequisites
 
-- **Today only `lerobot-find-cameras` runs.** The repo's `lerobot` extra and `sim-pusht` dependency group do not
-  include the hardware dependencies. Missing, by LeRobot extra:
+- **Install the hardware dependencies with the `so101` dependency group**
+  ([ADR 0022](../decisions/0022-so101-hardware-deps-and-manual-outcomes.md)):
+
+  ```powershell
+  uv sync --group so101
+  ```
+
+  It adds LeRobot's extras, by name:
   - `feetech`: `feetech-servo-sdk`, `pyserial`, `deepdiff`. Needed by `find-port`,
     `setup-motors`, `calibrate`, `teleoperate`, `record`, `replay` and `rollout`.
   - `hardware`: adds `pynput`, which the keyboard controls of `record` need on Windows.
   - `viz`: `rerun-sdk`, for `--display_data=true` and `lerobot-dataset-viz`.
   - `training`: `accelerate` (and `wandb`), required by `lerobot-train` even locally.
 
-  `lerobot-find-port` fails with "'pyserial' is required but not installed. Install it with:
-  pip install 'lerobot[hardware]'". Ask Andrés before installing; how these enter
-  `pyproject.toml` is still open (see [STATUS](../STATUS.md)).
-  _(verified 2026-11-01, LeRobot 0.6.1, package metadata, `lerobot_find_port.py`,
-  `lerobot_train.py`, `lerobot_dataset_viz.py`)_
+  `uv sync` is exact: add `--extra lerobot` or `--group sim-pusht` too if the machine also needs
+  them, or they are uninstalled. Without `feetech`, `lerobot-find-port` fails with "'pyserial' is
+  required but not installed". _(verified 2026-11-01, LeRobot 0.6.1, package metadata,
+  `lerobot_find_port.py`, `lerobot_train.py`, `lerobot_dataset_viz.py`)_
 - **Training needs the venv with the CUDA torch build**; the repo's `.venv` has CPU torch on
   Windows ([lerobot.md](lerobot.md#install)). That venv has LeRobot 0.6.1 and
-  `torch 2.11.0+cu128` with CUDA available, but also lacks the extras above.
-  _(verified 2026-11-01, home PC)_
+  `torch 2.11.0+cu128` with CUDA available. _(verified 2026-11-01, home PC)_ To add the
+  hardware deps, sync it with `--group so101` (point `UV_PROJECT_ENVIRONMENT` at it), then swap
+  the cu128 torch and torchvision back in over the lock's CPU build, as
+  `.github/workflows/gpu-smoke.yml` does. Unverified on that venv: the group was checked in a
+  plain `.venv` (all four extras import, `lerobot-find-port` reaches its prompt).
 - **Set `$env:PYTHONUTF8 = "1"` before running LeRobot commands.** Without it,
   `lerobot-record --help` and `lerobot-rollout --help` crash with `UnicodeEncodeError: 'charmap'
   codec can't encode character '≥'` (the Windows console uses cp1252).
@@ -66,8 +74,9 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
 - **Do not assemble yet.** IDs are set one motor at a time on a bare bus (step 4); the docs
   advise putting one 3-pin cable in each motor as it is placed. _(verified 2026-11-01,
   docs/lerobot/so101 (main))_
-- **Decide on Windows Developer Mode** for the training PC: without it `lerobot-train` crashes at
-  its first checkpoint (step 11).
+- **Enable Windows Developer Mode on the training PC** (Settings > System > For developers >
+  Developer Mode): without it `lerobot-train` crashes at its first checkpoint (step 11). Andrés
+  turns it on himself ([ADR 0022](../decisions/0022-so101-hardware-deps-and-manual-outcomes.md)).
 - **Test the cameras now**, if you have them: plug the C920 and the wrist camera and run
   `lerobot-find-cameras opencv` (step 6). This works with the current `.venv`.
 
@@ -254,8 +263,8 @@ lerobot-train `
   `Path.symlink_to`, uncaught. Without Developer Mode (Settings > System > For developers) or an
   elevated shell, that raises `[WinError 1314] A required privilege is not held by the client`,
   hours into a run (first save at step 20,000 by default). The checkpoint files are written just
-  before, so they survive. Enable Developer Mode first, or check it with a short run using a
-  small `--save_freq`. If `last` is missing, use the numbered step directory instead in the
+  before, so they survive. Enable Developer Mode first (step 1), and check it with a short run
+  using a small `--save_freq`. If `last` is missing, use the numbered step directory instead in the
   resume and `--policy.path` commands. _(verified 2026-11-01, LeRobot 0.6.1,
   `lerobot_train.py:703`, `common/train_utils.py`; the WinError reproduced with `Path.symlink_to`
   on the home PC from the agent's shell; confirm from a plain PowerShell window)_
@@ -299,8 +308,44 @@ lerobot-rollout --strategy.type=episodic `
   `lerobot-rollout --help`)_
 - **Nothing in 0.6.1 scores a real-arm episode**: success for the 20-attempt test (Phase 0) is
   judged by hand, per episode, and logged next to the simulation figure. The recorded eval
-  dataset is the evidence.
+  dataset is the evidence. Write the success rule down before the first attempt (for example:
+  the tube stands in the rack when the episode ends) and keep it fixed between runs you compare.
 - The camera names and resolutions must match the training dataset. Unverified until hardware.
+
+### Score the attempts and run the gate
+
+Write one row per attempt in a CSV while the rollout runs. From Excel, save as **CSV UTF-8**:
+plain "CSV" uses the Windows code page, and a note with accents then fails to read (a `;`
+delimiter, a BOM and CRLF are accepted). `attempt` and `success` are required; `failure`, `scene` and
+`video_url` are optional:
+
+```csv
+attempt,success,failure,scene
+1,yes,,rack_left
+2,no,tube dropped at the rack,rack_left
+3,yes,,rack_right
+```
+
+`success` takes `yes/no`, `true/false` or `1/0`. A failure note on a success, an unknown
+column, or attempts that are not exactly 1..N (a gap, a duplicate) fail with exit 2 rather than
+silently dropping an attempt. Then turn it into the results contract and compare:
+
+```powershell
+uv run python -m piperobot.adapters.manual.evaluate `
+  --attempts real_arm_attempts.csv --policy act_so101_tube_rack --output out/real_arm.json
+uv run python -m piperobot.stats.gate --results out/real_arm.json --baseline 15/20
+uv run python -m piperobot.reports.pr_comment --results out/real_arm.json --baseline 15/20 `
+  --output out/real_arm_comment.md
+```
+
+`15/20` is only an example of a figure to compare against. Without `$env:PYTHONUTF8 = "1"`,
+printing the comment to the console fails with `UnicodeEncodeError` (cp1252 cannot encode its
+emoji); `--output` writes it to a file either way. _(verified 2026-11-01, home PC)_
+
+Each episode's seed is its attempt number: a label, not a way to reproduce it
+([ADR 0022](../decisions/0022-so101-hardware-deps-and-manual-outcomes.md)). There is no real-arm
+baseline yet: compare against counts, and once a first run is accepted, store it as
+`robots/so101/baselines/<policy>.json`. Keep the CSV and the eval dataset out of the git repo.
 
 ## 13. Windows gotchas
 
@@ -311,4 +356,8 @@ lerobot-rollout --strategy.type=episodic `
   OpenCV. _(verified 2026-11-01, LeRobot 0.6.1, `cameras/opencv/camera_opencv.py`)_
 - Enter during calibration needs a real console (step 5); recording keys need `pynput` (step 8).
 - Training needs symlink rights (Developer Mode) or it crashes at the first checkpoint (step 11).
+- Without FFmpeg's shared libraries on the system, `torchcodec` cannot load and LeRobot logs a long
+  "Could not load libtorchcodec" warning, then falls back to `pyav` to decode dataset videos. It
+  is a warning, not an error; whether `pyav` slows training is unverified. _(verified
+  2026-11-01, LeRobot 0.6.1, `utils/import_utils.py` `get_safe_default_video_backend`, home PC)_
 - PowerShell: quote `--robot.cameras` in single quotes; quote values with spaces (`--dataset.single_task="..."`).

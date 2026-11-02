@@ -23,6 +23,8 @@ module-name = "piperobot"
 [dependency-groups]
 # Real evaluation in the PushT 2D simulator (CPU only). Not published (ADR 0019).
 sim-pusht = ["lerobot[dataset,evaluation,pusht]>=0.6.1,<0.7"]
+# Real SO-101 arm: Feetech motors, keyboard/serial, Rerun, ACT training. Not published (ADR 0022).
+so101 = ["lerobot[feetech,hardware,viz,training]>=0.6.1,<0.7"]
 dev = [
     "prek>=0.5",
     "pytest>=8.4",

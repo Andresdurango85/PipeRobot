@@ -13,7 +13,8 @@ Any evaluator (the mock today, Isaac Lab-Arena later) writes one JSON file:
     }
 
 ``seed`` and ``success`` are required per episode; ``scene``, ``failure`` and ``video_url`` are
-optional. Seeds must be unique: each one identifies a reproducible episode.
+optional. Seeds must be unique: each one identifies a reproducible episode. On real hardware,
+where nothing is seeded, the seed is the attempt number, a label only (ADR 0022).
 """
 
 from __future__ import annotations
