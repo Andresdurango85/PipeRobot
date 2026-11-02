@@ -38,9 +38,11 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
   `lerobot_find_port.py`, `lerobot_train.py`, `lerobot_dataset_viz.py`)_
 - **Training needs the venv with the CUDA torch build**; the repo's `.venv` has CPU torch on
   Windows ([lerobot.md](lerobot.md#install)). That venv has LeRobot 0.6.1 and
-  `torch 2.11.0+cu128` with CUDA available. Sync it with `--group so101` (point
-  `UV_PROJECT_ENVIRONMENT` at it), then swap the cu128 torch and torchvision back in over the
-  lock's CPU build, as `.github/workflows/gpu-smoke.yml` does. _(verified 2026-11-01, home PC)_
+  `torch 2.11.0+cu128` with CUDA available. _(verified 2026-11-01, home PC)_ To add the
+  hardware deps, sync it with `--group so101` (point `UV_PROJECT_ENVIRONMENT` at it), then swap
+  the cu128 torch and torchvision back in over the lock's CPU build, as
+  `.github/workflows/gpu-smoke.yml` does. Unverified on that venv: the group was checked in a
+  plain `.venv` (all four extras import, `lerobot-find-port` reaches its prompt).
 - **Set `$env:PYTHONUTF8 = "1"` before running LeRobot commands.** Without it,
   `lerobot-record --help` and `lerobot-rollout --help` crash with `UnicodeEncodeError: 'charmap'
   codec can't encode character '≥'` (the Windows console uses cp1252).
