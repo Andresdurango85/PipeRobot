@@ -30,5 +30,8 @@ The PushT simulator, the task `pr-gate` evaluates
 
 ## so101
 
-The SO-101 tube-to-rack task. `envs/` will hold the Isaac Lab / Isaac Lab-Arena environment
-configuration.
+The SO-101 tube-to-rack task. `envs/` will hold the Isaac Lab 3.0 environment configuration
+([ADR 0021](../docs/decisions/0021-isaac-lab-3-on-windows-without-arena.md)). `tools/` holds
+developer tools that are not part of the gate: `dataset_stats.py` (Hub dataset metadata) and
+`isaac_seed_check.py` (does Isaac Lab reproduce an episode from its seed; runs in the Isaac Lab
+env).

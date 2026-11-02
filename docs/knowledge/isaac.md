@@ -85,7 +85,9 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   an empty stage starts and stops in 5 s (500 steps in 0.30 s). The camera tutorial (2 cameras,
   640×480, RTX renderer) renders correct RGB images; its first run took 229 s (shader
   compilation), the second 17 s. It used ~4.1 GB of VRAM above the desktop's ~7.9 GB.
-  _(verified 2026-11-01, `run_usd_camera.py` bounded to 30 steps)_
+  _(verified 2026-11-01, Isaac Lab `scripts/tutorials/00_sim/create_empty.py` and
+  `scripts/tutorials/04_sensors/run_usd_camera.py` at `44044b0963`, with their
+  `while sim.is_running()` loops bounded to 500 and 30 steps)_
 - **Isaac Lab 3.0 ships the SO-101**: `isaaclab_assets.robots.so101` (`SO101_CFG`, 5-DOF arm plus
   gripper, USD from the Isaac Nucleus) and tasks `IsaacContrib-Stack-Cube-SO101-v0`,
   `-IK-Abs-v0`, `-Joint-Teleop-v0` and `IsaacContrib-Keyboard-SO101`. `Stack-Cube-SO101-v0` uses
@@ -96,7 +98,9 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   4 envs, 300 steps of seeded random actions on CUDA) gave identical observations, with and
   without determinism settings (torch deterministic algorithms, PhysX
   `enable_enhanced_determinism`, launcher `--deterministic`); seed 1001 differs (max |Δ| 134.5).
-  Proprioceptive observations only, no camera and no learned policy in the loop.
+  Proprioceptive observations only, no camera and no learned policy in the loop, so this does
+  not yet make a CUDA gate reproducible. Re-run it with
+  [`robots/so101/tools/isaac_seed_check.py`](../../robots/so101/tools/isaac_seed_check.py).
   _(verified 2026-11-01, home PC)_
 - **`configure_seed()` turns `cudnn.benchmark` back on**: Isaac Lab envs call it on construction
   and on `reset(seed=...)`, and without `torch_deterministic=True` it sets
