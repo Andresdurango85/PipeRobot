@@ -41,10 +41,10 @@ Project Cangrejo, the `piperobot` package).
 2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
-4. Isaac: test rendering in the runner's service (session 0); then port the course's
-   tube-to-rack task to Isaac Lab 3.0 and write the evaluator, re-checking reproducibility with
-   cameras and a policy in the loop ([isaac.md](knowledge/isaac.md),
-   [robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
+4. Isaac: rendering inside the runner's service works (session 0,
+   [isaac.md](knowledge/isaac.md)). Next: port the course's tube-to-rack task to Isaac Lab 3.0
+   (plan pending Andrés's OK) and write the evaluator, re-checking reproducibility with cameras
+   and a policy in the loop ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
 5. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 6. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).

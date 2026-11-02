@@ -21,6 +21,11 @@
   Not required and not a gate ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
   First run 3 min 3 s (CUDA torch downloaded), warm re-run 2 min 5 s: install 16 s, evaluation
   83 s. _(verified 2026-11-01, run 41345428882, attempts 1 and 2)_
+- **`isaac-render.yml`**: on push to `ci/isaac-render` or by hand (never on pull requests), on
+  the self-hosted GPU runner: installs Isaac Lab at the pinned commit into the runner's tool cache,
+  then runs `robots/so101/tools/isaac_render_check.py` as an empty stage and as one RTX camera
+  frame, cold and warm, with VRAM samples and Kit's GPU log lines in the artifact
+  ([isaac.md](isaac.md)). _(added 2026-11-01, run 41369455668)_
 - `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
 
 ## Local hooks
