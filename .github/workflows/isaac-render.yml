@@ -1,0 +1,241 @@
+name: isaac-render
+
+# Can Isaac Sim render (RTX, Vulkan) inside the self-hosted runner's Windows service, which runs as
+# the unprivileged gh-runner user in session 0 with no desktop (ADR 0020, ADR 0021)? Installs Isaac
+# Lab at a pinned commit into the runner's tool cache, then runs an empty stage and an RTX camera
+# frame twice (cold, then warm shader cache). Push to ci/isaac-render or dispatch by hand; never on
+# pull requests, because the runner executes trusted code only.
+on:
+  push:
+    branches: [ci/isaac-render]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isaac-render-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isaac-render:
+    if: github.repository == 'Andresdurango85/PipeRobot'
+    runs-on: [self-hosted, Windows, gpu]
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: powershell
+    env:
+      ISAACLAB_COMMIT: 44044b0963001962abe5701133427e37b003fffe
+      # Records the owner's Omniverse EULA acceptance (ADR 0021).
+      # Never create EULA_ACCEPTED by hand.
+      OMNI_KIT_ACCEPT_EULA: "YES"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Start the clock
+        run: |
+          $ErrorActionPreference = 'Continue'
+          "JOB_START=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" |
+            Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+          cache-local-path: ${{ runner.tool_cache }}/uv-cache
+
+      - name: Prepare paths and record the environment
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'isaaclab-3.0'
+          $paths = [ordered]@{
+            ISAAC_ROOT = $root
+            ISAAC_SRC = "$root\IsaacLab"
+            ISAAC_VENV = "$root\venv"
+            ISAAC_PY = "$root\venv\Scripts\python.exe"
+            RUN_DIR = "$env:RUNNER_TEMP\isaac-run"
+            OUT = "$env:GITHUB_WORKSPACE\out"
+          }
+          foreach ($entry in $paths.GetEnumerator()) {
+            "$($entry.Key)=$($entry.Value)" |
+              Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          }
+          New-Item -ItemType Directory -Force -Path $paths.OUT, $paths.RUN_DIR -ErrorAction Stop | Out-Null
+          $identity = whoami
+          if ($LASTEXITCODE -ne 0) { throw 'whoami failed' }
+          $gpu = nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+          if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi failed' }
+          $free = [math]::Round((Get-PSDrive C).Free / 1GB, 2)
+          $lines = @("Runner: $env:RUNNER_NAME", "Identity: $identity", "GPU: $gpu", "C: free GB: $free")
+          $lines | Out-File -Encoding utf8 "$($paths.OUT)\environment.txt"
+          $lines | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+      - name: Get the pinned Isaac Lab source
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $head = ''
+          if (Test-Path "$env:ISAAC_SRC\.git") {
+            $head = git -C $env:ISAAC_SRC rev-parse HEAD
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot read Isaac Lab HEAD' }
+          }
+          if ($head -ne $env:ISAACLAB_COMMIT) {
+            # Remove only the fixed source directory inside the runner-owned tool cache.
+            $expected = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TOOL_CACHE 'isaaclab-3.0\IsaacLab'))
+            if ([IO.Path]::GetFullPath($env:ISAAC_SRC) -ne $expected) { throw 'Unsafe source path' }
+            if (Test-Path $expected) { Remove-Item -LiteralPath $expected -Recurse -Force -ErrorAction Stop }
+            New-Item -ItemType Directory -Force -Path $expected -ErrorAction Stop | Out-Null
+            git -C $env:ISAAC_SRC init
+            if ($LASTEXITCODE -ne 0) { throw 'git init failed' }
+            git -C $env:ISAAC_SRC remote add origin https://github.com/isaac-sim/IsaacLab.git
+            if ($LASTEXITCODE -ne 0) { throw 'git remote failed' }
+            git -C $env:ISAAC_SRC fetch --depth 1 origin $env:ISAACLAB_COMMIT
+            if ($LASTEXITCODE -ne 0) { throw 'git fetch failed' }
+            git -C $env:ISAAC_SRC checkout --detach FETCH_HEAD
+            if ($LASTEXITCODE -ne 0) { throw 'git checkout failed' }
+          }
+          $head = git -C $env:ISAAC_SRC rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:ISAACLAB_COMMIT) { throw 'Wrong Isaac Lab commit' }
+
+      - name: Install Isaac Lab and record disk usage
+        id: install
+        timeout-minutes: 45
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Set-Location $env:ISAAC_SRC -ErrorAction Stop
+          $env:UV_PROJECT_ENVIRONMENT = $env:ISAAC_VENV
+          $elapsed = Measure-Command {
+            uv sync --locked --extra isaacsim | Out-Host
+            $script:installExit = $LASTEXITCODE
+          }
+          $metrics = [ordered]@{ install_seconds = $elapsed.TotalSeconds }
+          foreach ($entry in @(@('venv_gb', $env:ISAAC_VENV), @('uv_cache_gb', "$env:RUNNER_TOOL_CACHE\uv-cache"))) {
+            $bytes = (Get-ChildItem -LiteralPath $entry[1] -Recurse -File -ErrorAction SilentlyContinue |
+              Measure-Object -Property Length -Sum).Sum
+            $metrics[$entry[0]] = [math]::Round($bytes / 1GB, 2)
+          }
+          $metrics['free_c_gb'] = [math]::Round((Get-PSDrive C).Free / 1GB, 2)
+          $metrics | ConvertTo-Json | Out-File -Encoding utf8 "$env:OUT\install.json"
+          if ($script:installExit -ne 0) { throw 'uv sync failed' }
+          & $env:ISAAC_PY -c "import importlib.metadata as m; import torch; print('torch', m.version('torch')); print('isaacsim', m.version('isaacsim')); print('cuda_available', torch.cuda.is_available())" |
+            Out-File -Encoding utf8 "$env:OUT\versions.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'Version check failed' }
+
+      - name: Empty stage
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Set-Location $env:RUN_DIR -ErrorAction Stop
+          $elapsed = Measure-Command {
+            & $env:ISAAC_PY "$env:GITHUB_WORKSPACE\robots\so101\tools\isaac_render_check.py" `
+              --mode empty --viz none --out-dir "$env:OUT\empty" | Out-Host
+            $script:emptyExit = $LASTEXITCODE
+          }
+          @{ seconds = $elapsed.TotalSeconds; exit_code = $script:emptyExit } |
+            ConvertTo-Json | Out-File -Encoding utf8 "$env:OUT\empty-process.json"
+          if ($script:emptyExit -ne 0) { throw 'Empty stage failed' }
+
+      - name: Camera first and second runs
+        # First and second retain the shader cache; persistent runners may already be warm.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 30
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Set-Location $env:RUN_DIR -ErrorAction Stop
+          $failed = $false
+          foreach ($label in @('first', 'second')) {
+            $dir = "$env:OUT\camera-$label"
+            New-Item -ItemType Directory -Force -Path $dir -ErrorAction Stop | Out-Null
+            $sampler = $null
+            $code = 2
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            try {
+              $sampler = Start-Process nvidia-smi -ArgumentList '--query-gpu=timestamp,memory.used', `
+                '--format=csv,noheader,nounits','-l','1' -RedirectStandardOutput "$dir\vram.csv" `
+                -NoNewWindow -PassThru -ErrorAction Stop
+              & $env:ISAAC_PY "$env:GITHUB_WORKSPACE\robots\so101\tools\isaac_render_check.py" `
+                --mode camera --viz none --out-dir $dir
+              $code = $LASTEXITCODE
+            } catch {
+              Write-Warning $_
+            } finally {
+              $watch.Stop()
+              if ($null -ne $sampler -and -not $sampler.HasExited) {
+                Stop-Process -Id $sampler.Id -Force -ErrorAction Continue
+                $sampler.WaitForExit()
+              }
+            }
+            $samples = @(Get-Content "$dir\vram.csv" -ErrorAction SilentlyContinue | ForEach-Object {
+              if ($_ -match ',\s*(\d+)\s*$') { [int]$Matches[1] }
+            })
+            $baseline = $null; $peak = $null; $delta = $null
+            if ($samples.Count -gt 0) {
+              $baseline = $samples[0]
+              $peak = ($samples | Measure-Object -Maximum).Maximum
+              $delta = $peak - $baseline
+            } else { $failed = $true }
+            @{ seconds = $watch.Elapsed.TotalSeconds; exit_code = $code
+               baseline_mib = $baseline; peak_mib = $peak; delta_mib = $delta } |
+              ConvertTo-Json | Out-File -Encoding utf8 "$dir\process.json"
+            if ($code -ne 0) { $failed = $true }
+          }
+          if ($failed) { throw 'Camera run or VRAM sampling failed; see both runs in artifacts' }
+
+      - name: Collect Kit GPU log lines
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          if (-not $env:OUT) { exit 0 }
+          $start = [DateTimeOffset]::FromUnixTimeSeconds([int64]$env:JOB_START).UtcDateTime
+          $logs = @(Get-ChildItem "$env:ISAAC_VENV\Lib\site-packages\isaacsim\kit\logs" `
+            -Filter 'kit_*.log' -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTimeUtc -ge $start } |
+            Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 3)
+          if ($logs.Count -gt 0) {
+            Copy-Item -LiteralPath $logs[0].FullName -Destination "$env:OUT\kit-last.log" -ErrorAction Stop
+            $logs | ForEach-Object {
+              "Log: $($_.FullName)"
+              Select-String -LiteralPath $_.FullName -Pattern '\[Graphics API\]|Active GPU|\| Driver Version|\| GPU \||\| 0 |\[Error\]|vulkan.*(fail|error)' |
+                ForEach-Object { $_.Line }
+            } | Out-File -Encoding utf8 "$env:OUT\kit-gpu-lines.txt"
+          } else {
+            'No Kit logs written during this job were found.' |
+              Out-File -Encoding utf8 "$env:OUT\kit-gpu-lines.txt"
+          }
+
+      - name: Summarize measurements
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          if (-not $env:OUT) { exit 0 }
+          function Read-Result($path) {
+            if (Test-Path $path) { Get-Content -Raw $path | ConvertFrom-Json }
+          }
+          $install = Read-Result "$env:OUT\install.json"
+          $empty = Read-Result "$env:OUT\empty-process.json"
+          $lines = @('| Measurement | Value |', '| --- | --- |',
+            "| Install seconds | $($install.install_seconds) |",
+            "| Empty-stage process seconds | $($empty.seconds) |",
+            "| Venv GB (logical size) | $($install.venv_gb) |",
+            "| uv cache GB (logical size, shared hardlinks) | $($install.uv_cache_gb) |",
+            "| C: free GB after install | $($install.free_c_gb) |")
+          foreach ($label in @('first', 'second')) {
+            $process = Read-Result "$env:OUT\camera-$label\process.json"
+            $camera = Read-Result "$env:OUT\camera-$label\camera.json"
+            $lines += "| Camera $label process seconds | $($process.seconds) |"
+            $lines += "| Camera $label first valid frame seconds (from process start) | $($camera.first_valid_frame_seconds) |"
+            $lines += "| Camera $label VRAM delta MiB | $($process.delta_mib) |"
+            $lines += "| Camera $label nonblack | $($camera.nonblack) |"
+          }
+          $lines += @('', 'Kit GPU lines:', '```text')
+          $lines += @(Get-Content "$env:OUT\kit-gpu-lines.txt" -ErrorAction SilentlyContinue)
+          $lines += '```'
+          $lines | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: isaac-render-${{ github.run_id }}
+          path: out/
+          retention-days: 14

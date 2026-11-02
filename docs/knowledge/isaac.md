@@ -87,6 +87,18 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   _(verified 2026-11-01, Isaac Lab `scripts/tutorials/00_sim/create_empty.py` and
   `scripts/tutorials/04_sensors/run_usd_camera.py` at `44044b0963`, with their
   `while sim.is_running()` loops bounded to 500 and 30 steps)_
+- **Isaac renders inside the runner's Windows service** (user `gh-runner`, session 0, no
+  desktop): Kit picks Vulkan and the RTX 5060 Ti, logs no `[Error]`, and the RTX camera frame
+  (640×480, cube and sphere) is pixel-identical to the same script run interactively on the
+  owner's desktop, and between the cold and warm runs. Install as `gh-runner` into the runner's
+  tool cache: 3 min 41 s (`uv sync --locked --extra isaacsim`), env 16.4 GB, C: free 122.0 →
+  104.4 GB. Empty stage: 10.9 s. Camera: 206 s cold (launch 184 s, shader compilation), 12.7 s
+  warm; +3.4–3.6 GB of VRAM. _(verified 2026-11-01, `isaac-render.yml` run 41369455668,
+  `robots/so101/tools/isaac_render_check.py`)_
+- **Leaving `launch_simulation`'s block ends the process**: it closes Kit with the block's exit
+  status (a `SystemExit(n)` raised inside is kept), so code after the `with` never runs. Write
+  results and print summaries inside the block. _(verified 2026-11-01, Isaac Lab 3.0.0,
+  `isaaclab/app/sim_launcher.py`)_
 - **Isaac Lab 3.0 ships the SO-101**: `isaaclab_assets.robots.so101` (`SO101_CFG`, 5-DOF arm plus
   gripper, USD from the Isaac Nucleus) and tasks `IsaacContrib-Stack-Cube-SO101-v0`,
   `-IK-Abs-v0`, `-Joint-Teleop-v0` and `IsaacContrib-Keyboard-SO101`. `Stack-Cube-SO101-v0` uses
