@@ -19,33 +19,21 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Done recently
 
-Older items are in git history and the ADRs (0001–0015: memory, tooling, statistics, rulesets,
-security gates, hooks, mock gate, core boundary; 0018: no required review, agents merge with
-a plain `gh pr merge --merge`).
+Older items are in git history and the ADRs (0001–0019: memory, tooling, statistics, rulesets,
+security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
+Project Cangrejo, the `piperobot` package).
 
-- 2026-10-27: first real evaluator, `lerobot/vqbet_pusht` in PushT on CPU
-  ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). Same seeds reproduce only on one
-  platform: CPUs flip 6–10 near misses per 500 episodes, CUDA is not reproducible at all
-  ([lerobot.md](knowledge/lerobot.md)).
-- 2026-10-27: `pr-gate` runs it on `ubuntu-latest` with CPU-only torch in ~2–3 min
-  ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)); demo PR #14 (sampling
-  temperature 2.0) was blocked at 4/50. Baseline re-measured on the runner: 265/500.
-- 2026-10-28: [Project Cangrejo](cangrejo/README.md), a crab-shaped robot as the gate's second
-  robot; v0 (digital twin) can start now. Restructure plan accepted
+- 2026-11-01: the gate is the installable `piperobot` package with a `clean-install` CI job
   ([ADR 0019](decisions/0019-core-adapters-robots-layout.md)).
-- 2026-11-01: ADR 0019 PRs 1 and 2 done: allow-list architecture test, no default baseline in the
-  core, and per-robot data in [`robots/`](../robots/README.md) (policy specs, baselines, SO-101
-  envs). The crab's private repo exists.
-- 2026-11-01: self-hosted GPU runner on the home PC (native Windows, dedicated unprivileged
-  user, trusted code only; fork PRs need approval for all external contributors) and the
-  non-required `gpu-smoke` workflow: 50 PushT episodes on CUDA, job in ~2 min warm
-  ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md), [ci.md](knowledge/ci.md)).
-- 2026-11-01: SO-101 bring-up runbook for LeRobot 0.6.1 on Windows, checked against the installed
-  package ([so101-bringup.md](knowledge/so101-bringup.md)); the hardware steps are unverified
-  until the electronics arrive.
-- 2026-11-01: ADR 0019 done: the gate is the installable `piperobot` package (core + adapters,
-  `uv_build`, flat layout) with a `clean-install` CI job; `dataset_stats.py` moved to
-  `robots/so101/tools/`. Coded by Codex, reviewed by Claude ([ci.md](knowledge/ci.md)).
+- 2026-11-01: self-hosted GPU runner on the home PC and the non-required `gpu-smoke` workflow
+  ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)).
+- 2026-11-01: SO-101 bring-up runbook for LeRobot 0.6.1
+  ([so101-bringup.md](knowledge/so101-bringup.md)); hardware steps unverified.
+- 2026-11-01: Isaac Lab 3.0 + Isaac Sim 6.2 installed natively on the home PC, without Arena
+  (Linux-only). Headless RTX rendering works, Isaac Lab ships an SO-101 task, and same-seed runs
+  are bit-identical (random actions, no camera, no policy)
+  ([ADR 0021](decisions/0021-isaac-lab-3-on-windows-without-arena.md),
+  [isaac.md](knowledge/isaac.md)).
 
 ## Next
 
@@ -53,13 +41,10 @@ a plain `gh pr merge --merge`).
 2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
-4. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing). Free
-   disk first (~35 GB left on the system drive); check that Arena runs natively on Windows and
-   that Isaac renders headless inside the runner's service ([isaac.md](knowledge/isaac.md)). The
-   Isaac evaluator runs on CUDA: first measure whether deterministic torch settings make
-   same-seed runs reproducible; it must call `policy.reset()` every episode, load normalization
-   stats from the checkpoint and seed torch as well as the scene
-   ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
+4. Isaac: test rendering in the runner's service (session 0); then port the course's
+   tube-to-rack task to Isaac Lab 3.0 and write the evaluator, re-checking reproducibility with
+   cameras and a policy in the loop ([isaac.md](knowledge/isaac.md),
+   [robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
 5. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 6. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).

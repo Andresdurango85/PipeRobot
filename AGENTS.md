@@ -36,8 +36,10 @@ but not CI/CD or testing concepts.
 - Cameras: Logitech C920 (scene) + 720p USB camera on the wrist.
 - Task: pick 50 ml centrifuge tubes and place them in a yellow rack inside a light box, following
   NVIDIA's "Train an SO-101 Robot From Sim-to-Real With NVIDIA Isaac" path.
-- Software: LeRobot 0.6+ (Hugging Face), Isaac Sim + Isaac Lab, Isaac Lab-Arena for evaluation,
-  Rerun to visualize episodes, GitHub Actions with a self-hosted GPU runner.
+- Software: LeRobot 0.6+ (Hugging Face), Isaac Sim 6.2 + Isaac Lab 3.0 on native Windows for
+  simulation and evaluation (no Isaac Lab-Arena, which is Linux-only:
+  [ADR 0021](docs/decisions/0021-isaac-lab-3-on-windows-without-arena.md)), Rerun to visualize
+  episodes, GitHub Actions with a self-hosted GPU runner.
 - First policy: ACT (small, trainable without a big GPU). GR00T only via NVIDIA checkpoints or cloud.
 - Machines: see [ADR 0005](docs/decisions/0005-two-machine-setup.md). Home PC with RTX does the
   heavy work; the travel laptop has no RTX and little RAM (no heavy builds or suites there).
@@ -70,7 +72,7 @@ rules:
   heavy** (Isaac Sim, CUDA, multi-GB Docker images, the `lerobot` extra on a new machine).
 - Treat evaluation as a testing problem: flakiness, seeds, reproducibility and reports are
   first-class citizens.
-- Verify commands against the current docs of LeRobot 0.6+ and Isaac Lab-Arena; old tutorials use
+- Verify commands against the current docs of LeRobot 0.6+ and Isaac Lab 3.0; old tutorials use
   commands that changed (e.g. `control_robot.py`). Record what you verified in `docs/knowledge/`.
 - Personal, public repo on Andrés's personal GitHub account (`Andresdurango85/PipeRobot`).
   **Never use any employer's credentials, accounts or resources.** Nothing secret or
