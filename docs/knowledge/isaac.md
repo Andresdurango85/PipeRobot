@@ -119,10 +119,22 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   same process as Isaac, installed as above. `uv pip check` then reports LeRobot's caps as broken (`numpy<2.3`,
   `packaging<26`, `datasets`' `fsspec<=2026.2.0`), as it already does for Isaac Sim's own pins.
   Even so, `ACTPolicy(cfg).select_action()` ran on CUDA next to Isaac, and the simulation output
-  stayed bit-identical to the clean env. Not tested: loading a checkpoint with its processors
-  (`from_pretrained`), anything that uses `datasets`/`fsspec`, video writing. Tested in a
-  throwaway copy of the env, then deleted.
+  stayed bit-identical to the clean env. Not tested: anything that uses `datasets`/`fsspec`,
+  video writing. Tested in a throwaway copy of the env, then deleted.
   _(verified 2026-11-01, LeRobot 0.6.1)_
+- **A real LeRobot ACT checkpoint loads with its processors inside a running Isaac Lab process**:
+  `samarth-shukla6/act-svla-so101-pickplace` (Apache-2.0, revision `c903979a9d`, state 6, two
+  480×640 cameras `up` and `side`, chunk 100) via `ACTPolicy.from_pretrained` and
+  `make_pre_post_processors(..., pretrained_path=..., pretrained_revision=...,
+  preprocessor_overrides={"device_processor": {"device": "cuda"}})`, in 21.7 s including the
+  download. Pre-processor: rename, add batch dim, device, normalizer (stats for state, action and
+  both cameras); post-processor: unnormalizer, device (back to CPU). One `select_action` on CUDA
+  gave a finite (1, 6) action in the dataset's units, identical on a second call after
+  `policy.reset()`, and the seeded simulation stayed bit-identical to the clean env. The inputs
+  were Isaac joint positions and random images, so this tests loading and plumbing, not behaviour;
+  Isaac reports joints in radians, and the evaluator must convert them to the units the
+  checkpoint was trained on. _(verified 2026-11-01, LeRobot 0.6.1, throwaway copy of the Isaac
+  env, then deleted)_
 
 ## NVIDIA's SO-101 course
 
