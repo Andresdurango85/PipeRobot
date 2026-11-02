@@ -170,7 +170,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(comment, encoding="utf-8", newline="\n")
     else:
-        sys.stdout.write(comment)
+        # Windows consoles are not necessarily UTF-8.
+        buffer = getattr(sys.stdout, "buffer", None)
+        if buffer is not None:
+            sys.stdout.flush()
+            buffer.write(comment.encode("utf-8"))
+        else:
+            sys.stdout.write(comment)
     # The verdict's exit code belongs to `piperobot.stats.gate`; rendering always succeeds.
     return 0
 
