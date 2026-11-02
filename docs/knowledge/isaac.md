@@ -1,7 +1,7 @@
 # Isaac Sim, Isaac Lab and Isaac Lab-Arena
 
-Nothing is installed yet; these are facts read from NVIDIA's current docs, to plan the install
-and the GPU runner ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
+Facts from NVIDIA's docs and from the install on the home PC (native Windows 11, RTX 5060 Ti 16 GB,
+driver 610.88), for the install and the GPU runner ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
 
 ## Platforms
 
@@ -58,6 +58,62 @@ and the GPU runner ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
 - **NVIDIA's `so101-typing-task` is the SO-101 on an Isaac Lab 3.0.0-based runtime** (patched,
   source revision 6f991d4becf7), "Linux x86-64 only" via Docker; "Windows and ARM have not been
   validated". _(verified 2026-11-01, Isaac Lab docs, SO-101 keyboard typing page)_
+
+## Installed on the home PC
+
+Isaac Lab `release/3.0.0` checkout, `uv sync --locked --extra isaacsim` into a venv outside this
+repo ([ADR 0021](../decisions/0021-isaac-lab-3-on-windows-without-arena.md)).
+
+- **The install takes ~10 min and ~17 GB of disk**: 256 packages, download 8 min 17 s, install
+  1 min 24 s; `isaacsim 6.2.0.0`, `torch 2.11.0+cu130` (CUDA 13.0). The env measures 16.4 GB and
+  the uv cache grew from 5.2 to 21.6 GB, but free disk dropped only 17.1 GB: uv hardlinks the
+  env's files to its cache. After the smoke tests the env is 16.9 GB; total disk used by install
+  plus tests: 18.7 GB. _(verified 2026-11-01, uv 0.10.8)_
+- **Kit keeps its caches inside the env**, in `site-packages/isaacsim/kit/cache` (0.47 GB after
+  the smoke tests: `DerivedDataCache` 326 MB, `nv_shadercache` 141 MB), with logs in
+  `isaacsim/kit/logs`. `%LOCALAPPDATA%\ov` holds only empty cache folders; telemetry and
+  structured logs go to `~/.nvidia-omniverse/logs`. Deleting the env removes the caches.
+  _(verified 2026-11-01)_
+- **The EULA prompt is in `isaacsim/kit/kit_app.py`** (`check_eula()`, run on `import isaacsim`):
+  it asks "Do you accept the EULA? (Yes/No)" and writes `isaacsim/kit/EULA_ACCEPTED` inside the
+  env. With `OMNI_KIT_ACCEPT_EULA` set to `YES`, `Y` or `1` it returns early and writes nothing.
+  Andrés accepted it himself on 2026-11-01. _(verified 2026-11-01, isaacsim 6.2.0.0)_
+- **Isaac Lab's tutorials loop forever when headless** (`while sim.is_running()`), and Python
+  buffers stdout when redirected to a file: bound the loop and set `PYTHONUNBUFFERED=1`.
+  `--viz none` runs without a window. _(verified 2026-11-01, Isaac Lab 3.0.0)_
+- **Headless launch and RTX camera rendering work on native Windows** (Vulkan, driver 610.88):
+  an empty stage starts and stops in 5 s (500 steps in 0.30 s). The camera tutorial (2 cameras,
+  640×480, RTX renderer) renders correct RGB images; its first run took 229 s (shader
+  compilation), the second 17 s. It used ~4.1 GB of VRAM above the desktop's ~7.9 GB.
+  _(verified 2026-11-01, `run_usd_camera.py` bounded to 30 steps)_
+- **Isaac Lab 3.0 ships the SO-101**: `isaaclab_assets.robots.so101` (`SO101_CFG`, 5-DOF arm plus
+  gripper, USD from the Isaac Nucleus) and tasks `IsaacContrib-Stack-Cube-SO101-v0`,
+  `-IK-Abs-v0`, `-Joint-Teleop-v0` and `IsaacContrib-Keyboard-SO101`. `Stack-Cube-SO101-v0` uses
+  PhysX on `cuda:0`, actions of shape (envs, 6) and an 89-value observation; 4 envs × 300 steps
+  of random actions take ~11.3 s, the env is ready in ~6 s warm (51 s on the first run), and it
+  uses ~1.35 GB of VRAM. _(verified 2026-11-01, Isaac Lab 3.0.0)_
+- **Same seed, same SO-101 episode, bit for bit**: two runs of `Stack-Cube-SO101-v0` (seed 1000,
+  4 envs, 300 steps of seeded random actions on CUDA) gave identical observations, with and
+  without determinism settings (torch deterministic algorithms, PhysX
+  `enable_enhanced_determinism`, launcher `--deterministic`); seed 1001 differs (max |Δ| 134.5).
+  Proprioceptive observations only, no camera and no learned policy in the loop.
+  _(verified 2026-11-01, home PC)_
+- **`configure_seed()` turns `cudnn.benchmark` back on**: Isaac Lab envs call it on construction
+  and on `reset(seed=...)`, and without `torch_deterministic=True` it sets
+  `torch.backends.cudnn.benchmark = True`. Apply deterministic torch settings after both. The
+  launcher's own `--deterministic` flag only requests reproducible rendering.
+  _(verified 2026-11-01, `isaaclab/utils/seed.py`, `isaaclab_physx/app/kit_launcher.py`)_
+- **`resolve_task_config()` re-parses `sys.argv` with Hydra**: a script with its own argparse
+  must strip its arguments (`sys.argv = sys.argv[:1]`) before calling it.
+  _(verified 2026-11-01, Isaac Lab 3.0.0)_
+- **LeRobot 0.6.1 runs inside the Isaac Lab env**: `uv pip install "lerobot[pusht]==0.6.1"` run
+  from the Isaac Lab checkout applies its `[tool.uv]` overrides, so numpy (2.5.1), packaging
+  (26.0) and pillow (12.3.0) are not downgraded (a dry run outside those overrides would take
+  numpy to 2.2.6). `uv pip check` then reports LeRobot's caps as broken (`numpy<2.3`,
+  `packaging<26`, `datasets`' `fsspec<=2026.2.0`), as it already does for Isaac Sim's own pins.
+  Even so, an ACT policy ran on CUDA in the same process as Isaac, and the simulation output
+  stayed bit-identical to the clean env. Tested in a throwaway copy of the env, then deleted.
+  _(verified 2026-11-01, LeRobot 0.6.1)_
 
 ## NVIDIA's SO-101 course
 

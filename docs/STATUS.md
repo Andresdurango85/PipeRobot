@@ -53,12 +53,14 @@ a plain `gh pr merge --merge`).
 2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
-4. Plan the Isaac Sim / Isaac Lab-Arena install on the home PC (ask before installing). Free
-   disk first (~35 GB left on the system drive); check that Arena runs natively on Windows and
-   that Isaac renders headless inside the runner's service ([isaac.md](knowledge/isaac.md)). The
-   Isaac evaluator runs on CUDA: first measure whether deterministic torch settings make
-   same-seed runs reproducible; it must call `policy.reset()` every episode, load normalization
-   stats from the checkpoint and seed torch as well as the scene
+4. Isaac Lab 3.0 + Isaac Sim 6.2 are installed on the home PC, outside the repo, and pass the
+   smoke tests: headless RTX rendering, the bundled SO-101 cube-stack task, bit-identical
+   same-seed runs, LeRobot 0.6.1 in-process
+   ([ADR 0021](decisions/0021-isaac-lab-3-on-windows-without-arena.md),
+   [isaac.md](knowledge/isaac.md)). Next: test rendering inside the runner's service (session 0),
+   then port the course's tube-to-rack task to Isaac Lab 3.0 and write the evaluator. It must call
+   `policy.reset()` every episode, load normalization stats from the checkpoint, seed torch as
+   well as the scene, and re-check reproducibility with cameras and a policy in the loop
    ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
 5. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
