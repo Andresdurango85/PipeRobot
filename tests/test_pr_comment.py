@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -134,3 +136,39 @@ def test_main_returns_2_on_invalid_results(tmp_path: Path) -> None:
     results.write_text('{"episodes": []}', encoding="utf-8")
 
     assert main(["--results", str(results), "--baseline", "45/50"]) == 2
+
+
+def test_main_stdout_is_utf8_on_cp1252_console(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps({"policy": "p", "episodes": [{"seed": 1, "success": False}]}),
+        encoding="utf-8",
+    )
+    output = tmp_path / "comment.md"
+    args = ["--results", str(results), "--baseline", "15/20"]
+    assert main([*args, "--output", str(output)]) == 0
+    buffer = io.BytesIO()
+    stdout = io.TextIOWrapper(buffer, encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", stdout)
+
+    assert main(args) == 0
+
+    comment = buffer.getvalue().decode("utf-8")
+    assert comment == output.read_text(encoding="utf-8")
+    assert "⚠️" in comment
+
+
+def test_main_stdout_without_buffer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps({"policy": "p", "episodes": [{"seed": 1, "success": True}]}),
+        encoding="utf-8",
+    )
+    stdout = io.StringIO()
+    monkeypatch.setattr(sys, "stdout", stdout)
+
+    assert main(["--results", str(results), "--baseline", "15/20"]) == 0
+
+    assert stdout.getvalue() == render_comment(decide(SuccessCount(1, 1), SuccessCount(15, 20)))
