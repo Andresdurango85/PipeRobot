@@ -89,6 +89,15 @@ def test_relative_imports_are_resolved(tmp_path: Path) -> None:
     assert _imports("a.b.mod", source) == {"a.b", "a.b.y", "a.w"}
 
 
+def test_manual_adapter_imports_only_stdlib_and_core() -> None:
+    # Any robot uses it as is, with no extra installed (ADR 0022).
+    names = [n for n in MODULES if n.startswith("piperobot.adapters.manual")]
+    bad = {m for n in names for m in _imports(n, MODULES[n]) if not _allowed_in_core(m)}
+
+    assert names
+    assert bad == set()
+
+
 @pytest.mark.parametrize("name", sorted(n for n in MODULES if _layer(n) == "adapter"))
 def test_adapters_do_not_import_robots(name: str) -> None:
     bad = {module for module in _imports(name, MODULES[name]) if module.split(".")[0] == "robots"}
