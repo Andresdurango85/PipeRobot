@@ -338,9 +338,13 @@ uv run python -m piperobot.reports.pr_comment --results out/real_arm.json --base
   --output out/real_arm_comment.md
 ```
 
-`15/20` is only an example of a figure to compare against. Without `$env:PYTHONUTF8 = "1"`,
+`15/20` is only an example of a figure to compare against. ~~Without `$env:PYTHONUTF8 = "1"`,
 printing the comment to the console fails with `UnicodeEncodeError` (cp1252 cannot encode its
-emoji); `--output` writes it to a file either way. _(verified 2026-11-01, home PC)_
+emoji); `--output` writes it to a file either way.~~ _(verified 2026-11-01, home PC)_
+
+`pr_comment` now writes UTF-8 bytes to stdout whatever the console's code page, identical to
+what `--output` writes, so it no longer needs `PYTHONUTF8` or `--output`. _(verified 2026-11-01, home PC, stdout
+redirected to a file)_
 
 Each episode's seed is its attempt number: a label, not a way to reproduce it
 ([ADR 0022](../decisions/0022-so101-hardware-deps-and-manual-outcomes.md)). There is no real-arm

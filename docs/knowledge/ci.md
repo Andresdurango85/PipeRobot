@@ -145,3 +145,17 @@
   dirs) are private to whichever user created them, so run pytest with
   `-p no:cacheprovider --basetemp=.venv\pytest-tmp`. It cannot run `uv` (no cache access) or
   write git metadata in a worktree. _(verified 2026-11-01)_
+- **Create a Codex worktree's venv with `UV_LINK_MODE=copy`**, or the sandbox cannot read it
+  (`PermissionError` importing `ruff` or `pytest`). By default uv hardlinks venv files to its
+  cache under `%LOCALAPPDATA%\uv\cache`, whose files keep a protected ACL without the
+  `CodexSandboxUsers` group; copied files inherit the worktree's ACL instead. Recipe:
+
+  ```powershell
+  $env:UV_LINK_MODE = "copy"
+  uv sync                      # or `uv sync --reinstall` to fix an existing venv
+  # then point .venv\pyvenv.cfg `home` at the real cpython-3.12.12-... folder (above)
+  codex exec -C <worktree> --sandbox workspace-write -o <report.md> - < <brief.md>
+  ```
+
+  Feed the brief on stdin from a file, or `codex exec` waits for input.
+  _(verified 2026-11-01, Codex CLI 0.166, uv 0.10.8)_
