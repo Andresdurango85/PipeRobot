@@ -28,9 +28,12 @@ Arena or the SO-101 tasks did not run there. That condition is now met. Verified
   lock does not change until an evaluator imports Isaac Lab.
 - **Isaac Lab-Arena is dropped** for now. The tube-to-rack task is ported from the course's
   `source/sim_to_real_so101` to Isaac Lab 3.0, starting from the SO-101 asset Isaac Lab ships.
-- The evaluator runs the policy in the same process if `lerobot==0.6.1` installs into the Isaac
-  Lab environment without breaking either; otherwise the policy runs behind a server, as the
-  course does.
+- The evaluator runs the policy in the Isaac Lab process. A real ACT checkpoint loaded with
+  `from_pretrained` and its processors and ran on CUDA there (2026-11-01,
+  [isaac.md](../knowledge/isaac.md)), with `lerobot==0.6.1` installed from the Isaac Lab checkout
+  under its `[tool.uv]` overrides. `uv pip check` still flags LeRobot's caps (numpy, packaging,
+  fsspec), so a policy server, as the course uses, remains the fallback if a real evaluation
+  breaks on them.
 - The Omniverse EULA is accepted by Andrés himself at the first launch. Only then may automation
   set `OMNI_KIT_ACCEPT_EULA=YES`. Andrés accepted it on 2026-11-01 at `import isaacsim` in the
   home PC's Isaac Lab env, which recorded it in `isaacsim/kit/EULA_ACCEPTED`

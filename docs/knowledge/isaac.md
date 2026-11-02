@@ -24,16 +24,15 @@ driver 610.88), for the install and the GPU runner ([ADR 0020](../decisions/0020
   x86_64**, Python 3.12, Isaac Sim 6.2 (5.1 and older unsupported). Its default torch is 2.11.0
   for CUDA 13.0 (`cu130` index), which needs driver ≥ 580.65.06 (Linux) or ≥ 580.88 (Windows).
   _(verified 2026-10-28, docs.nvidia.com/isaaclab installation page)_
-- ~~**Isaac Lab-Arena (`main` docs) runs on Isaac Sim 6.0.1 and Isaac Lab 3.0.0** and names no
-  OS~~; its hardware needs are Isaac Sim's. Two installs: `./docker/run_docker.sh` (Docker,
-  includes cuRobo reachability checks) or native `uv sync --extra dev` (no cuRobo). Both need
-  `OMNI_KIT_ACCEPT_EULA=YES` and `ACCEPT_EULA=Y`.
-  _(verified 2026-10-28, IsaacLab-Arena docs, quickstart/installation)_
 - **Isaac Lab-Arena supports Linux only**: its README requires "Linux (Ubuntu 22.04+)" and does
   not mention Windows. `main` targets Isaac Lab 3.0.0 + Isaac Sim 6.2.0; `release/0.3.1`, the
   recommended stable branch, targets Isaac Lab 3.0.0 EA + Isaac Sim 6.1.0; Python ≥ 3.12. The
   README names Franka and Unitree G1 embodiments, not the SO-101, and evaluates policies served
-  behind a server (GR00T, π0.5, custom). _(verified 2026-11-01, IsaacLab-Arena README on GitHub)_
+  behind a server (GR00T, π0.5, custom). Its hardware needs are Isaac Sim's. Two installs:
+  `./docker/run_docker.sh` (Docker, includes cuRobo reachability checks) or native
+  `uv sync --extra dev` (no cuRobo); both need `OMNI_KIT_ACCEPT_EULA=YES` and `ACCEPT_EULA=Y`.
+  _(verified 2026-11-01, IsaacLab-Arena README on GitHub; install methods from its quickstart
+  page, 2026-10-28, which names no OS)_
 
 ## Installing on Windows
 
