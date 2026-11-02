@@ -61,8 +61,8 @@ driver 610.88), for the install and the GPU runner ([ADR 0020](../decisions/0020
 
 ## Installed on the home PC
 
-Isaac Lab `release/3.0.0` checkout, `uv sync --locked --extra isaacsim` into a venv outside this
-repo ([ADR 0021](../decisions/0021-isaac-lab-3-on-windows-without-arena.md)).
+Isaac Lab `release/3.0.0` checkout at commit `44044b0963` (the branch gets automated commits,
+so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv outside this repo ([ADR 0021](../decisions/0021-isaac-lab-3-on-windows-without-arena.md)).
 
 - **The install takes ~10 min and ~17 GB of disk**: 256 packages, download 8 min 17 s, install
   1 min 24 s; `isaacsim 6.2.0.0`, `torch 2.11.0+cu130` (CUDA 13.0). The env measures 16.4 GB and
@@ -106,13 +106,18 @@ repo ([ADR 0021](../decisions/0021-isaac-lab-3-on-windows-without-arena.md)).
 - **`resolve_task_config()` re-parses `sys.argv` with Hydra**: a script with its own argparse
   must strip its arguments (`sys.argv = sys.argv[:1]`) before calling it.
   _(verified 2026-11-01, Isaac Lab 3.0.0)_
-- **LeRobot 0.6.1 runs inside the Isaac Lab env**: `uv pip install "lerobot[pusht]==0.6.1"` run
-  from the Isaac Lab checkout applies its `[tool.uv]` overrides, so numpy (2.5.1), packaging
-  (26.0) and pillow (12.3.0) are not downgraded (a dry run outside those overrides would take
-  numpy to 2.2.6). `uv pip check` then reports LeRobot's caps as broken (`numpy<2.3`,
+- **`uv pip install` applies the `[tool.uv]` overrides of the project in the current
+  directory**: from the Isaac Lab checkout, `uv pip install "lerobot[pusht]==0.6.1"` keeps numpy
+  (2.5.1), packaging (26.0) and pillow (12.3.0); a dry run from this repo's checkout, under this
+  repo's overrides, proposed numpy 2.2.6, packaging 25.0 and pillow 13.0.0. Add packages to the
+  Isaac env only from the Isaac Lab checkout. _(verified 2026-11-01, uv 0.10.8)_
+- **LeRobot 0.6.1 imports and runs a randomly initialised ACT inside the Isaac Lab env**, in the
+  same process as Isaac, installed as above. `uv pip check` then reports LeRobot's caps as broken (`numpy<2.3`,
   `packaging<26`, `datasets`' `fsspec<=2026.2.0`), as it already does for Isaac Sim's own pins.
-  Even so, an ACT policy ran on CUDA in the same process as Isaac, and the simulation output
-  stayed bit-identical to the clean env. Tested in a throwaway copy of the env, then deleted.
+  Even so, `ACTPolicy(cfg).select_action()` ran on CUDA next to Isaac, and the simulation output
+  stayed bit-identical to the clean env. Not tested: loading a checkpoint with its processors
+  (`from_pretrained`), anything that uses `datasets`/`fsspec`, video writing. Tested in a
+  throwaway copy of the env, then deleted.
   _(verified 2026-11-01, LeRobot 0.6.1)_
 
 ## NVIDIA's SO-101 course
