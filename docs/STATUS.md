@@ -13,7 +13,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min); SO-101 scenes pending ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)) |
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
-| Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md) |
+| Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
 | Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
 | README reproducible in 30 min | Not started |
 
@@ -29,6 +29,10 @@ Project Cangrejo, the `piperobot` package).
   ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)).
 - 2026-11-01: SO-101 bring-up runbook for LeRobot 0.6.1
   ([so101-bringup.md](knowledge/so101-bringup.md)); hardware steps unverified.
+- 2026-11-01: `so101` dependency group (LeRobot's `feetech`, `hardware`, `viz`, `training`), no
+  Hub uploads from the real arm, Developer Mode for training, and
+  `piperobot.adapters.manual.evaluate` to turn hand-scored attempts (CSV) into gate results
+  ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)).
 - 2026-11-01: Isaac Lab 3.0 + Isaac Sim 6.2 installed natively on the home PC, without Arena
   (Linux-only). Headless RTX rendering works, Isaac Lab ships an SO-101 task, and same-seed runs
   are bit-identical (random actions, no camera, no policy)
@@ -37,7 +41,8 @@ Project Cangrejo, the `piperobot` package).
 
 ## Next
 
-1. Dispatch `baseline.yml` with 50 episodes to confirm the moved evaluator (ADR 0019).
+1. Andrés turns on Windows Developer Mode on the home PC before the first training run
+   ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)).
 2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
@@ -52,10 +57,6 @@ Project Cangrejo, the `piperobot` package).
 ## Open questions for Andrés
 
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
-- How do the SO-101 hardware deps (LeRobot extras `feetech`, `hardware`, `viz`, `training`) enter
-  `pyproject.toml`: extras or a dependency group (ADR 0019)? Install only after that.
-- Enable Windows Developer Mode on the home PC? `lerobot-train` needs symlinks
-  ([so101-bringup.md](knowledge/so101-bringup.md#11-train-act-locally-on-the-gpu)).
 
 ## Learning
 
