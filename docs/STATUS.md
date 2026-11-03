@@ -9,7 +9,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 | Done-criterion | State |
 | --- | --- |
-| GPU workflow, headless, < 30 min per PR | **Done for PushT**: `gpu-smoke` on the self-hosted RTX runner, ~2–3 min per PR, not a gate ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)); the gate stays on CPU ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)). Isaac's time on it not yet measured |
+| GPU workflow, headless, < 30 min per PR | **Done for PushT**: `gpu-smoke` on the self-hosted RTX runner, ~2–3 min per PR, not a gate ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)); the gate stays on CPU ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)). **SO-101**: `so101-gate` on the same runner, 75 seeds paired against a same-runner baseline, ~26.5 min per run (setup 32 s warm), not a required check ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)) |
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min) ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). **SO-101 on Isaac**: evaluator runs 75 seeds, one process each, ~20 s per seed, repeatable bit for bit; a scripted privileged-state policy on the seeded randomized layout passed its registered go/no-go, 43/50, ~25 s per seed ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md), [ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)) |
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
@@ -23,6 +23,13 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: the SO-101 gate runs on the self-hosted runner (`so101-gate.yml`): evidence from
+  the GPU runner without a write token, paired verdict and sticky comment from a hosted job,
+  fail closed on a missing baseline, platform guard
+  ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)). Three runs as
+  `gh-runner` (two branch heads and the baseline dispatch on main) gave 6/75 with 75/75
+  trajectory fingerprints identical to the interactive acceptance run R1, in ~25 min of
+  evaluation. Baseline `robots/so101/baselines/demo-replay.json` (6/75, seeds 0-74).
 - 2026-11-03: a scripted privileged-state pick-and-place policy (it sees the simulator's object
   poses; not deployable) passed its pre-registered go/no-go on the seeded randomized layout:
   43/50 through the evaluator, after tuning on separate seeds (91/100). It is proposed as the
