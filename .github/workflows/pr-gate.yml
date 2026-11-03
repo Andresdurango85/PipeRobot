@@ -41,7 +41,7 @@ jobs:
       - name: Record the runner's CPU
         # Same seeds give the same episodes only on the same platform (ADR 0016).
         run: |
-          echo "Runner: $(lscpu | sed -n 's/^Model name: *//p'), $(nproc) CPUs" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Runner: $(uv run python -m piperobot.platform_info)" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Cache the prepared policy
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
