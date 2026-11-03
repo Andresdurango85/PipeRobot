@@ -7,7 +7,6 @@ import fnmatch
 import importlib.util
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tomllib
@@ -22,7 +21,6 @@ WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
 HOOK = ROOT / ".github" / "runner" / "job-started.ps1"
 REPOSITORY = "Andresdurango85/PipeRobot"
 REF = f"{REPOSITORY}/.github/workflows/"
-POWERSHELL = shutil.which("pwsh") or shutil.which("powershell")
 
 
 def _load(path: Path) -> dict[str | bool, Any]:
@@ -121,7 +119,6 @@ def test_checkout_does_not_persist_credentials(path: Path) -> None:
                 assert step.get("with", {}).get("persist-credentials") is False
 
 
-@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
 @pytest.mark.parametrize(
     ("event", "workflow_ref", "repository", "expected"),
     [
@@ -140,10 +137,13 @@ def test_checkout_does_not_persist_credentials(path: Path) -> None:
     ],
 )
 def test_runner_hook(
-    event: str | None, workflow_ref: str | None, repository: str | None, expected: int
+    event: str | None,
+    workflow_ref: str | None,
+    repository: str | None,
+    expected: int,
+    powershell: str,
 ) -> None:
     """Refusals leave the Python parent alive and print only the refusal line."""
-    assert POWERSHELL is not None
     env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GITHUB_")}
     for key, value in {
         "GITHUB_EVENT_NAME": event,
@@ -153,7 +153,7 @@ def test_runner_hook(
         if value is not None:
             env[key] = value
     result = subprocess.run(  # noqa: S603 -- resolved PowerShell executable and fixed script, no shell.
-        [POWERSHELL, "-NoProfile", "-NonInteractive", "-File", str(HOOK)],
+        [powershell, "-NoProfile", "-NonInteractive", "-File", str(HOOK)],
         env=env,
         capture_output=True,
         text=True,
@@ -166,9 +166,8 @@ def test_runner_hook(
 
 
 def _run_completed_hook(
-    workspace: Path | None, runner: Path | None
+    workspace: Path | None, runner: Path | None, powershell: str
 ) -> subprocess.CompletedProcess[str]:
-    assert POWERSHELL is not None
     env = {
         key: value
         for key, value in os.environ.items()
@@ -179,7 +178,7 @@ def _run_completed_hook(
             env[key] = str(path)
     return subprocess.run(  # noqa: S603 -- resolved PowerShell and fixed script, no shell.
         [
-            POWERSHELL,
+            powershell,
             "-NoProfile",
             "-NonInteractive",
             "-File",
@@ -193,8 +192,7 @@ def _run_completed_hook(
     )
 
 
-@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
-def test_completed_hook_wipes_workspace(tmp_path: Path) -> None:
+def test_completed_hook_wipes_workspace(tmp_path: Path, powershell: str) -> None:
     runner = tmp_path / "_work" / "PipeRobot"
     workspace = runner / "PipeRobot"
     workspace.mkdir(parents=True)
@@ -216,7 +214,7 @@ def test_completed_hook_wipes_workspace(tmp_path: Path) -> None:
     keep = tmp_path / "_work" / "_tool" / "keep.txt"
     keep.parent.mkdir()
     keep.write_text("keep", encoding="utf-8")
-    result = _run_completed_hook(workspace, runner)
+    result = _run_completed_hook(workspace, runner, powershell)
     assert result.returncode == 0, result.stdout + result.stderr
     assert workspace.is_dir()
     assert list(workspace.iterdir()) == []
@@ -225,8 +223,7 @@ def test_completed_hook_wipes_workspace(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows junctions require Windows")
-@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
-def test_completed_hook_does_not_follow_junctions(tmp_path: Path) -> None:
+def test_completed_hook_does_not_follow_junctions(tmp_path: Path, powershell: str) -> None:
     runner = tmp_path / "_work" / "PipeRobot"
     workspace = runner / "PipeRobot"
     (workspace / "sub").mkdir(parents=True)
@@ -248,7 +245,7 @@ def test_completed_hook_does_not_follow_junctions(tmp_path: Path) -> None:
             check=False,
         )
         assert result.returncode == 0, result.stdout + result.stderr
-    result = _run_completed_hook(workspace, runner)
+    result = _run_completed_hook(workspace, runner, powershell)
     assert result.returncode == 0, result.stdout + result.stderr
     assert workspace.is_dir()
     assert list(workspace.iterdir()) == []
@@ -257,7 +254,6 @@ def test_completed_hook_does_not_follow_junctions(tmp_path: Path) -> None:
     assert result.stdout.strip() == f"Wiped job workspace: {workspace} (3 entries)."
 
 
-@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
 @pytest.mark.parametrize(
     "case",
     [
@@ -272,7 +268,7 @@ def test_completed_hook_does_not_follow_junctions(tmp_path: Path) -> None:
         "nonexistent-runner",
     ],
 )
-def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str) -> None:
+def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str, powershell: str) -> None:
     runner = tmp_path / "_work" / "PipeRobot"
     workspace = runner / "PipeRobot"
     if case == "not-direct-child":
@@ -298,7 +294,7 @@ def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str) -> None:
         workspace_env = sentinel.parent / "absent"
     if case == "nonexistent-runner":
         runner_env = tmp_path / "_work" / "absent"
-    result = _run_completed_hook(workspace_env, runner_env)
+    result = _run_completed_hook(workspace_env, runner_env, powershell)
     assert result.returncode == 1, result.stdout + result.stderr
     assert result.stdout.startswith("Refused workspace wipe:")
     assert len(result.stdout.strip().splitlines()) == 1
@@ -670,12 +666,10 @@ def test_so101_scripted_gate_configuration() -> None:
     )
 
 
-@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
 @pytest.mark.parametrize(
     ("free", "workers"), [(3583, 0), (3584, 1), (7167, 1), (7168, 2), (12000, 2)]
 )
-def test_so101_worker_selection(tmp_path: Path, free: int, workers: int) -> None:
-    assert POWERSHELL is not None
+def test_so101_worker_selection(tmp_path: Path, free: int, workers: int, powershell: str) -> None:
     evaluate = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]["evaluate"]
     script = next(s["run"] for s in evaluate["steps"] if s.get("name") == "GPU preflight")
     script = script[script.index("$workers = 0") :]
@@ -687,7 +681,7 @@ def test_so101_worker_selection(tmp_path: Path, free: int, workers: int) -> None
         GITHUB_STEP_SUMMARY=str(tmp_path / "summary"),
     )
     result = subprocess.run(  # noqa: S603 - repository script and fixed test inputs
-        [POWERSHELL, "-NoProfile", "-NonInteractive", "-Command", f"$free = {free}\n{script}"],
+        [powershell, "-NoProfile", "-NonInteractive", "-Command", f"$free = {free}\n{script}"],
         env=environment,
         capture_output=True,
         text=True,

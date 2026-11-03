@@ -153,7 +153,9 @@
   run 41597215145)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
-  with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
+  with PowerShell (`pwsh` is preinstalled on `ubuntu-24.04` and `ubuntu-26.04`). A missing
+  `pwsh`/`powershell` or `git` skips those tests locally but fails them when `CI=true`
+  (`tests/binaries.py`), so a runner image change cannot drop them silently.
 - **`nightly.yml`** ([ADR 0032](../decisions/0032-nightly-paired-run-on-rotating-seeds.md)):
   daily at 03:17 UTC and by hand, on `ubuntu-24.04`. One job evaluates the reference
   (`vqbet.json`'s `commit`, its own lock) and then `main` on the same 500 fresh seeds
@@ -374,6 +376,27 @@
   new image and compare it episode by episode with `robots/pusht/baselines/vqbet-episodes.json`
   (`python -m piperobot.stats.paired`). Identical: switch every pinned label in one PR. Not
   identical: refresh the baseline in the same PR as the switch. _(2026-11-03)_
+- **Ubuntu 26.04 probe, before the flip** (2026-11-03). Probes ran on branches only and were
+  then closed: draft PR #64 and a push-triggered copy of `baseline.yml`, run 41726981138.
+  Images: 24.04.5 `20261026.354.1` and 26.04.1 `20261026.180.1`, both on kernel
+  `7.0.0-1017-azure`.
+  - **Unpinned jobs are ready**. `ci` was green on both images, and `lint-and-test` gave
+    1073 passed and 2 skipped on each, the same two skips (no `lerobot`, Windows junctions).
+    `pwsh` 7.6.9 is on both. `mutation` on 26.04 left the same survivors as 24.04 (run
+    41721070938).
+  - **The images differ**. glibc is 2.39 on 24.04 and 2.43 on 26.04. The system `python3` is
+    3.12.3 on 24.04, which uv uses, and 3.14.4 on 26.04, so there uv downloads a managed
+    3.12.16. "uv pins Python" means the minor version only.
+  - **PushT 500 episodes (seeds 1000-1499), for information only**. 24.04 on an AMD EPYC 9V74
+    gave 267/500. That is exactly the known 9V74 result
+    ([lerobot.md](lerobot.md)): the same 10 seeds differ from the committed baseline.
+  - 26.04 drew an Intel Xeon Platinum 8370C and gave 263/500. Against the committed baseline
+    it lost 1013, 1044, 1122, 1250 and 1338 and gained 1366, 1380 and 1455. Against the 24.04
+    run, 4 episodes differ.
+  - The OS change and the CPU change come together here, so the 26.04 effect cannot be
+    isolated. It is within the 6-10 near-miss episodes that any two platforms differ by. The
+    pinned jobs stay on `ubuntu-24.04`; moving them is a separate decision (procedure above).
+    _(verified 2026-11-03)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`
   ([ADR 0007](../decisions/0007-lf-line-endings.md)). _(verified 2026-10-26)_
 - **Editing the sticky PR comment needs `pull-requests: write`** in the workflow permissions
