@@ -43,6 +43,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0033](0033-so101-isaac-evaluator-one-process-per-seed.md) | SO-101 Isaac evaluator: one fresh Isaac process per seed; infrastructure errors retried once, never counted as trials | Accepted |
 | [0034](0034-so101-scripted-privileged-state-policy.md) | SO-101 scripted privileged-state pick-and-place: registered GO (43/50), proposed as the gate's policy | Accepted |
 | [0035](0035-so101-gate-on-the-self-hosted-runner.md) | The SO-101 gate on the self-hosted runner: paired on a same-runner baseline, reported by a hosted job | Accepted |
+| [0036](0036-so101-gate-scripted-policy-on-100-fixed-seeds.md) | The SO-101 gate evaluates the scripted policy on 100 fixed seeds | Accepted |
 
 ## Template
 

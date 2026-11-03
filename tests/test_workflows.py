@@ -522,7 +522,7 @@ def test_so101_missing_baseline_fails_closed_once_main_has_one() -> None:
     script = next(
         step["run"] for step in report["steps"] if step.get("name") == "Verdict and PR comments"
     )
-    lookup = script.index("contents/robots/so101/baselines/$file?ref=main")
+    lookup = script.index("contents/$file?ref=main")
     green = script.index("no baseline committed yet")
     assert lookup < green
     missing_here = script.index("exists on main but is missing here; restore it")
@@ -612,6 +612,12 @@ def test_so101_push_paths_cover_dependencies() -> None:
     )
     env = data["jobs"]["evaluate"]["env"]
     dependencies.update(ROOT / env[key] for key in ("TASK", "POLICY"))
+    import json
+
+    for key in ("TASK", "POLICY"):
+        manifest = ROOT / env[key]
+        module = json.loads(manifest.read_text(encoding="utf-8"))["module"]
+        dependencies.add(manifest.parent / module)
     dependencies.update(ROOT / name for name in ("pyproject.toml", "uv.lock"))
     for path in dependencies:
         name = path.relative_to(ROOT).as_posix()
@@ -624,5 +630,73 @@ def test_so101_concurrency_and_shared_seeds() -> None:
     data = _load(path)
     assert "inputs.mode" in data["concurrency"]["group"]
     assert data["concurrency"]["cancel-in-progress"] is not True
-    assert data["env"]["SEEDS"] == "0-74"
-    assert path.read_text(encoding="utf-8").count("0-74") == 1
+    assert data["env"]["SEEDS"] == "100000-100099"
+    assert path.read_text(encoding="utf-8").count("100000-100099") == 1
+
+
+def test_so101_scripted_gate_configuration() -> None:
+    path = ROOT / ".github/workflows/so101-gate.yml"
+    assert "demo-replay" not in path.read_text(encoding="utf-8")
+    data = _load(path)
+    assert data["env"]["BASELINE"] == "robots/so101/baselines/scripted-pick-place"
+    evaluate = data["jobs"]["evaluate"]
+    env = evaluate["env"]
+    assert env["TASK"] == "robots/so101/envs/vials_to_rack_task_randomized.json"
+    assert env["POLICY"] == "robots/so101/policies/scripted_pick_place.json"
+    assert env["MAX_WORKERS"] == "2"
+    assert env["VRAM_PER_WORKER_MB"] == "3584"
+    assert "MIN_FREE_VRAM_MB" not in env
+    assert evaluate["timeout-minutes"] == 70
+    step = next(s for s in evaluate["steps"] if s.get("name", "").startswith("Evaluate ("))
+    assert step["timeout-minutes"] == 60
+    assert "--workers $env:WORKERS" in step["run"]
+    preflight = next(s["run"] for s in evaluate["steps"] if s.get("name") == "GPU preflight")
+    assert '"WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV' in preflight
+    report = next(
+        s for s in data["jobs"]["report"]["steps"] if s.get("name") == "Verdict and PR comments"
+    )
+    script = report["run"]
+    assert '--baseline "$BASELINE.json"' in script
+    assert '--reference "$BASELINE-episodes.json"' in script
+    assert 'for file in "$BASELINE.json" "$BASELINE-episodes.json";' in script
+    assert "contents/$file?ref=main" in script
+    assert '--note "$NOTE"' in script
+    assert report["env"]["NOTE"] == (
+        "Privileged-state scripted policy: measures the simulated pipeline and regressions, "
+        "not a deployable policy (ADR 0034)."
+    )
+
+
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+@pytest.mark.parametrize(
+    ("free", "workers"), [(3583, 0), (3584, 1), (7167, 1), (7168, 2), (12000, 2)]
+)
+def test_so101_worker_selection(tmp_path: Path, free: int, workers: int) -> None:
+    assert POWERSHELL is not None
+    evaluate = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]["evaluate"]
+    script = next(s["run"] for s in evaluate["steps"] if s.get("name") == "GPU preflight")
+    script = script[script.index("$workers = 0") :]
+    environment = os.environ.copy()
+    environment.update(
+        MAX_WORKERS="2",
+        VRAM_PER_WORKER_MB="3584",
+        GITHUB_ENV=str(tmp_path / "env"),
+        GITHUB_STEP_SUMMARY=str(tmp_path / "summary"),
+    )
+    result = subprocess.run(  # noqa: S603 - repository script and fixed test inputs
+        [POWERSHELL, "-NoProfile", "-NonInteractive", "-Command", f"$free = {free}\n{script}"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == (0 if workers else 1), result.stdout + result.stderr
+    if workers:
+        assert (tmp_path / "env").read_text(encoding="utf-8-sig").strip() == f"WORKERS={workers}"
+        assert (tmp_path / "summary").read_text(
+            encoding="utf-8-sig"
+        ).strip() == f"Workers: {workers}"
+        assert ("::warning::" in result.stdout) == (workers == 1)
+    else:
+        assert "::error::" in result.stdout
+        assert not (tmp_path / "env").exists()
