@@ -310,7 +310,6 @@ def test_worker(
     torch = ModuleType("torch")
     torch.cuda = SimpleNamespace(is_available=lambda: False)
     torch.version = SimpleNamespace(cuda=None)
-    torch._C = SimpleNamespace()
     for name, module in {
         "isaaclab": ModuleType("isaaclab"),
         "isaaclab.app": app,

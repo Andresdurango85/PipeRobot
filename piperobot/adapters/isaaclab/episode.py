@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import shutil
+import subprocess
 import sys
 import time
 import traceback
@@ -22,6 +24,25 @@ def version(distribution: str) -> str | None:
         return importlib.metadata.version(distribution)
     except importlib.metadata.PackageNotFoundError:
         return None
+
+
+def gpu_driver_version() -> str | None:
+    """The NVIDIA driver version from nvidia-smi; None when it is unavailable."""
+    smi = shutil.which("nvidia-smi")
+    if smi is None:
+        return None
+    try:
+        result = subprocess.run(  # noqa: S603 - resolved nvidia-smi and fixed arguments
+            [smi, "--query-gpu=driver_version", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    lines = result.stdout.strip().splitlines()
+    return lines[0].strip() if result.returncode == 0 and lines else None
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -78,7 +99,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                     sim_cfg=sim_cfg,
                 )
                 cuda = torch.cuda.is_available() and str(sim_cfg.device).startswith("cuda")
-                driver = getattr(torch._C, "_cuda_getDriverVersion", None)
                 result.update(
                     seed=args.seed,
                     wall_seconds=time.perf_counter() - started,
@@ -86,7 +106,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "cpu": describe_platform(),
                         "gpu": torch.cuda.get_device_name(sim_cfg.device) if cuda else None,
                         "cuda_version": torch.version.cuda,
-                        "driver_version": driver() if cuda and driver is not None else None,
+                        "driver_version": gpu_driver_version() if cuda else None,
                         "torch_version": version("torch"),
                         "isaac_lab_version": version("isaaclab"),
                         "device": str(sim_cfg.device),
