@@ -12,7 +12,7 @@ first run: where the asset mounts, which actuator gains the scene runs, and whet
 success term judges placements the way our gate should. Facts and numbers:
 [isaac.md](../knowledge/isaac.md).
 
-### Pre-registered: mount-height comparison (committed in `bba8e4b` before running)
+### Pre-registered: mount-height comparison (committed in `4e1d0a4` before running)
 
 Setup: the course robot USD (`SO-ARM101-USD.usd`, sha256 `11f5f0bb…991006`, fetched to the cache
 outside the repo) at the course's pose (-0.05, 0, 0), yaw 90°, with the course's joint names; the
@@ -68,7 +68,7 @@ Rules:
 
 ### Registered sensing checks (`robots/so101/tools/isaac_success_check.py`)
 
-Expectations S0–S6 were committed in `d1c53ea`, S7 and S7b with the slot-depth rule in `bb3f0dd`,
+Expectations S0–S6 were committed in `dca2b20`, S7 and S7b with the slot-depth rule in `bb3f0dd`,
 all before their first run. With the course's gains and with the asset's: S0 objects settle, S1
 the lying tube's axis is +x (the WXYZ→XYZW trap), S2/S3 a tube dropped over a slot enters it at
 rack yaw 0 and 0.5 rad (bottom at rack-local z -0.001) and counts as in the box but not placed
