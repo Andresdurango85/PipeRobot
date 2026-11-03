@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
@@ -165,14 +165,24 @@ class ReconstructedEpisodes:
             )
         return (*events, *points)
 
-    def run_reconstructed_episode(self, episode: dict, record_steps: bool) -> dict:
+    def run_reconstructed_episode(
+        self,
+        episode: dict,
+        record_steps: bool,
+        action_source: Callable[[int, Mapping[str, object]], Sequence[float]] | None = None,
+        layout_source: Callable[[], None] | None = None,
+    ) -> dict:
         started = time.perf_counter()
         self.dump_steps = []
         with torch.inference_mode():
             if self.full_reset:
                 # Before the TCP probe too, so nothing from the previous episode reaches it.
                 self._full_reset()
-            events = self.grasp_release_tcps(episode)
+            events = (
+                self.grasp_release_tcps(episode)
+                if layout_source is None
+                else (0, 0, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+            )
             result_dict = {
                 "index": episode["index"],
                 "success": False,
@@ -184,18 +194,26 @@ class ReconstructedEpisodes:
             }
             if events is not None:
                 grasp, release, grasp_tcp, release_tcp = events
-                placement = LAYOUT.rack_pose_for_release(release_tcp[:2], self.data)
-                self.reset_layout()
-                self.teleport(
-                    self.rack,
-                    (*placement.origin_xyz, *CORE.yaw_to_quat_xyzw(math.degrees(placement.yaw))),
-                )
-                poses = [
-                    LAYOUT.tube_pose_for_grasp(grasp_tcp, self.data),
-                    *LAYOUT.park_poses(self.data),
-                ]
-                for tube, pose in zip(self.tubes, poses, strict=True):
-                    self.teleport(tube, pose)
+                placement = None
+                if layout_source is None:
+                    placement = LAYOUT.rack_pose_for_release(release_tcp[:2], self.data)
+                    self.reset_layout()
+                    self.teleport(
+                        self.rack,
+                        (
+                            *placement.origin_xyz,
+                            *CORE.yaw_to_quat_xyzw(math.degrees(placement.yaw)),
+                        ),
+                    )
+                    poses = [
+                        LAYOUT.tube_pose_for_grasp(grasp_tcp, self.data),
+                        *LAYOUT.park_poses(self.data),
+                    ]
+                    for tube, pose in zip(self.tubes, poses, strict=True):
+                        self.teleport(tube, pose)
+                else:
+                    self.reset_layout(nominal=True)
+                    layout_source()
                 self.set_joints(self.converted(episode["state"][0]))
                 self.tracker.reset()
                 self.sensor.reset()
@@ -205,6 +223,20 @@ class ReconstructedEpisodes:
                 holds = CORE.find_holds(state_g, action_g)
                 peak_force = 0.0
                 for index, action in enumerate(episode["action"]):
+                    if action_source is not None:
+                        radians = {
+                            name: float(
+                                self.robot.data.joint_pos.torch[
+                                    0, self.robot.joint_names.index(name)
+                                ].item()
+                            )
+                            for name in self.names
+                        }
+                        observation = {
+                            "step": index,
+                            "joint_pos": UNITS.to_lerobot(radians, self.table),
+                        }
+                        action = action_source(index, observation)
                     values = self.converted(action)
                     ids = [self.robot.joint_names.index(name) for name in self.names]
                     self.robot.set_joint_position_target_index(
@@ -224,7 +256,7 @@ class ReconstructedEpisodes:
                     success_step=result.success_step,
                     failure_reason=self.tracker.failure_reason(),
                     release_frame=release,
-                    rack_pose=asdict(placement),
+                    rack_pose=asdict(placement) if placement is not None else None,
                     forces={key: distribution(values) for key, values in windows.items()},
                 )
         canonical = json.dumps(

@@ -1,0 +1,10 @@
+{
+  "name": "so101-vials-to-rack",
+  "module": "vials_to_rack_task.py",
+  "layout": "reconstructed_demo",
+  "options": {
+    "actuators": "course",
+    "assets_dir": null
+  },
+  "timeout_s": 300
+}

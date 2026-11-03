@@ -31,3 +31,9 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `../tools/isaac_repeatability.py`: one-process Isaac study.
 - `../tools/repeatability_driver.py`: isolated episode subprocess driver.
 - `../tools/repeatability_report.py`: portable JSON and Markdown study report.
+
+- `vials_to_rack_task.py`: policy-driven task using the registered episode runtime.
+- `vials_to_rack_task.json`: default task spec with course actuators.
+- `vials_to_rack_randomization.py`: pure seeded tube/rack poses in meters and radians.
+- `../policies/demo_replay.py`: replay policy; six actions in dataset joint order.
+- `../policies/demo_replay.json`: pinned input hash and offline preparation instructions.

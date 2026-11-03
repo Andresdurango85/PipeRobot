@@ -56,3 +56,9 @@ unit mapping and fixed analysis rules live in `so101/envs/`.
 - `so101/tools/isaac_repeatability.py`: one-process Isaac study.
 - `so101/tools/repeatability_driver.py`: isolated episode subprocess driver.
 - `so101/tools/repeatability_report.py`: portable JSON and Markdown study report.
+
+- `so101/envs/vials_to_rack_task.py`: policy-driven episode task and observation/action contract.
+- `so101/envs/vials_to_rack_task.json`: reconstructed-demo evaluation spec.
+- `so101/envs/vials_to_rack_randomization.py`: independent seeded scene layouts.
+- `so101/policies/demo_replay.py`: open-loop replay policy indexed by demo seed.
+- `so101/policies/demo_replay.json`: pinned offline policy inputs and preparation command.
