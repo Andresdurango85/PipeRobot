@@ -87,6 +87,13 @@
   reference shows no pip/uv range example. Dependabot runs only on the default branch and has no
   API to start a run; a change to `dependabot.yml` on `main` starts one right away (the UI's
   "Check for updates" is the fallback). _(verified 2026-11-03)_
+- **Fixed**: the first `uv` run after the rule merged (#43) succeeded with no resolver errors,
+  logging "All updates for torch were ignored" and the same for torchvision (run 41584487086).
+  The rule does **not** hold back security updates: GitHub's docs say `update-types` "only
+  affects version updates, not security updates" (an `ignore` by name or `versions` would). A
+  torch security fix outside 2.11.x would still be unresolvable against LeRobot's cap, so its
+  alert needs manual triage ([ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)).
+  _(verified 2026-11-03, GitHub docs "Controlling which dependencies are updated")_
 - **The 7-day cooldown works**: the log shows "Filtered out N versions due to cooldown", and the
   first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
   _(verified 2026-11-03)_
