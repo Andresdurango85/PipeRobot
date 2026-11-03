@@ -222,3 +222,15 @@ testing of `piperobot/stats`.
   `tests/test_so101_isaac_evaluator.py`), and set `GIT_CEILING_DIRECTORIES` to the temp dir's
   parent so a `--basetemp` inside a checkout does not resolve to it. Code that locates a repo with
   git (the Isaac evaluator) drops the same variables. _(verified 2026-11-03, git 2.x on Windows)_
+
+## Long GPU runs launched by an agent session
+
+- **Stopping a background Git Bash task does not stop its descendants on Windows.** Claude Code's
+  `TaskStop` on a background `bash script.sh` ended the top shell, but the script's loops and the
+  child scripts they had started kept running. On 2026-11-03 a "stopped" launcher passed its own
+  free-VRAM check and started a second `--workers 2` evaluation next to its replacement: up to
+  4 Isaac processes at once, 3 infrastructure retries from host-memory failures, and a registered
+  test arm that did not run as registered. Kill the whole tree (`taskkill /T /F /PID <root>`),
+  then list survivors by command line (`Get-CimInstance Win32_Process`). Launch scripts refuse to
+  start when an evaluator driver is already alive or the output folder exists.
+  _(verified 2026-11-03, Claude Code on Windows 11, Git Bash)_
