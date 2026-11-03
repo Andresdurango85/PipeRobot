@@ -314,6 +314,16 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   first pin (`ae786b9c…`) was a Windows CRLF file extracted before `control_hz` was recorded,
   with episodes identical to today's (`273e1823…`). A replay seed through the new root matches
   the acceptance run's fingerprint. _(verified 2026-11-03)_
+- **SO-101 kinematics for scripted control**: shoulder_lift, elbow_flex and wrist_flex have
+  parallel axes, so the gripper's pitch is their sum; the course demos hold it steady (1.025 rad
+  at grasp, -0.172 at release). The open jaws are not centred on the course's TCP (gripper body
+  + `tcp.offset_m`): a grasp aimed at the tube's axis lands the fixed jaw on the tube, 2 cm across
+  and 8 mm below works. Position IK on the course's low gains must integrate on the previous
+  joint target (gravity holds the measured joints short) with a gain and a lead limit (0.2,
+  0.25 rad), or it stalls or winds up. Isaac Lab 3.0: `robot.data.body_link_jacobian_w` (fixed
+  base: Jacobian index = body index - 1), `DifferentialIKController(command_type="position",
+  ik_method="dls")`, `data.joint_pos_target` (deprecated, works).
+  _(verified 2026-11-03, [ADR 0034](../decisions/0034-so101-scripted-privileged-state-policy.md))_
 - **Teleporting an object relative to another one must use the other one's settled pose**, not
   its configured initial pose: the rack drops 1.9 cm from its spawn height, which made check S7b
   hold a tube 1.9 cm too high on its first run. _(verified 2026-11-02)_
