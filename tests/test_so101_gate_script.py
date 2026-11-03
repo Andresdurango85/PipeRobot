@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 from pathlib import Path
 
@@ -128,19 +129,47 @@ def test_verdict(
     assert phrase in message
 
 
+def _isolated_git_env(tmp_path: Path) -> dict[str, str]:
+    """Inside a git hook (prek's pre-push runs pytest) git exports GIT_DIR for this checkout;
+    without dropping it, the temp repo's commands would rewrite the real repository."""
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update(
+        GIT_CEILING_DIRECTORIES=str(tmp_path.parent),
+        GIT_CONFIG_GLOBAL=os.devnull,
+        GIT_CONFIG_NOSYSTEM="1",
+        GIT_AUTHOR_NAME="Gate test",
+        GIT_AUTHOR_EMAIL="gate@example.org",
+        GIT_COMMITTER_NAME="Gate test",
+        GIT_COMMITTER_EMAIL="gate@example.org",
+    )
+    return env
+
+
+def test_isolated_git_env_drops_hook_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GIT_DIR", "/real/.git")
+    monkeypatch.setenv("GIT_INDEX_FILE", "/real/.git/index")
+    env = _isolated_git_env(tmp_path)
+    assert "GIT_DIR" not in env
+    assert "GIT_INDEX_FILE" not in env
+    assert env["GIT_CONFIG_GLOBAL"] == os.devnull
+
+
 def test_changed_files(tmp_path: Path, git_binary: str) -> None:
+    env = _isolated_git_env(tmp_path)
+
     def git(arguments: list[str]) -> str:
         return subprocess.run(  # noqa: S603 -- fixture git, local temporary repository.
-            [git_binary, *arguments], cwd=tmp_path, check=True, capture_output=True, text=True
+            [git_binary, *arguments],
+            cwd=tmp_path,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
 
     git(["init", "-b", "main"])
-    for key, value in (
-        ("user.name", "Test"),
-        ("user.email", "test@example.com"),
-        ("commit.gpgsign", "false"),
-    ):
-        git(["config", key, value])
 
     def commit(path: str) -> str:
         target = tmp_path / path
