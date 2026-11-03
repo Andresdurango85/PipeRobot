@@ -47,8 +47,11 @@ This supersedes 0035's "Not a required check" bullet. The rest of 0035 and 0036 
   checks, with Andrés's OK of 2026-11-03, after two checks: this PR's own run is green and
   mirrors `report`'s PASS, and a docs-only PR after the merge passes in seconds without the
   runner.
-- **Concurrency is unchanged**: a newer push cancels the older run of the same branch; its
-  verdict fails, but it belongs to an older SHA that no PR head points to.
+- **Concurrency: branches cancel, main queues.** On a branch, a newer push cancels the older
+  run; its verdict fails, but it belongs to an older SHA that no PR head points to. On `main`,
+  runs queue instead (`cancel-in-progress` is false there): every push now runs the workflow, so
+  a docs-only merge would otherwise cancel the in-progress run of an earlier gate-relevant merge,
+  and its own `before..sha` diff would pass without that merge ever being evaluated on `main`.
 
 ## Alternatives considered
 
@@ -73,3 +76,8 @@ This supersedes 0035's "Not a required check" bullet. The rest of 0035 and 0036 
 - Fork PRs never get the check, because the workflow is push-only (0035). A collaborator's
   commits are pushed to a branch here, as before.
 - Renaming `so101-gate-verdict` means updating the ruleset in the same change.
+- The check is self-attested: the verdict comes from the branch's own `so101-gate.yml` and
+  `so101_gate.py`, so a PR that edits either (for example, dropping a path from `PATHS`) can
+  change what the check means. Such a PR needs Andrés's explicit review of that diff.
+- The sticky comment reflects the last gate-relevant run: if a later head stops being relevant
+  (say, the policy change is reverted), the verdict passes while an old ❌ comment stays on the PR.

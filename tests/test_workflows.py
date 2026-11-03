@@ -620,7 +620,9 @@ def test_so101_concurrency_and_shared_seeds() -> None:
     path = ROOT / ".github/workflows/so101-gate.yml"
     data = _load(path)
     assert "inputs.mode" in data["concurrency"]["group"]
-    assert data["concurrency"]["cancel-in-progress"] is not True
+    assert data["concurrency"]["cancel-in-progress"] == (
+        "${{ inputs.mode != 'baseline' && github.ref != 'refs/heads/main' }}"
+    )
     assert data["env"]["SEEDS"] == "100000-100099"
     assert path.read_text(encoding="utf-8").count("100000-100099") == 1
 

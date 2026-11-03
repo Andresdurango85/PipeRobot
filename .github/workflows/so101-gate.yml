@@ -19,7 +19,9 @@ env:
   BASELINE: robots/so101/baselines/scripted-pick-place
 concurrency:
   group: so101-gate-${{ github.ref }}-${{ inputs.mode || 'gate' }}
-  cancel-in-progress: ${{ inputs.mode != 'baseline' }}
+  # Branches cancel superseded runs; main queues them, so a later docs-only merge never cancels
+  # the post-merge evaluation of a gate-relevant one (ADR 0037).
+  cancel-in-progress: ${{ inputs.mode != 'baseline' && github.ref != 'refs/heads/main' }}
 
 jobs:
   changes:

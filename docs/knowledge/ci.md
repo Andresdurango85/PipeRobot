@@ -102,7 +102,8 @@
   _(verified 2026-11-03)_
 - **`so101-gate.yml`** ([ADR 0035](../decisions/0035-so101-gate-on-the-self-hosted-runner.md)):
   the SO-101 gate. Runs on every branch push (and by hand, with `mode: gate | baseline`; a
-  baseline run is never cancelled). Job `changes` (hosted, ~10 s) decides whether the push is
+  baseline run is never cancelled; on a branch a newer push cancels the older run, on `main`
+  runs queue). Job `changes` (hosted, ~10 s) decides whether the push is
   gate-relevant: the whole branch against its merge-base with `main` (`before..sha` on `main`),
   matched against `PATHS` in `.github/scripts/so101_gate.py` (the SO-101 policy, scene,
   baselines and cache script, `piperobot/`, `pyproject.toml`, `uv.lock`, the workflow and that
