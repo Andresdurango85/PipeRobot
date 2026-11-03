@@ -104,6 +104,21 @@ def test_explanation_uses_configured_tolerance() -> None:
     assert "dropped more than 15 pp" in render_comment(result)
 
 
+def test_explanation_preserves_fractional_tolerance() -> None:
+    result = decide(SuccessCount(45, 50), SuccessCount(45, 50), tolerance=0.125)
+
+    assert "dropped more than 12.5 pp" in render_comment(result)
+
+
+def test_comment_preserves_fractional_confidence() -> None:
+    result = decide(SuccessCount(45, 50), SuccessCount(45, 50), confidence=0.975)
+
+    comment = render_comment(result)
+
+    assert "| 97.5% CI |" in comment
+    assert "The 97.5% interval" in comment
+
+
 def test_full_block_comment_matches_golden_file() -> None:
     # Review the golden file like a snapshot. Regenerate with: UPDATE_GOLDEN=1 uv run pytest
     result = decide(SuccessCount(25, 50), SuccessCount(45, 50))

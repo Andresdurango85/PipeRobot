@@ -23,6 +23,9 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
+  `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
+  ([testing.md](knowledge/testing.md)).
 - 2026-11-02: Hypothesis property tests and weekly mutation testing (`mutation.yml`, Linux) for
   `piperobot/stats`. **Gate verdicts change**: a drop of exactly the tolerance (e.g. 35/50 vs
   40/50) could WARN through float rounding; it now PASSes, as ADR 0004 says (only WARN → PASS
@@ -71,6 +74,9 @@ Project Cangrejo, the `piperobot` package).
 5. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
 6. Add `persist-credentials: false` to the checkout steps of the self-hosted workflows
    (`gpu-smoke`, `isaac-render`) ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)).
+7. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
+   after a few weekly `mutation.yml` runs, decide a mutation-score threshold
+   ([testing.md](knowledge/testing.md)).
 
 ## Open questions for Andrés
 
