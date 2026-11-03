@@ -30,7 +30,10 @@ dev = [
     "mypy>=2.4.1",
     "prek>=0.5",
     "pytest>=8.4",
+    "pyyaml>=6.0",
     "ruff>=0.14",
+    "types-pyyaml>=6.0",
+    "zizmor>=1.32",
 ]
 # Mutation testing of piperobot/stats. mutmut 3 needs fork(): Linux only, run by mutation.yml.
 mutation = ["mutmut>=3.8.1"]

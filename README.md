@@ -1,5 +1,7 @@
 # PipeRobot
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Andresdurango85/PipeRobot/badge)](https://scorecard.dev/viewer/?uri=github.com/Andresdurango85/PipeRobot)
+
 A CI quality gate for robot policies. On every pull request that changes a policy's code or
 weights, CI runs the policy in simulation many times, compares its success rate against a stored
 baseline using a confidence interval, and blocks the PR if it regressed.
