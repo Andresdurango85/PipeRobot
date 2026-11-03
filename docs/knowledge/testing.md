@@ -86,10 +86,12 @@ testing of `piperobot/stats`.
   (`tests/test_mutation_config.py`), and the summary step fails on any "no tests" mutant.
   _(verified 2026-11-03, PR #47, mutmut 3.8.1)_
 - **Score with `paired.py`: 683 / 695 killed (98.3%)**, 0 "no tests" (run 41590237621). Of
-  `paired.py`'s 334 mutants, the first real run left 84 alive; tests now kill all but 5
-  accepted ones: `range(b, n + 2)` in `exact_mcnemar_p` (`math.comb(n, n + 1) == 0`), the
-  `max(-2.0, …)` / `min(2.0, …)` clamps (the bounds never leave [-1, 1] by more than float
-  noise), and two `--help` description mutants. The key test is a property: positive
+  `paired.py`'s 334 mutants, the first real run left 84 alive; tests now kill all but 3
+  equivalent ones: `range(b, n + 2)` in `exact_mcnemar_p` (`math.comb(n, n + 1) == 0`) and the
+  `max(-2.0, …)` / `min(2.0, …)` clamps, which never act: with |phi| <= 1 the root is at most
+  the sum of the two margins, so lower >= l2 - u1 >= -1 and upper <= u2 - l1 <= 1 (an
+  exhaustive check of all N = 40 tables at five confidences found no excursion). A `--help`
+  test kills the two description mutants. The key test is a property: positive
   correlation between the arms (phi > 0) must make the paired interval narrower than the
   unpaired one with the same margins, and phi < 0 wider. 7 survivors in `gate.py` and
   `baseline.py` were already on `main` before #47. _(verified 2026-11-03, mutmut 3.8.1)_
