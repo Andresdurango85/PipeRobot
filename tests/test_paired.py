@@ -85,15 +85,15 @@ def test_invalid_counts(field: str, value: object) -> None:
 
 
 def test_empty_counts() -> None:
-    with pytest.raises(ValueError, match="trials must be positive"):
+    with pytest.raises(ValueError, match=r"^trials must be positive$"):
         PairedCounts(0, 0, 0, 0)
 
 
 @pytest.mark.parametrize("value", [-1, True, 1.0])
 def test_invalid_mcnemar_counts(value: int) -> None:
-    with pytest.raises((TypeError, ValueError), match="reference_only"):
+    with pytest.raises((TypeError, ValueError), match=r"^reference_only must be"):
         exact_mcnemar_p(value, 0)
-    with pytest.raises((TypeError, ValueError), match="candidate_only"):
+    with pytest.raises((TypeError, ValueError), match=r"^candidate_only must be"):
         exact_mcnemar_p(0, value)
 
 
@@ -304,6 +304,14 @@ def test_result_fields_and_alpha_interval() -> None:
 )
 def test_exact_reasons(counts: PairedCounts, reason: str) -> None:
     assert decide_paired(counts).reason == reason
+
+
+def test_reasons_scale_large_drops_to_pp() -> None:
+    # Large differences, so a wrong pp factor (e.g. x101) changes the printed digits.
+    blocked = decide_paired(PairedCounts(0, 50, 0, 50))
+    assert blocked.reason.startswith("Regression: success rate dropped 50.0 pp (50 episodes lost")
+    passed = decide_paired(PairedCounts(0, 0, 50, 50))
+    assert passed.reason.startswith("No regression detected: difference +50.0 pp (0 episodes lost")
 
 
 def test_seed_mismatch_truncates_sorted_lists() -> None:
