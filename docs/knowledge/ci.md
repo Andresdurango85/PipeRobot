@@ -16,9 +16,12 @@
   token); the report is still in the job summary.
 - **`baseline.yml`**: manual (`workflow_dispatch`) run of N episodes on the same runner type, to
   measure a baseline where the gate runs; its counts are committed to `robots/<robot>/baselines/` by PR.
-- **`gpu-smoke.yml`**: on every same-repo PR (and by hand), on the self-hosted GPU runner:
-  `nvidia-smi`, torch sees CUDA, 50 PushT episodes on CUDA, count and time in the job summary.
-  Not required and not a gate ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)).
+- **`gpu-smoke.yml`**: on pushes to this repo's branches that touch `piperobot/`,
+  `robots/pusht/`, `pyproject.toml`, `uv.lock` or the workflow (not `dependabot/**`), and by hand,
+  on the self-hosted GPU runner: `nvidia-smi`, torch sees CUDA, 50 PushT episodes on CUDA, count
+  and time in the job summary. Not required and not a gate
+  ([ADR 0020](../decisions/0020-self-hosted-gpu-runner.md)); never on pull requests since
+  2026-11-02 ([ADR 0025](../decisions/0025-self-hosted-runner-push-only-and-pinned-actions.md)).
   First run 3 min 3 s (CUDA torch downloaded), warm re-run 2 min 5 s: install 16 s, evaluation
   83 s. _(verified 2026-11-01, run 41345428882, attempts 1 and 2)_
 - **`isaac-render.yml`**: on push to `ci/isaac-render` or by hand (never on pull requests), on
@@ -26,6 +29,23 @@
   then runs `robots/so101/tools/isaac_render_check.py` as an empty stage and as one RTX camera
   frame, cold and warm, with VRAM samples and Kit's GPU log lines in the artifact
   ([isaac.md](isaac.md)). _(added 2026-11-01, run 41369455668)_
+- **`zizmor.yml`**: zizmor (GitHub Actions security linter, from `uv.lock`) on every PR and push
+  to `main`, with `GH_TOKEN` so its online audits run (known-vulnerable actions, impostor
+  commits); findings show as annotations and fail the job. Not a required check until added to
+  the ruleset. zizmor 1.32's default policy already demands SHA pins for every action, so there
+  is no `zizmor.yml` config file. Starting point on `main` before ADR 0025: 20 `unpinned-uses`,
+  7 `artipacked` (checkout without `persist-credentials: false`), 2 `dependabot-cooldown`; all
+  fixed, none ignored. _(verified 2026-11-02, zizmor 1.32.0 offline)_
+- **`scorecard.yml`**: OpenSSF Scorecard weekly (Monday) and on push to `main`; SARIF to code
+  scanning, results published for the README badge. Publishing imposes rules on the workflow: no
+  top-level `env`/`defaults`, no workflow-level writes, `id-token: write` only on the Scorecard
+  job, an Ubuntu hosted runner, and only checkout, upload-artifact, codeql upload-sarif,
+  scorecard-action and harden-runner as steps. Only `push` and `schedule` are supported triggers;
+  `workflow_dispatch` and `pull_request` are experimental. Not a gate.
+  _(verified 2026-11-02, scorecard-action v2.5.0 README)_
+- `tests/test_workflows.py` checks the workflow invariants of ADR 0025 (self-hosted triggers,
+  `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
+  with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
 - `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
 
 ## Local hooks
@@ -35,6 +55,9 @@
   `pytest` under `uv run --isolated --locked` (fresh env without the `lerobot` extra, like CI),
   ~5 s. Install once per clone with `uv run prek install`.
   _(verified 2026-10-27, prek 0.5.7, uv, Windows laptop)_
+- **zizmor runs offline in the hooks** (on commit when `.github/` or the hook config changes,
+  and on push always), because hooks must work without a token; CI adds the online audits.
+  _(2026-11-02, ADR 0025)_
 - **pre-commit (the Python tool) cannot live in our lock with secure versions**: it needs
   `virtualenv>=21.14.9` (four high advisories below that), which needs `packaging>=26.3`, while
   LeRobot 0.6.1 caps `packaging<26`. prek is a Rust binary with no Python dependencies, so it
@@ -83,6 +106,20 @@
 - ~~This repo's fork approval is `first_time_contributors`.~~ _(verified 2026-10-28, API)_
 - **This repo's fork approval is `all_external_contributors`**, set by the owner in the UI for
   the GPU runner. _(verified 2026-11-01, API)_
+- **Job-started hook**: the runner runs the script named in `ACTIONS_RUNNER_HOOK_JOB_STARTED`
+  (set in the OS environment or in `.env` in the runner folder; a change needs a runner restart)
+  after a job is assigned and before it starts. A non-zero exit marks the job failed and none of
+  its steps run; `continue-on-error` does not apply. `.ps1` runs with `pwsh`, falling back to
+  `powershell`. It sees the default `GITHUB_*` variables, has no timeout, and its output shows
+  under "Set up runner". Ours is `.github/runner/job-started.ps1`
+  ([ADR 0025](../decisions/0025-self-hosted-runner-push-only-and-pinned-actions.md)).
+  _(verified 2026-11-02, GitHub docs "Running scripts before or after a job", runner 2.338.2)_
+- **`C:\actions-runner` is writable by the runner's user**: `gh-runner` has Modify, and so do
+  "Authenticated Users" (inherited from `C:\`). The service runs as `.\gh-runner`. Keep the hook's
+  live copy in a folder where `gh-runner` can only read and execute. _(verified 2026-11-02, ACL)_
+- **Runner groups limited to selected workflows exist only for organizations**, so a personal
+  repo cannot tie its runner to specific workflow files; the job-started hook does that job here.
+  _(2026-11-02)_
 - **The runner app needs only outbound HTTPS on 443** to GitHub's domains, auto-updates by
   default, and stops receiving jobs if not updated within 30 days. A job with no matching online
   runner waits in the queue up to 24 h. Windows 10/11 64-bit and Windows Server are supported.
@@ -126,6 +163,20 @@
 - **`astral-sh/setup-uv@v6` runs on Node 20, which GitHub has deprecated**; it is forced onto
   Node 24 with an annotation. Latest release is v10.3.2 (2026-10-22); bump in its own PR and check
   whether inputs such as `enable-cache` changed. _(verified 2026-10-26, run annotations, GitHub releases)_
+- **setup-uv publishes no floating major tags after v7** (`v7` → v7.6.0, then only `v8.0.0` …
+  `v10.3.3`), which is why Dependabot never moved `@v7` past v7. With SHA pins and a
+  `# vX.Y.Z` comment it follows full versions. _(verified 2026-11-02, tags via the API)_
+- **Actions pinned by SHA** ([ADR 0025](../decisions/0025-self-hosted-runner-push-only-and-pinned-actions.md)):
+  checkout v7.0.1, setup-uv v7.6.0, cache v6.1.0, upload-artifact v7.0.2, dependency-review
+  v5.0.0, scorecard-action v2.5.0, codeql-action/upload-sarif v4.39.1, each at the commit its tag
+  pointed to. `gh api repos/<o>/<r>/commits/<tag> --jq .sha` dereferences annotated tags (same
+  result as `git ls-remote <url> 'refs/tags/<tag>^{}'`). _(verified 2026-11-02)_
+- **Repo Actions permissions before ADR 0025**: `allowed_actions: all`,
+  `sha_pinning_required: false`, default workflow token read-only, fork approval
+  `all_external_contributors`. _(verified 2026-11-02, API)_
+- **Secret scanning's non-provider patterns and validity checks stay disabled** on this repo:
+  the API returns 200 to the request but nothing changes, likely because they need GitHub Secret
+  Protection, which a personal public repo does not have. Do not retry. _(verified 2026-11-02)_
 - **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** No impact today because uv pins Python
   3.12 itself. _(verified 2026-10-26, run annotations)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`

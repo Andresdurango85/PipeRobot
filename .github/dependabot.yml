@@ -7,6 +7,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # Wait for compromised releases to be caught; security updates remain immediate (ADR 0025).
+    cooldown:
+      default-days: 7
     groups:
       python-dependencies:
         patterns: ["*"]
@@ -18,6 +21,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # Wait for compromised releases to be caught; security updates remain immediate (ADR 0025).
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns: ["*"]
