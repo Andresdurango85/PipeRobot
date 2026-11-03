@@ -1,0 +1,79 @@
+{
+  "registration": "robots/so101/envs/workers_acceptance.json (registered at c43e63a, code at 71668b3)",
+  "verdict": "PASS",
+  "summary": "All four registered runs completed with exit 0 and no infrastructure retries; for all 125 seeds one worker and two workers give the same outcome and the same trajectory_sha256. --workers changes the wall time, not the results.",
+  "machine": "home PC, RTX 5060 Ti 16 GB (driver 610.88), Ryzen 9 5900XT, 64 GB RAM; Isaac Sim 6.2 + Isaac Lab 3.0, cuda:0; all runs at c43e63a (code identical to 71668b3)",
+  "runs": {
+    "replay_S": {
+      "workers": 1,
+      "window": "2026-11-03 12:12:00-12:42:06 -05:00",
+      "result": "6/75, 0 retries, 1806 s (24.1 s/seed)",
+      "note": "A so101-gate run (41682125551, triggered by pushing this branch) held the runner from 12:13:41 to 12:40:41: about 90% of this run was contended, so its time and GPU memory are not used. Outcomes and hashes are unaffected (below).",
+      "episodes_detail_sha256": "4a0de19b2f0c37b6f69d1e813f92c7fb4e8d2828ba402aa5fdac4242c4fc920a"
+    },
+    "dev_S": {
+      "workers": 1,
+      "window": "2026-11-03 12:42:39-13:05:32 -05:00",
+      "result": "46/50, 0 retries, 1373 s (27.5 s/seed), no runner job",
+      "episodes_detail_sha256": "85cd8fe59283d4ad113428cbb333f230a258eeb0271df66bd0ddca7d2f160543"
+    },
+    "replay_P": {
+      "workers": 2,
+      "kind": "operator-deviation rerun (see deviations), binding",
+      "precondition": "13:43:38: 10210 MB free GPU memory (median of 30 s), no runner job, 21.2 GB host RAM free",
+      "window": "2026-11-03 13:44:10-13:59:43 -05:00",
+      "result": "6/75, 0 retries, 934 s (12.4 s/seed), no runner job; host RAM free never below 12.6 GiB",
+      "episodes_detail_sha256": "d6a9e6590749e0579a99bd45283d150d2ba2aa8a30091d05c346257391c35b70"
+    },
+    "dev_P": {
+      "workers": 2,
+      "precondition": "14:00:23: 10176 MB free GPU memory, no runner job, 17.6 GB host RAM free",
+      "window": "2026-11-03 14:00:55-14:14:34 -05:00",
+      "result": "46/50, 0 retries, 819 s (16.4 s/seed), no runner job; host RAM free never below 9.96 GiB",
+      "episodes_detail_sha256": "010babeb60e23152fb4a8b2667cd1ea16a39733cd66ff1b63d969c6839962495"
+    }
+  },
+  "criteria": {
+    "all four runs exit 0": "met (0 infrastructure retries in each)",
+    "same outcome for all 125 seeds": "met: 0 flips (replay 0/75, dev 0/50)",
+    "same trajectory_sha256 for all 125 seeds": "met: 75/75 and 50/50",
+    "workers recorded": "met: S runs record 1, P runs record 2"
+  },
+  "predictions": {
+    "replay_S matches ADR 0033's R1": "held: 75/75 outcomes and hashes, 6/75",
+    "dev_S matches the development run at 0bf1787": "held: 50/50 outcomes and hashes, 46/50",
+    "P at most 0.6 of S's time per seed": "held on dev (16.4 / 27.5 = 0.60, speedup 1.68x); not assessed on replay, whose S run was contended (12.4 vs 24.1 s/seed)"
+  },
+  "measured": {
+    "gpu_memory_peak_above_idle_mb": {
+      "dev_S (1 worker)": 3379,
+      "replay_P (2 workers)": 5374,
+      "dev_P (2 workers)": 5368
+    },
+    "vram_constant_mb": "max(3379, 5374 / 2) = 3379, +25% = 4224, rounded up to 256: 4352 per worker; two workers need 8704 MB free",
+    "kit_logs": "every worker process wrote its own Kit log: 75 distinct names in replay_P, 50 in dev_P",
+    "per_process_seconds": "27.4 s with one worker, 32.1 s with two (dev): each process is slower, the pair is 1.68x faster"
+  },
+  "deviations": [
+    {
+      "what": "First replay_P attempt ran with two drivers at once (up to 4 Isaac processes), not as registered.",
+      "cause": "Operator error: stopping a background launcher with Claude Code's TaskStop left its child loops alive under Git Bash; the old launcher passed its own free-memory check at 13:14:22 and started replay_P next to the replacement launcher's (13:15:25). See docs/knowledge/testing.md.",
+      "result_kept": "The driver that finished: 6/75, 0 flips and 75/75 identical trajectory_sha256 against replay_S, so 4 concurrent processes did not move results either; but 3 infrastructure retries, at the budget limit: seed 5 timed out (423 s), seed 19 hit a MemoryError in warp's codegen, seed 20 failed with 'PxgAABBManager: failed to allocate pinned host buffers'. All three are host-memory pressure. Its times and GPU memory are not usable (two samplers wrote the same file).",
+      "episodes_detail_sha256": "e90db929217508dbc583da700aa39121a62e5167a6e09f820c9d1d5dec1e4046",
+      "decision": "piperobot-e5 approved one binding rerun of replay_P with one launcher that refuses to start while an evaluator driver is alive; the rerun above is it."
+    },
+    {
+      "what": "A dev_P started by the orphaned launcher at 13:41:38 was killed about a minute later.",
+      "result_kept": "None: no results; discarded by e5's decision."
+    },
+    {
+      "what": "The P precondition used >= 7.5 GB free instead of the registered 6.5 GB.",
+      "cause": "Stricter than registered: the measured 1-worker peak (3379 MB) made 2 x peak = 6.76 GB, above 6.5 GB.",
+      "result_kept": "Both P runs started with about 10.2 GB free."
+    }
+  ],
+  "consequences": [
+    "--workers 2 is safe for the gate's results; workers stays outside the platform guard (ADR 0036).",
+    "More than two concurrent Isaac processes ran out of host memory on this machine (deviation run): the gate uses at most 2."
+  ]
+}
