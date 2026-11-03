@@ -103,6 +103,9 @@ Result: **GO, 43/50 (86%)**.
   measured on the same runner. Isaac is bit-reproducible per seed on one machine (ADR 0033).
 - What the scripted policy buys is power for that paired test: unlimited seeds, a 500-seed
   baseline (100000-100499), PR seeds drawn from it, and a reference rate near 86% instead of 8%.
+  At ~25 s per seed the baseline is ~3.5 h of evaluation, close to the workflow's baseline-mode
+  limit. How it is measured on the runner (one dispatch, or ranges measured separately and
+  merged, which per-seed reproducibility allows) is left to the gate's workflow.
 - Unpaired comparison is not a gate method here. At most it is a nightly observation, as with
   PushT.
 - The replay stays the evaluator's pipeline acceptance test (ADR 0033), and the fallback policy.
