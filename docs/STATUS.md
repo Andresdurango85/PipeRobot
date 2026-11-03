@@ -14,7 +14,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
-| Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50). **SO-101 on Isaac, paired**: baseline PR #59 PASS (6/75 vs 6/75, 0 discordant); demo #60 (gripper floored at 25, registered beforehand) BLOCK as predicted, 0/75, 6 lost / 0 gained, exact McNemar p = 1/64 |
+| Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50). **SO-101 scripted policy on Isaac, paired, 100 fixed seeds**: swap PR #63 PASS (78/100 vs 78/100, b = c = 0); demo #65 (gripper_closed 5 -> 12, registered beforehand, tuned on dev seeds only) BLOCK as predicted, 20/100, 59 lost / 1 gained, exact McNemar p = 5.3e-17 ([result](../robots/so101/policies/scripted_gripper_closed_12_result.json)). Replay era: #59 PASS, #60 BLOCK (p = 1/64) |
 | README reproducible in 30 min | **Done, tested by CI**: `readme.yml` runs the README's commands on a fresh checkout with cold caches; 4 min 14 s on `ubuntu-24.04`, 4 min 59 s on `windows-2025`, PASS (27/50) and the demo BLOCK (4–5/50) on both (run 41597539505) |
 
 ## Done recently
@@ -23,6 +23,13 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: the SO-101 gate runs the scripted policy on 100 fixed seeds (#63, baseline 78/100,
+  [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)), and a registered
+  regression it was not tuned on was blocked: gripper_closed 5 -> 12, 20/100, 59 lost / 1 gained,
+  p = 5.3e-17, every reported range held (#65, closed unmerged;
+  [result](../robots/so101/policies/scripted_gripper_closed_12_result.json)). The demo also
+  mirrored the value in the module's DEFAULTS and a unit test, as a real PR would: unit tests
+  green, only the gate caught it.
 - 2026-11-03: ready for `ubuntu-latest` → Ubuntu 26.04 (by 2026-11-19). A probe on both images
   gave the same ci results and the same mutation survivors. The pinned jobs stay on
   `ubuntu-24.04`: PushT moves 4-8 near-miss episodes with the image and CPU together
@@ -128,15 +135,11 @@ Project Cangrejo, the `piperobot` package).
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
    [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
    nightlies, decide on a paired mode for pr-gate.
-3. Isaac (with Berta's gate workflow,
-   [ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)): switch the gate's policy
-   to the scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md))
-   on 100 fixed seeds (100000-100099), baseline measured on the swap branch
-   ([ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)); the
-   evaluator's two workers passed their registered repeatability test (#62). Then register a
-   deliberately worse scripted parameter (dev seeds only) for the BLOCK demo.
-   Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
-   for failed-episode videos.
+3. Isaac: the gate runs the scripted policy on 100 fixed seeds and blocked its registered demo
+   (#63, #65, [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)).
+   Optional: gripper_closed 10 (about -15 pp on dev, with rescues) as a second registered demo,
+   closer to the threshold. Later: the wrist_flex-at-limit failure mode (needs a new untouched
+   go/no-go range), cameras for failed-episode videos.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 5. CI: check that Monday's Dependabot runs work under the new Actions permissions and that the
