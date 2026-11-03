@@ -306,6 +306,75 @@ def test_golden() -> None:
     assert page.count("<table>") == 2
 
 
+def test_golden_single() -> None:
+    baseline = SuccessCount(265, 500)
+    result = decide(SuccessCount(29, 50), baseline)
+    record = replace(
+        _record(successes=29),
+        baseline=baseline,
+        difference_interval=result.difference_interval,
+        verdict=result.verdict,
+        platform="AMD EPYC 7763 64-Core Processor, 4 CPUs",
+    )
+    page = render_html([record])
+    path = Path(__file__).parent / "golden" / "history_single.html"
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+
+
+def test_golden_long_platform() -> None:
+    records = [
+        replace(
+            _record(i + 1, successes, baseline_successes=40 if i == 2 else 45),
+            platform=(
+                f"AMD EPYC 7763 64-Core Processor, 4 CPUs, Linux x86_64, "
+                f"self-hosted GPU runner {i + 1}, RTX 4090"
+                if i < 2
+                else "CPU A"
+            ),
+            commit_date=f"2026-11-{i + 3:02}T10:00:00Z",
+        )
+        for i, successes in enumerate((45, 38, 25))
+    ]
+    page = render_html(records)
+    path = Path(__file__).parent / "golden" / "history_long_platform.html"
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("baselines", "expected"),
+    [
+        ([45], [(60, 62), (660, 62)]),
+        (
+            [45, 40, 40, 35],
+            [(60, 62), (260, 62), (260, 84), (660, 84), (660, 106), (660, 106)],
+        ),
+    ],
+)
+def test_baseline_spans_plot(baselines: list[int], expected: list[tuple[int, int]]) -> None:
+    page = render_html([_record(i + 1, baseline_successes=b) for i, b in enumerate(baselines)])
+    match = re.search(r'<polyline points="([^"]+)" class="baseline" />', page)
+    assert match is not None
+    vertices = [tuple(map(float, point.split(","))) for point in match[1].split()]
+    assert len(vertices) >= 2
+    assert vertices == expected
+    assert vertices[0][0] == 60
+    assert vertices[-1][0] == 660
+    assert page.index("<polyline") < page.index("<g class=")
+    assert "stroke-dasharray:6 4" in page
+
+
+def test_tables_have_scroll_wrappers() -> None:
+    page = render_html([_record(), replace(_record(2), policy="second policy")])
+    wrapped = re.findall(r'<div class="table-wrap">\s*<table>.*?</table></div>', page, re.S)
+    assert len(wrapped) == page.count("<table>") == 2
+    assert ".table-wrap,pre{overflow-x:auto}" in page  # tables and verify commands scroll
+    assert "white-space:nowrap" in page
+
+
 def test_cli_defaults_are_idempotent(tmp_path: Path) -> None:
     history = tmp_path / "history.json"
     results = tmp_path / "results.json"
@@ -347,3 +416,116 @@ def test_cli_defaults_are_idempotent(tmp_path: Path) -> None:
 def test_non_object_record(value: Any) -> None:  # noqa: ANN401
     with pytest.raises(HistoryError, match="fields"):
         HistoryRecord.from_dict(value)
+
+
+def test_record_cli_roundtrip(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from piperobot.reports.history import GATE_VERDICT_PREDICATE_TYPE
+
+    results, baseline, output, history = (
+        tmp_path / name for name in ("results.json", "baseline.json", "record.json", "history.json")
+    )
+    save_results(EvalResults("p", "e", (EpisodeResult(7, True),)), results)
+    baseline.write_text('{"successes": 1, "trials": 1}', encoding="utf-8")
+    building = [
+        "--results",
+        str(results),
+        "--baseline-file",
+        str(baseline),
+        "--commit",
+        "a" * 40,
+        "--commit-date",
+        "2026-11-03T10:00:00Z",
+        "--run-url",
+        "https://example.org/run",
+        "--evaluated-at",
+        "2026-11-03T10:01:00Z",
+        "--platform",
+        "CPU",
+    ]
+    identity = ["--run-id", "1", "--run-attempt", "2"]
+    assert main(["record", "--output", str(output), *building, *identity]) == 0
+    record = HistoryRecord.from_dict(json.loads(output.read_text(encoding="utf-8")))
+    assert output.read_bytes().endswith(b"\n")
+    assert b"\r\n" not in output.read_bytes()
+    assert main(["append", "--history", str(history), "--new", *building, *identity]) == 0
+    assert load_history(history) == [record]
+    history.unlink()
+    args = ["append", "--history", str(history), "--record", str(output), "--new"]
+    assert main([*args, *identity]) == 0
+    assert load_history(history) == [record]
+    for run_id, attempt in ((9, 2), (1, 9)):
+        assert main([*args, "--run-id", str(run_id), "--run-attempt", str(attempt)]) == 2
+        assert f"record is for run 1.2, this is run {run_id}.{attempt}" in capsys.readouterr().err
+    for option, value in [
+        ("results", str(results)),
+        ("baseline-file", str(baseline)),
+        ("commit", "a"),
+        ("commit-date", "date"),
+        ("run-url", "url"),
+        ("platform", "CPU"),
+        ("evaluated-at", "date"),
+        ("confidence", "0.95"),
+        ("tolerance", "0.1"),
+    ]:
+        with pytest.raises(SystemExit) as error:
+            main([*args, *identity, f"--{option}", value])
+        assert error.value.code == 2
+    for missing in ("--run-id", "--run-attempt"):
+        incomplete = identity.copy()
+        index = incomplete.index(missing)
+        del incomplete[index : index + 2]
+        with pytest.raises(SystemExit) as error:
+            main([*args, *incomplete])
+        assert error.value.code == 2
+    for invalid in ("{", "{}", "null"):
+        output.write_text(invalid, encoding="utf-8")
+        assert main([*args, *identity]) == 2
+    capsys.readouterr()
+    assert main(["predicate-type"]) == 0
+    assert capsys.readouterr().out == GATE_VERDICT_PREDICATE_TYPE + "\n"
+
+
+def test_certified_golden() -> None:
+    records = [_record(1), _record(2)]
+    page = render_html(records, evidence=lambda record: record.run_id == 2)
+    assert "<th>Certificate</th>" in page
+    assert "<td>not signed</td>" in page
+    assert '<a href="results/2.1.json">results</a>' in page
+    assert '<a href="bundles/2.1.jsonl">bundle</a>' in page
+    assert "Verify a point" in page
+    assert (
+        "python -m piperobot.reports.certificate verify results.json --bundle bundle.jsonl" in page
+    )
+    from piperobot.reports.certificate import verification_command
+
+    assert html.escape(" ".join(verification_command(Path("results.json")))) in page
+    path = Path(__file__).parent / "golden" / "history_certified.html"
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+    unsigned = render_html(records, evidence=lambda record: False)
+    assert unsigned.count("<td>not signed</td>") == 2
+    assert "Verify a point" not in unsigned
+    assert "<th>Certificate</th>" not in render_html(records)
+
+
+def test_render_evidence_directory(tmp_path: Path) -> None:
+    history, output = tmp_path / "history.json", tmp_path / "index.html"
+    save_history([_record()], history, previous=[])
+    args = [
+        "render",
+        "--history",
+        str(history),
+        "--output",
+        str(output),
+        "--evidence-dir",
+        str(tmp_path),
+    ]
+    for directory, suffix in (("results", "json"), ("bundles", "jsonl")):
+        assert main(args) == 0
+        assert "<td>not signed</td>" in output.read_text(encoding="utf-8")
+        folder = tmp_path / directory
+        folder.mkdir()
+        (folder / f"1.1.{suffix}").write_text("evidence", encoding="utf-8")
+    assert main(args) == 0
+    assert '<a href="results/1.1.json">results</a>' in output.read_text(encoding="utf-8")

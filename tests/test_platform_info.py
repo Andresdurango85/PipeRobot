@@ -52,3 +52,12 @@ def test_module() -> None:
     )
     assert len(result.stdout.splitlines()) == 1
     assert result.stdout.strip().endswith(" CPUs")
+
+
+def test_unknown_count(tmp_path: Path) -> None:
+    path = tmp_path / "cpuinfo"
+    path.write_text("model name : CPU model\n", encoding="utf-8")
+    assert (
+        platform_info.describe_platform(cpuinfo_path=path, count=lambda: None)
+        == "CPU model, unknown CPUs"
+    )

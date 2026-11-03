@@ -10,6 +10,15 @@ updates:
     # Wait for compromised releases to be caught; security updates remain immediate (ADR 0027).
     cooldown:
       default-days: 7
+    # LeRobot 0.6.1 caps torch<2.12; pyproject.toml pins torch and torchvision to matching minors.
+    # Newer minors are unresolvable and failed the whole job. Remove when LeRobot raises its cap,
+    # bumping the pins and the extra together. A Dependabot PR for lerobot 0.7 will likely fail
+    # against this rule (a new torch cap): that PR is the signal to do it, by hand, in one PR.
+    ignore:
+      - dependency-name: torch
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: torchvision
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       python-dependencies:
         patterns: ["*"]

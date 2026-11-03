@@ -6,6 +6,8 @@ import os
 import re
 import shutil
 import subprocess
+import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,29 @@ POWERSHELL = shutil.which("pwsh") or shutil.which("powershell")
 def _load(path: Path) -> dict[str | bool, Any]:
     data: dict[str | bool, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
     return data
+
+
+def test_dependabot_ignores_torch_minor_and_major_updates() -> None:
+    data = _load(ROOT / ".github" / "dependabot.yml")
+    uv = next(update for update in data["updates"] if update["package-ecosystem"] == "uv")
+    for dependency in ("torch", "torchvision"):
+        rules = [rule for rule in uv["ignore"] if rule["dependency-name"] == dependency]
+        assert len(rules) == 1
+        assert sorted(rules[0]["update-types"]) == [
+            "version-update:semver-major",
+            "version-update:semver-minor",
+        ]
+
+
+def test_dependabot_torch_ignores_still_have_minor_caps() -> None:
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    extra: list[str] = data["project"]["optional-dependencies"]["lerobot"]
+    for dependency in ("torch", "torchvision"):
+        pins = [pin for pin in extra if re.match(rf"^{dependency}(?=[<>=!~;\s]|$)", pin)]
+        assert len(pins) == 1, f"Revisit the Dependabot ignore rule for {dependency}: missing pin"
+        assert re.search(r"(?:^|,)\s*<\d+\.\d+\s*(?:,|$)", pins[0]), (
+            f"Revisit the Dependabot ignore rule for {dependency}: missing <X.Y minor cap"
+        )
 
 
 def _self_hosted_jobs(data: dict[str | bool, Any]) -> list[dict[str, Any]]:
@@ -114,6 +139,7 @@ def test_checkout_does_not_persist_credentials(path: Path) -> None:
 def test_runner_hook(
     event: str | None, workflow_ref: str | None, repository: str | None, expected: int
 ) -> None:
+    """Refusals leave the Python parent alive and print only the refusal line."""
     assert POWERSHELL is not None
     env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GITHUB_")}
     for key, value in {
@@ -134,3 +160,187 @@ def test_runner_hook(
     assert result.returncode == expected, result.stdout + result.stderr
     assert len(result.stdout.strip().splitlines()) == 1
     assert result.stdout.startswith("Allowed job:" if expected == 0 else "Refused job:")
+
+
+def _run_completed_hook(
+    workspace: Path | None, runner: Path | None
+) -> subprocess.CompletedProcess[str]:
+    assert POWERSHELL is not None
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() not in {"GITHUB_WORKSPACE", "RUNNER_WORKSPACE"}
+    }
+    for key, path in {"GITHUB_WORKSPACE": workspace, "RUNNER_WORKSPACE": runner}.items():
+        if path is not None:
+            env[key] = str(path)
+    return subprocess.run(  # noqa: S603 -- resolved PowerShell and fixed script, no shell.
+        [
+            POWERSHELL,
+            "-NoProfile",
+            "-NonInteractive",
+            "-File",
+            str(HOOK.with_name("job-completed.ps1")),
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+def test_completed_hook_wipes_workspace(tmp_path: Path) -> None:
+    runner = tmp_path / "_work" / "PipeRobot"
+    workspace = runner / "PipeRobot"
+    workspace.mkdir(parents=True)
+    for name in (
+        "nested/deeper/file.txt",
+        ".hidden",
+        "readonly.txt",
+        "out/failure.mp4",
+        "work/data",
+    ):
+        path = workspace / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("leftover", encoding="utf-8")
+    (workspace / "readonly.txt").chmod(0o444)
+    if sys.platform == "win32":  # mypy understands this guard for ctypes.windll, not os.name
+        import ctypes
+
+        assert ctypes.windll.kernel32.SetFileAttributesW(str(workspace / ".hidden"), 2)
+    keep = tmp_path / "_work" / "_tool" / "keep.txt"
+    keep.parent.mkdir()
+    keep.write_text("keep", encoding="utf-8")
+    result = _run_completed_hook(workspace, runner)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert workspace.is_dir()
+    assert list(workspace.iterdir()) == []
+    assert keep.read_text(encoding="utf-8") == "keep"
+    assert result.stdout.strip() == f"Wiped job workspace: {workspace} (5 entries)."
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows junctions require Windows")
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+def test_completed_hook_does_not_follow_junctions(tmp_path: Path) -> None:
+    runner = tmp_path / "_work" / "PipeRobot"
+    workspace = runner / "PipeRobot"
+    (workspace / "sub").mkdir(parents=True)
+    precious = tmp_path / "outside" / "precious.txt"
+    keep = tmp_path / "_work" / "_tool" / "keep.txt"
+    for sentinel in (precious, keep):
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text("keep", encoding="utf-8")
+    for link, target in (
+        (workspace / "outside-link", precious.parent),
+        (workspace / "tool-link", keep.parent),
+        (workspace / "sub" / "link", precious.parent),
+    ):
+        result = subprocess.run(  # noqa: S603 -- Windows mklink, tmp paths, no shell=True.
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)],  # noqa: S607 -- Windows builtin.
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    result = _run_completed_hook(workspace, runner)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert workspace.is_dir()
+    assert list(workspace.iterdir()) == []
+    assert precious.read_text(encoding="utf-8") == "keep"
+    assert keep.read_text(encoding="utf-8") == "keep"
+    assert result.stdout.strip() == f"Wiped job workspace: {workspace} (3 entries)."
+
+
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+@pytest.mark.parametrize(
+    "case",
+    [
+        "not-direct-child",
+        "wrong-parent",
+        "runner-tool",
+        "protected-leaf",
+        "missing-workspace",
+        "missing-runner",
+        "missing-both",
+        "nonexistent-workspace",
+        "nonexistent-runner",
+    ],
+)
+def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str) -> None:
+    runner = tmp_path / "_work" / "PipeRobot"
+    workspace = runner / "PipeRobot"
+    if case == "not-direct-child":
+        workspace = workspace / "nested"
+    elif case == "wrong-parent":
+        runner = tmp_path / "other" / "PipeRobot"
+        workspace = runner / "PipeRobot"
+    elif case == "runner-tool":
+        runner = tmp_path / "_work"
+        workspace = runner / "_tool"
+    elif case == "protected-leaf":
+        workspace = runner / "_tool"
+    workspace.mkdir(parents=True)
+    sentinel = workspace / "keep.txt"
+    sentinel.write_text("keep", encoding="utf-8")
+    workspace_env: Path | None = workspace
+    runner_env: Path | None = runner
+    if case in {"missing-workspace", "missing-both"}:
+        workspace_env = None
+    if case in {"missing-runner", "missing-both"}:
+        runner_env = None
+    if case == "nonexistent-workspace":
+        workspace_env = sentinel.parent / "absent"
+    if case == "nonexistent-runner":
+        runner_env = tmp_path / "_work" / "absent"
+    result = _run_completed_hook(workspace_env, runner_env)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert result.stdout.startswith("Refused workspace wipe:")
+    assert len(result.stdout.strip().splitlines()) == 1
+    assert sentinel.read_text(encoding="utf-8") == "keep"
+
+
+def test_history_signing_boundary() -> None:
+    jobs = _load(ROOT / ".github/workflows/history.yml")["jobs"]
+    assert jobs["evaluate"]["permissions"] == {"contents": "read"}
+    attest = jobs["attest"]
+    assert attest["needs"] == "evaluate"
+    assert attest["if"] == "github.ref == 'refs/heads/main'"
+    assert attest["runs-on"] == "ubuntu-latest"
+    assert attest["permissions"] == {
+        "contents": "read",
+        "id-token": "write",
+        "attestations": "write",
+    }
+    for step in attest["steps"]:
+        assert "${{" not in step.get("run", "")
+        assert "artifact-metadata" not in step.get("with", {})
+    verdict = next(step for step in attest["steps"] if step.get("id") == "verdict")
+    assert verdict["with"] == {
+        "subject-path": "out/results.json",
+        "predicate-type": "${{ steps.record.outputs.type }}",
+        "predicate-path": "out/record.json",
+    }
+    provenance = next(step for step in attest["steps"] if step.get("id") == "provenance")
+    assert provenance["with"]["subject-path"].splitlines() == [
+        "out/results.json",
+        "out/record.json",
+    ]
+    append = jobs["append"]
+    assert append["needs"] == ["evaluate", "attest"]
+    assert "concurrency" not in append
+    downloads = [
+        step["with"]["name"]
+        for step in append["steps"]
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert downloads == ["history-certified"]
+    script = next(
+        step["run"]
+        for step in append["steps"]
+        if step.get("name") == "Append evaluation to history"
+    )
+    assert "--record out/record.json" in script
+    assert script.count("--attach") == 2

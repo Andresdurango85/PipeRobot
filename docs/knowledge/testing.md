@@ -131,3 +131,40 @@ testing of `piperobot/stats`.
   text) and distinct luminance, and each point also has a text tooltip and a table row, so the
   verdict does not rely on color alone: pass `#164e35` (9.7:1), block `#b91c1c` (6.5:1),
   warn `#98700a` (4.5:1). _(verified 2026-11-03)_
+- **Golden files need the shapes that break**: the first golden page had six records, so it
+  missed that a single record drew no baseline (an SVG polyline with one vertex is invisible) and
+  that a long platform string pushed the table off a narrow screen. Both showed on the first live
+  page; `history_single.html` and `history_long_platform.html` now cover them. _(verified
+  2026-11-03)_
+
+## Certificates of evaluation (attestations)
+
+- **`gh attestation verify --format json` returns a list**; each item's
+  `verificationResult.statement` holds `subject[].digest.sha256`, `predicateType` and
+  `predicate`, and `verificationResult.signature.certificate` holds the OIDC-backed fields:
+  `sourceRepositoryDigest` (commit), `sourceRepositoryRef`, `buildSignerURI`,
+  `runnerEnvironment` (`github-hosted`) and `runInvocationURI`
+  (`.../actions/runs/<id>/attempts/<n>`). `tests/test_certificate.py` mocks this shape.
+  _(verified 2026-11-03, gh 2.88.1, on a cli/cli release attestation)_
+- **No GitHub login is needed with `--bundle`**: against the API, `gh attestation verify` asks
+  for `gh auth login`; with `--bundle <file>` it verifies with an empty gh config, and
+  `gh attestation trusted-root` works without login too. _(verified 2026-11-03, gh 2.88.1)_
+- **Only the certificate is OIDC-backed; the predicate is what the signing job wrote**
+  (`gh attestation verify --help`). Hence the separate `attest` job with no third-party code
+  ([ADR 0030](../decisions/0030-signed-certificates-of-evaluation.md)). _(verified 2026-11-03)_
+- **Sizes**: a Sigstore bundle is ~14 KB, a 50-episode `results.json` ~3–5 KB.
+  _(measured 2026-11-03)_
+- **A file with no certificate fails differently in each mode.** With `--bundle`, gh prints
+  `verifying with issuer "sigstore.dev"` (the same as for a wrong signer), so the verifier
+  compares the file's sha256 with the bundle's subjects first. Against the API without a
+  predicate filter, gh prints `no attestations found`; with `--predicate-type` (as our verifier
+  always passes), it fails with `HTTP 404: Not Found (.../attestations/sha256:<digest>?...)`.
+  Both map to `NOT CERTIFIED`. _(verified 2026-11-03, gh 2.88.1)_
+- **The first signed point verifies end to end**: point 4 (run 41585783701.1, commit 1eb7699,
+  27/50 PASS) verifies with the PipeRobot verifier both logged out with `--bundle` and against the
+  API, with `gh attestation verify` alone, and with the live test (`-m github`). A copy edited to
+  35/50 gives `NOT CERTIFIED` in both modes. `actions/attest` needed no `artifact-metadata`
+  permission. _(verified 2026-11-03)_
+- **The history shows the CPU sensitivity of PushT**: the same 50 seeds gave 29/50 on three
+  `AMD EPYC 7763` runners and 27/50 on an `INTEL(R) XEON(R) PLATINUM 8573C` one (points 1–4),
+  which is why each point carries its platform ([lerobot.md](lerobot.md)). _(verified 2026-11-03)_

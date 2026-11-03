@@ -28,20 +28,29 @@ Project Cangrejo, the `piperobot` package).
   term is ported with a 5 N grasp threshold and a slot-depth rule; registered sensing checks pass
   ([ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)). Replays with contacts vary run to
   run (2/75 outcomes).
+- 2026-11-03: certificates of evaluation, core part: `history record` / `append --record` and
+  `python -m piperobot.reports.certificate verify` (pins signer workflow, `main`, hosted runner,
+  predicate type; checks the signed record against `results.json`)
+  ([ADR 0030](decisions/0030-signed-certificates-of-evaluation.md)). `history.yml` now signs each
+  point (`attest` job) and publishes its results and bundle; points before that are "not signed".
 - 2026-11-03: success-rate history, core part: `piperobot/reports/history.py` appends one record
   per evaluation to an append-only `history.json` and renders a static page (inline SVG, no JS);
   `piperobot/platform_info.py` labels the CPU like `pr-gate`
-  ([ADR 0026](decisions/0026-success-rate-history-data-branch-and-pages.md)). The workflow
-  (`history.yml`, Pages) and three repo settings follow after the workflow-hardening PR.
+  ([ADR 0026](decisions/0026-success-rate-history-data-branch-and-pages.md)). `history.yml`
+  evaluates each relevant push to `main`, appends to the `history` branch and deploys to Pages;
+  `pr-gate` and `baseline` now label the CPU with the same helper. Live since 2026-11-03 at
+  <https://andresdurango85.github.io/PipeRobot/> (first point 29/50, PASS).
 - 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
   `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
   ([testing.md](knowledge/testing.md)).
 - 2026-11-03: CI hardening. `gpu-smoke` runs on push, never on PRs; a job-started hook on the
   runner skips the steps of any job that is not one of our self-hosted workflows on a push,
-  dispatch or schedule (but not its `if: always()` steps, a follow-up); the runner folder's ACL
-  no longer lets every local account read or write it; every action is
-  pinned by SHA; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly
+  dispatch or schedule, and ends the job's worker so not even `if: always()` steps run; a
+  job-completed hook wipes the workspace; the runner folder's ACL no longer lets every local
+  account read or write it; every action is pinned by SHA, and the repo allows only GitHub's and
+  two listed actions; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly (6.3)
   ([ADR 0027](decisions/0027-self-hosted-runner-push-only-and-pinned-actions.md),
+  [ADR 0029](decisions/0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md),
   [ci.md](knowledge/ci.md)).
 - 2026-11-02: Hypothesis property tests and weekly mutation testing (`mutation.yml`, Linux) for
   `piperobot/stats`. **Gate verdicts change**: a drop of exactly the tolerance (e.g. 35/50 vs
@@ -88,11 +97,9 @@ Project Cangrejo, the `piperobot` package).
    randomization with seeds, cameras, and a policy in the loop.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. Runner hook follow-up (approved): on refusal, end the job's `Runner.Worker` process so
-   `if: always()` steps cannot run, and a job-completed hook that wipes the workspace; test on
-   draft PR #35, then Andrés redeploys elevated. Also: note Scorecard's first score and top
-   findings in [ci.md](knowledge/ci.md), check that Monday's Dependabot run works under the new
-   Actions permissions, and ask Andrés to add `zizmor` to the ruleset's required checks.
+5. CI: check that Monday's Dependabot runs work under the new Actions permissions and that the
+   `uv` job stays green with the torch ignore rule ([ci.md](knowledge/ci.md)); ask Andrés to add
+   `zizmor` to the ruleset's required checks.
 6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
    after a few weekly `mutation.yml` runs, decide a mutation-score threshold
    ([testing.md](knowledge/testing.md)).
