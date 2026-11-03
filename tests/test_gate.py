@@ -227,6 +227,8 @@ def test_deliberately_broken_policy_is_blocked() -> None:
         (0.333, "33.3"),
         (0.0, "0"),
         (1e-5, "0.001"),
+        (1e-9, "0.0000001"),  # without the "f" format, Decimal switches to "1.00E-7"
+        (1e16, "1000000000000000000"),  # no decimal point: trailing zeros must stay
     ],
 )
 def test_format_percent(fraction: float, expected: str) -> None:

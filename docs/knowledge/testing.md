@@ -88,6 +88,11 @@ testing of `piperobot/stats`.
   - `diff_interval.upper < 0` → `<= 0` in `decide()`: they differ only when the Newcombe upper
     bound is exactly 0.0. A search of every pair with n ≤ 200 at 95% confidence, checking the
     two candidate counts at each BLOCK crossing, found no exact 0.0 and nothing within 1e-12.
+- **Accepted equivalent mutants in `format_percent`** (3, since 2026-11-03): format `"f"` →
+  `"F"` (differs only for inf and NaN, rejected before formatting), and `rstrip("0")` /
+  `rstrip(".")` → `rstrip("XX0XX")` / `rstrip("XX.XX")` (`rstrip` takes a set of characters, and
+  no `X` occurs in a number). With these, the score on 2026-11-03 is 354 / 361 killed, the 7
+  survivors all equivalent. _(verified 2026-11-03, mutmut 3.8.1)_
 
 ## Bugs found in `piperobot/stats` (fixed 2026-11-02)
 
