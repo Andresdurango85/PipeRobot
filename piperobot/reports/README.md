@@ -18,3 +18,21 @@ uv run python -m piperobot.reports.sticky_comment --pr 12 --body-file comment.md
 - Example output: [tests/golden/pr_comment_block.md](../../tests/golden/pr_comment_block.md). It is
   a golden file: if the format changes, regenerate it with `UPDATE_GOLDEN=1 uv run pytest` and
   review the diff.
+
+## Evaluation history
+
+`history.py` keeps schema 1 evaluation records and renders a standalone HTML page with
+success-rate charts, confidence bars, platform markers and run links. It uses only the standard
+library. Workflows can call these commands; no workflow invokes them yet.
+
+```
+python -m piperobot.reports.history append --history history.json --results results.json \
+    --baseline-file baseline.json --commit SHA --commit-date 2026-11-03T10:00:00Z \
+    --run-url https://github.com/owner/repo/actions/runs/1 --run-id 1 --run-attempt 1 --new
+python -m piperobot.reports.history render --history history.json --output history.html
+```
+
+`--new` allows a missing history only for bootstrap or local use. Records are append-only:
+identical run/attempt duplicates are idempotent, conflicting duplicates fail, and saving requires
+the previous history as an exact prefix. Writes replace the file atomically. Invalid inputs exit
+2 with an `ERROR:` line. Platform labels default to `python -m piperobot.platform_info`.
