@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pr-gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: numerics are compared with the baseline (ci.md)
     timeout-minutes: 30 # Phase 0 budget per PR
     permissions:
       contents: read

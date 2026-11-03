@@ -120,6 +120,28 @@ def test_improvement_passes() -> None:
     assert decide(SuccessCount(48, 50), SuccessCount(40, 50)).verdict is Verdict.PASS
 
 
+def test_pass_reason_when_the_interval_includes_zero() -> None:
+    result = decide(SuccessCount(40, 50), SuccessCount(40, 50))
+
+    assert result.reason == (
+        "No significant difference: difference interval "
+        f"{result.difference_interval} includes zero."
+    )
+
+
+def test_pass_reason_when_the_candidate_is_significantly_better() -> None:
+    # The first nightly: 309/500 on fresh seeds against the stored 265/500.
+    result = decide(SuccessCount(309, 500), SuccessCount(265, 500))
+
+    assert result.verdict is Verdict.PASS
+    assert result.difference_interval.lower > 0
+    assert result.reason == (
+        "No regression: the candidate is significantly better; difference interval "
+        f"{result.difference_interval} is entirely above zero."
+    )
+    assert str(result.difference_interval) == "[0.027, 0.148]"
+
+
 def test_large_drop_blocks() -> None:
     result = decide(SuccessCount(25, 50), SuccessCount(45, 50))
 

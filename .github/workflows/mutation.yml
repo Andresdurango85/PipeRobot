@@ -7,12 +7,20 @@ on:
   pull_request:
     paths:
       - 'piperobot/stats/**'
+      - 'tests/test_certificate.py'
       - 'tests/test_gate.py'
       - 'tests/test_gate_inputs.py'
-      - 'tests/test_stats_properties.py'
+      - 'tests/test_history.py'
+      - 'tests/test_manual_eval.py'
+      - 'tests/test_mock_eval.py'
+      - 'tests/test_paired.py'
       - 'tests/test_pr_comment.py'
+      - 'tests/test_stats_properties.py'
       - 'tests/conftest.py'
+      - 'pyproject.toml'
       - '.github/workflows/mutation.yml'
+      - 'tests/mutation_equivalents.txt'
+      - '.github/scripts/mutation_summary.py'
 
 permissions:
   contents: read
@@ -50,39 +58,7 @@ jobs:
 
       - name: Summarize score and survivors
         if: always()
-        run: |
-          uv run python - <<'PY'
-          import json
-          import os
-          import re
-          import subprocess
-          from pathlib import Path
-
-          stats_path = Path("mutants/mutmut-cicd-stats.json")
-          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
-              summary.write("## Mutation testing\n\n")
-              if stats_path.exists():
-                  stats = json.loads(stats_path.read_text())
-                  killed, total = stats["killed"], stats["total"]
-                  score = f"{killed / total:.1%}" if total else "N/A"
-                  summary.write(f"Killed / total: **{killed} / {total} ({score})**\n\n")
-              else:
-                  summary.write("Statistics unavailable; inspect the mutation run logs.\n\n")
-              result = subprocess.run(
-                  ["uv", "run", "mutmut", "results"], capture_output=True, text=True, check=False
-              )
-              if result.returncode:
-                  summary.write("Could not list survivors; inspect the results step.\n")
-              survivors = re.findall(r"^\s*(\S+): survived\s*$", result.stdout, re.MULTILINE)
-              for name in survivors:
-                  diff = subprocess.run(
-                      ["uv", "run", "mutmut", "show", name],
-                      capture_output=True, text=True, check=False,
-                  )
-                  summary.write(f"### {name}\n\n```diff\n{diff.stdout}{diff.stderr}\n```\n\n")
-                  # Also in the log: step summaries cannot be read through the API.
-                  print(f"::group::{name}\n{diff.stdout}{diff.stderr}\n::endgroup::")
-          PY
+        run: uv run python .github/scripts/mutation_summary.py
 
       - name: Upload mutation statistics
         if: always()

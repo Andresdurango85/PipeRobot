@@ -6,8 +6,9 @@
   "seeds": "1000-1499",
   "lerobot": "0.6.1",
   "policy_revision": "15c2d0af889c401c7e5db7a07499d3b498afc276",
-  "platform": "ubuntu-latest, AMD EPYC 7763, 4 CPUs, torch 2.11.0+cpu",
-  "updated": "2026-10-27",
-  "how": "baseline.yml (workflow_dispatch, 500 episodes, seed 1000), run 40621897268",
-  "reference": "Same seeds elsewhere: 267/500 on an EPYC 9V74 runner (run 40621909121), 263/500 on the home PC and the laptop (Windows CPU). 6-10 near-miss episodes flip between platforms (ADR 0016, ADR 0017). Model card: 285/500 (older LeRobot)."
+  "commit": "34eabdd837a6d70e3825c31f596d4ab6b8e76249",
+  "platform": "ubuntu-latest, AMD EPYC 9V74 80-Core Processor, 4 CPUs, torch 2.11.0+cpu (per-episode identical to the original EPYC 7763 run)",
+  "updated": "2026-11-03",
+  "how": "Refreshed by baseline.yml run 41585590113 on main 34eabdd (500 episodes, seed 1000): 265/500, identical episode by episode to the original run 40621897268 (2026-10-27, EPYC 7763, commit 53fdcbb6dd). Per-episode results: vqbet-episodes.json.",
+  "reference": "Same seeds elsewhere: 267/500 on an EPYC 9V74 runner on 2026-10-27 (run 40621909121), 263/500 on the home PC and the laptop (Windows CPU). 6-10 near-miss episodes flip between platforms, and the CPU model name does not predict which (ADR 0016, ADR 0017, lerobot.md). Model card: 285/500 (older LeRobot)."
 }

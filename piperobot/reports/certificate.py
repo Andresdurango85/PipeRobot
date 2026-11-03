@@ -22,11 +22,13 @@ from typing import Any
 
 from piperobot.reports.history import (
     GATE_VERDICT_PREDICATE_TYPE,
+    GATE_VERDICT_V2_PREDICATE_TYPE,
     HistoryError,
     HistoryRecord,
     compress_seeds,
 )
 from piperobot.results import load_results
+from piperobot.stats.paired import PairedCounts
 
 
 class CertificateError(ValueError):
@@ -51,9 +53,9 @@ class CertificateInputError(ValueError):
     """The verifier could not load its inputs."""
 
 
-def _bundle_digests(bundle: Path) -> set[str]:
+def _bundle_types(bundle: Path) -> dict[str, str]:
     """Read untrusted subjects; gh must still verify the bundle cryptographically."""
-    digests: set[str] = set()
+    digests: dict[str, str] = {}
     try:
         contents = bundle.read_text(encoding="utf-8")
         try:
@@ -75,7 +77,9 @@ def _bundle_digests(bundle: Path) -> set[str]:
                 digest = subject["digest"]["sha256"]
                 if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
                     raise ValueError("invalid subject sha256")
-                digests.add(digest)
+                kind = statement.get("predicateType")
+                if kind in (GATE_VERDICT_PREDICATE_TYPE, GATE_VERDICT_V2_PREDICATE_TYPE):
+                    digests[digest] = kind
     except (OSError, ValueError, TypeError, KeyError, binascii.Error) as exc:
         raise CertificateInputError(f"invalid bundle: {exc}") from exc
     return digests
@@ -91,8 +95,9 @@ class Certificate:
 
     def __str__(self) -> str:
         r = self.record
+        series = " " + r.series if r.schema == 2 else ""
         return (
-            f"VERIFIED: {r.policy}/{r.evaluator} {r.successes}/{r.trials} "
+            f"VERIFIED: {r.policy}/{r.evaluator}{series} {r.successes}/{r.trials} "
             f"({100 * r.successes / r.trials:.1f}%) {r.verdict.value.upper()} "
             f"at {self.commit[:7]}, "
             f"run {r.run_id}.{r.run_attempt}, signed by {self.signer}"
@@ -100,9 +105,14 @@ class Certificate:
 
 
 def verification_command(
-    results_path: Path, *, repo: str = "Andresdurango85/PipeRobot", gh: str = "gh"
+    results_path: Path,
+    *,
+    repo: str = "Andresdurango85/PipeRobot",
+    gh: str = "gh",
+    predicate_type: str = GATE_VERDICT_PREDICATE_TYPE,
 ) -> list[str]:
     """Build the pinned verification policy shared by the verifier and history page."""
+    workflow = "certify" if predicate_type == GATE_VERDICT_V2_PREDICATE_TYPE else "history"
     return [
         gh,
         "attestation",
@@ -111,20 +121,22 @@ def verification_command(
         "--repo",
         repo,
         "--signer-workflow",
-        f"{repo}/.github/workflows/history.yml",
+        f"{repo}/.github/workflows/{workflow}.yml",
         "--source-ref",
         "refs/heads/main",
         "--deny-self-hosted-runners",
         "--predicate-type",
-        GATE_VERDICT_PREDICATE_TYPE,
+        predicate_type,
         "--format",
         "json",
     ]
 
 
-def verify(
+def _verify(
     results_path: Path,
     *,
+    reference_path: Path | None = None,
+    predicate_type: str = GATE_VERDICT_PREDICATE_TYPE,
     repo: str = "Andresdurango85/PipeRobot",
     bundle: Path | None = None,
     gh: str = "gh",
@@ -134,9 +146,9 @@ def verify(
         digest = hashlib.sha256(results_path.read_bytes()).hexdigest()
     except OSError as exc:
         raise CertificateInputError(str(exc)) from exc
-    command = verification_command(results_path, repo=repo, gh=gh)
+    command = verification_command(results_path, repo=repo, gh=gh, predicate_type=predicate_type)
     if bundle is not None:
-        if digest not in _bundle_digests(bundle):
+        if digest not in _bundle_types(bundle):
             raise CertificateNotFound(digest)
         command.extend(("--bundle", str(bundle)))
     try:
@@ -169,6 +181,8 @@ def verify(
             raise CertificateInputError("unexpected gh verification JSON structure") from exc
         try:
             record = HistoryRecord.from_dict(predicate)
+            if record.schema != (2 if predicate_type == GATE_VERDICT_V2_PREDICATE_TYPE else 1):
+                continue
         except HistoryError:
             continue
         selected = record, statement, certificate
@@ -194,11 +208,23 @@ def verify(
         )
         if any(not isinstance(certificate.get(field), str) for field in fields):
             raise TypeError
-        predicate_type = statement["predicateType"]
+        actual_predicate_type = statement["predicateType"]
     except (KeyError, TypeError) as exc:
         raise CertificateInputError("unexpected gh statement or certificate structure") from exc
-    if predicate_type != GATE_VERDICT_PREDICATE_TYPE:
+    if actual_predicate_type != predicate_type:
         raise CertificateError("not a gate-verdict record: wrong predicate type")
+    if record.schema == 2:
+        caller = certificate.get("buildConfigURI")
+        workflow = "nightly" if record.series == "nightly" else "history"
+        expected = f"https://github.com/{repo}/.github/workflows/{workflow}.yml@refs/heads/main"
+        signer = f"https://github.com/{repo}/.github/workflows/certify.yml@refs/heads/main"
+        if caller != expected or certificate["buildSignerURI"] != signer:
+            raise CertificateMismatch(
+                f"MISMATCH: series {record.series}, caller {caller!r}, "
+                f"signer {certificate['buildSignerURI']!r}"
+            )
+        if record.series == "nightly" and reference_path is None:
+            raise CertificateInputError("a nightly certificate needs --reference")
     if not any(subject["digest"]["sha256"] == digest for subject in subjects):
         raise CertificateError("subject sha256 does not match results file")
     if record.commit != certificate["sourceRepositoryDigest"]:
@@ -233,6 +259,24 @@ def verify(
                 f"(signer bug): the record says {field} {actual!r}, results.json has "
                 f"{expected!r}."
             )
+    if record.series == "nightly":
+        if reference_path is None:
+            raise CertificateInputError("a nightly certificate needs --reference")
+        try:
+            reference_digest = hashlib.sha256(reference_path.read_bytes()).hexdigest()
+            reference = load_results(reference_path)
+        except (OSError, ValueError) as exc:
+            raise CertificateInputError(f"invalid reference: {exc}") from exc
+        if not any(subject["digest"]["sha256"] == reference_digest for subject in subjects):
+            raise CertificateMismatch("MISMATCH: reference sha256 is not a subject")
+        try:
+            counts = PairedCounts.from_results(reference, results)
+        except ValueError as exc:
+            raise CertificateMismatch(f"MISMATCH: paired results: {exc}") from exc
+        if record.paired is None or any(
+            getattr(record.paired, name) != value for name, value in vars(counts).items()
+        ):
+            raise CertificateMismatch("MISMATCH: paired cells disagree with results files")
     return Certificate(
         record,
         certificate["sourceRepositoryDigest"],
@@ -242,16 +286,63 @@ def verify(
     )
 
 
+def verify(
+    results_path: Path,
+    *,
+    reference_path: Path | None = None,
+    repo: str = "Andresdurango85/PipeRobot",
+    bundle: Path | None = None,
+    gh: str = "gh",
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> Certificate:
+    """Verify signed evaluation evidence. Nightly reference_commit is a signed claim;
+    the results files cannot establish the reference policy's source commit.
+    Untrusted bundle statements only route verification; gh verifies their signatures.
+    """
+    if bundle is not None:
+        try:
+            digest = hashlib.sha256(results_path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise CertificateInputError(str(exc)) from exc
+        kind = _bundle_types(bundle).get(digest)
+        if kind is None:
+            raise CertificateNotFound(digest)
+        return _verify(
+            results_path,
+            reference_path=reference_path,
+            repo=repo,
+            bundle=bundle,
+            gh=gh,
+            run=run,
+            predicate_type=kind,
+        )
+    try:
+        return _verify(
+            results_path,
+            reference_path=reference_path,
+            repo=repo,
+            gh=gh,
+            run=run,
+            predicate_type=GATE_VERDICT_V2_PREDICATE_TYPE,
+        )
+    except CertificateNotFound:
+        return _verify(results_path, repo=repo, gh=gh, run=run)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
     check = commands.add_parser("verify")
     check.add_argument("results", type=Path)
     check.add_argument("--bundle", type=Path)
+    check.add_argument("--reference", type=Path)
     check.add_argument("--repo", default="Andresdurango85/PipeRobot")
     args = parser.parse_args(argv)
     try:
-        print(verify(args.results, bundle=args.bundle, repo=args.repo))
+        options: dict[str, Any] = {"bundle": args.bundle, "repo": args.repo}
+        if args.reference is not None:
+            options["reference_path"] = args.reference
+        print(verify(args.results, **options))
     except CertificateInputError as exc:
         print(f"ERROR: {' '.join(str(exc).splitlines())}", file=sys.stderr)
         return 2

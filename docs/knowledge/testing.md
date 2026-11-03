@@ -79,6 +79,22 @@ testing of `piperobot/stats`.
   4 equivalent mutants. Tests now kill the first two groups: **336 / 340 killed (98.8%)**; the
   4 survivors are the equivalent mutants below (run 41567441367). _(verified 2026-11-02,
   mutmut 3.8.1)_
+- **A test file missing from `[tool.mutmut]`'s selection makes its module untested, silently.**
+  mutmut runs only the files in `pytest_add_cli_args_test_selection`; when `paired.py` landed,
+  all 334 of its mutants were "no tests" and the job stayed green. Now every test file that
+  imports `piperobot.stats` must be in that list and in `mutation.yml`'s `pull_request.paths`
+  (`tests/test_mutation_config.py`), and the summary step fails on any "no tests" mutant.
+  _(verified 2026-11-03, PR #47, mutmut 3.8.1)_
+- **Score with `paired.py`: 683 / 695 killed (98.3%)**, 0 "no tests" (run 41590237621). Of
+  `paired.py`'s 334 mutants, the first real run left 84 alive; tests now kill all but 3
+  equivalent ones: `range(b, n + 2)` in `exact_mcnemar_p` (`math.comb(n, n + 1) == 0`) and the
+  `max(-2.0, …)` / `min(2.0, …)` clamps, which never act: with |phi| <= 1 the root is at most
+  the sum of the two margins, so lower >= l2 - u1 >= -1 and upper <= u2 - l1 <= 1 (an
+  exhaustive check of all N = 40 tables at five confidences found no excursion). A `--help`
+  test kills the two description mutants. The key test is a property: positive
+  correlation between the arms (phi > 0) must make the paired interval narrower than the
+  unpaired one with the same margins, and phi < 0 wider. 7 survivors in `gate.py` and
+  `baseline.py` were already on `main` before #47. _(verified 2026-11-03, mutmut 3.8.1)_
 - **Accepted equivalent mutants** (4):
   - `text.partition("/")` → `rpartition` in `SuccessCount.parse`: they differ only with two or
     more `/`, and then both leave a `/` in a part that `int()` rejects.
@@ -93,6 +109,22 @@ testing of `piperobot/stats`.
   `rstrip(".")` → `rstrip("XX0XX")` / `rstrip("XX.XX")` (`rstrip` takes a set of characters, and
   no `X` occurs in a number). With these, the score on 2026-11-03 is 354 / 361 killed, the 7
   survivors all equivalent. _(verified 2026-11-03, mutmut 3.8.1)_
+- **Accepted equivalents are listed by exact mutmut name** in `tests/mutation_equivalents.txt`,
+  one per line with its reason, and `.github/scripts/mutation_summary.py` marks every survivor
+  "equivalent (accepted)" or "NEW — review" (a `::warning::`), and every listed name that did not
+  survive as "stale" (a `::notice::`). A name is mutmut's own (e.g.
+  `piperobot.stats.gate.x_decide__mutmut_26`); it changes only when the mutated function changes,
+  and then the old name goes stale and the new one shows as NEW: re-check the diff and update the
+  list. The 10 accepted names, mapped to the reasons above: `gate.x_format_percent__mutmut_11`
+  (`"F"`), `_18` and `_19` (`rstrip` sets), `gate.xǁSuccessCountǁparse__mutmut_3`
+  (`rpartition`), `gate.x_decide__mutmut_26` (`<= 0`), `baseline.x_load_baseline__mutmut_3`
+  (`None`) and `_5` (`"UTF-8"`), `paired.x_exact_mcnemar_p__mutmut_30` (`n + 2`), and
+  `paired.x_newcombe_paired_interval__mutmut_84` / `_89` (the ±2 clamps, provably dead: see
+  the "Score with `paired.py`" entry above). `paired.x_main__mutmut_2` / `_3` (`--help`
+  description) are killed by a test, not listed. NEW and stale do not fail the job yet; the plan
+  is to make NEW blocking after about four clean weekly runs, instead of a score threshold: a list
+  catches any new gap, whatever the score.
+  _(verified 2026-11-03, mutmut 3.8.1, run 41590237621)_
 
 ## Bugs found in `piperobot/stats` (fixed 2026-11-02)
 
@@ -168,3 +200,12 @@ testing of `piperobot/stats`.
 - **The history shows the CPU sensitivity of PushT**: the same 50 seeds gave 29/50 on three
   `AMD EPYC 7763` runners and 27/50 on an `INTEL(R) XEON(R) PLATINUM 8573C` one (points 1–4),
   which is why each point carries its platform ([lerobot.md](lerobot.md)). _(verified 2026-11-03)_
+- **Schema 2 loads the live schema-1 history unchanged**: loading the published `history.json`
+  (6 schema-1 records) with the schema-2 code and saving it again gives the same bytes, so the
+  append-only guard and the issued v1 certificates are unaffected
+  ([ADR 0031](../decisions/0031-history-schema-2-and-certify-trusted-builder.md)).
+  _(verified 2026-11-03)_
+- **In a reusable workflow, Fulcio's `buildSignerURI` is the reusable workflow and
+  `buildConfigURI` the caller** (`job_workflow_ref` and `workflow_ref`); the v2 verifier binds a
+  record's series to `buildConfigURI`. _(Fulcio `docs/oid-info.md`, checked 2026-11-03; to be
+  confirmed on the first `certify.yml` certificate)_

@@ -23,11 +23,21 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: `nightly.yml` runs the reference and `main` on the same 500 fresh seeds every
+  night and alerts on a paired regression (exact McNemar,
+  [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md), [ci.md](knowledge/ci.md)).
+- 2026-11-03: `piperobot.stats.paired` decides a same-seed comparison with an exact McNemar
+  test; the PushT baseline was re-measured on main (265/500, identical episode by episode to
+  10-27) and now records its commit and per-episode results ([lerobot.md](knowledge/lerobot.md)).
 - 2026-11-03: the course's tube-to-rack scene runs on Isaac Lab 3.0's SO-101 asset at the
   course pose with the course's gains; assets are fetched by sha256 outside the repo; the success
   term is ported with a 5 N grasp threshold and a slot-depth rule; registered sensing checks pass
   ([ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)). Replays with contacts vary run to
   run (2/75 outcomes).
+- 2026-11-03: history schema 2, core part: `series` (main, nightly), a `paired` block, the CPU
+  flags digest and the runner image; v2 certificates whose series is bound to the calling workflow
+  ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md)). `certify.yml`, the
+  single signer for `history.yml` and the nightly job, follows.
 - 2026-11-03: certificates of evaluation, core part: `history record` / `append --record` and
   `python -m piperobot.reports.certificate verify` (pins signer workflow, `main`, hosted runner,
   predicate type; checks the signed record against `results.json`)
@@ -87,8 +97,11 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
-   must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
+2. Add the `certify` job to `nightly.yml` once Carla's reusable `certify.yml` lands, so nights
+   join the history as a `nightly` series
+   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
+   [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
+   nightlies, decide on a paired mode for pr-gate.
 3. Isaac: the `piperobot.adapters.isaaclab` evaluator on the tube-to-rack scene (lazy Isaac
    imports, task data in `robots/so101/envs/`, results contract, `failure` from the success
    tracker), Codex coding. First measure same-seed repeatability with contacts (2/75 outcomes
@@ -101,7 +114,8 @@ Project Cangrejo, the `piperobot` package).
    `uv` job stays green with the torch ignore rule ([ci.md](knowledge/ci.md)); ask Andrés to add
    `zizmor` to the ruleset's required checks.
 6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
-   after a few weekly `mutation.yml` runs, decide a mutation-score threshold
+   after about four clean weekly `mutation.yml` runs, make a NEW surviving mutant (one not in
+   `tests/mutation_equivalents.txt`) fail the job, instead of a score threshold
    ([testing.md](knowledge/testing.md)).
 
 ## Open questions for Andrés

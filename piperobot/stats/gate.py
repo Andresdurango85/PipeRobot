@@ -12,7 +12,8 @@ Verdict rule:
   confidence. When both policies are truly equal this happens with probability ~(1 - confidence)/2.
 - WARN: not a confident regression, but the observed drop is larger than ``tolerance``. Passes,
   flagging that more episodes are needed to tell.
-- PASS: otherwise.
+- PASS: otherwise. The reason says whether the interval includes zero (no significant
+  difference) or lies entirely above it (the candidate is significantly better).
 
 Usage:
     uv run python -m piperobot.stats.gate --candidate 38/50 --baseline 45/50
@@ -171,9 +172,15 @@ def decide(
             f"the difference interval {diff_interval} includes zero. "
             "Run more episodes to tell."
         )
+    elif diff_interval.lower > 0:
+        verdict = Verdict.PASS
+        reason = (
+            f"No regression: the candidate is significantly better; difference interval "
+            f"{diff_interval} is entirely above zero."
+        )
     else:
         verdict = Verdict.PASS
-        reason = f"No regression detected: difference interval {diff_interval} includes zero."
+        reason = f"No significant difference: difference interval {diff_interval} includes zero."
 
     return GateResult(
         candidate=candidate,

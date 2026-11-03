@@ -103,7 +103,27 @@
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
-- `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
+- **`nightly.yml`** ([ADR 0032](../decisions/0032-nightly-paired-run-on-rotating-seeds.md)):
+  daily at 03:17 UTC and by hand, on `ubuntu-24.04`. One job evaluates the reference
+  (`vqbet.json`'s `commit`, its own lock) and then `main` on the same 500 fresh seeds
+  (`python -m piperobot.seeds`: first seed `100000 + episodes × days since 2026-01-01`) and
+  uploads `nightly-evaluation` (both results, both commits, platform, UTC time, raw CPU flags
+  line, runner image). A second job, without torch, runs `piperobot.stats.paired` and the unpaired gate for the
+  summary and fails on a paired BLOCK. `workflow_dispatch` only works once a workflow is on the
+  default branch, so the pre-merge measurement used a temporary `push` trigger on the PR branch.
+- **First nightly measurement** (run 41592248166, seeds 253000–253499, `ubuntu-24.04`, AMD EPYC
+  9V45): evaluate job 22 min (reference 620 s, candidate 681 s for 500 episodes each), verdict
+  job 7 s. Paired: 309/500 both, 0 discordant, PASS. Unpaired: 309/500 = 61.8% on fresh seeds
+  against the committed 265/500 = 53.0% on 1000–1499, +8.8 pp with the interval [0.027, 0.148]
+  above zero: the gate's fixed seeds may be harder than average. One night only; the series will
+  tell.
+  _(verified 2026-11-03)_
+- **Triage of a nightly BLOCK**: an alert, never a merge block. Do not rerun the same seeds: CPU
+  PushT is deterministic within a runner, so a rerun only reproduces it. Look at the discordant
+  seeds in the two results files, then wait for the next nights' fresh seeds or dispatch more
+  episodes. If `main` really differs from the reference (a refactor, a dependency bump), a
+  neutral difference still raises a false BLOCK about once in 40 nights, until a baseline
+  refresh moves the reference forward.
 
 ## Local hooks
 
@@ -289,8 +309,20 @@
 - **Secret scanning's non-provider patterns and validity checks stay disabled** on this repo:
   the API returns 200 to the request but nothing changes, likely because they need GitHub Secret
   Protection, which a personal public repo does not have. Do not retry. _(verified 2026-11-02)_
-- **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** No impact today because uv pins Python
-  3.12 itself. _(verified 2026-10-26, run annotations)_
+- ~~`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19. No impact today because uv pins Python
+  3.12 itself.~~ _(2026-10-26; wrong about the impact, see below)_
+- **`ubuntu-latest` becomes Ubuntu 26.04.1 (kernel 7.0) in a rollout from 2026-10-19 to
+  2026-11-19** (actions/runner-images#14748). uv pins Python, but torch's CPU wheels still load
+  the OS's glibc/libm, which can flip near-miss PushT episodes like a CPU change does. So the jobs
+  whose results are compared across runs pin `ubuntu-24.04`: `pr-gate`, `baseline.yml`,
+  `nightly.yml` and `history.yml`'s `evaluate` job (`tests/test_workflows.py` checks it). The
+  others (`ci`, `zizmor`, `scorecard`, `mutation`, `dependency-review`) stay on `ubuntu-latest`.
+  Until then every run of ours had landed on 24.04.5 (image versions 20261012, 20261025).
+  _(verified 2026-11-03)_
+- **Moving the pinned jobs to a new image is a deliberate step**: dispatch `baseline.yml` on the
+  new image and compare it episode by episode with `robots/pusht/baselines/vqbet-episodes.json`
+  (`python -m piperobot.stats.paired`). Identical: switch every pinned label in one PR. Not
+  identical: refresh the baseline in the same PR as the switch. _(2026-11-03)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`
   ([ADR 0007](../decisions/0007-lf-line-endings.md)). _(verified 2026-10-26)_
 - **Editing the sticky PR comment needs `pull-requests: write`** in the workflow permissions
@@ -327,6 +359,17 @@
 
   Feed the brief on stdin from a file, or `codex exec` waits for input.
   _(verified 2026-11-01, Codex CLI 0.166, uv 0.10.8)_
+- **Codex can turn a non-ASCII character in code into `?`.** A brief asked for a ` · `
+  separator in `piperobot/reports/history.py`; the code came back with ` ? ` and the page
+  showed "CPU A ? ubuntu24". The brief reached Codex intact (the PowerShell pipe sent UTF-8,
+  checked byte by byte), and a `ǁ` (U+01C1) that Codex wrote into a data file the same day
+  survived, so where it is lost is not known. In briefs, give non-ASCII characters as escapes
+  (`\u00b7`) or name them, and grep a Codex diff for `?` where a symbol was intended; a
+  screenshot of rendered output catches it too. _(observed 2026-11-03, Codex CLI 0.166)_
+- **Codex leaves sandbox-owned folders besides `pytest-tmp`** (`.venv\pytest-focused`,
+  `.venv\pytest-*`), which `git worktree remove` cannot delete; remove them all from inside the
+  sandbox (`glob.glob(r'.venv\pytest-*')`) before removing a worktree, and tell Codex in the brief
+  to use only `--basetemp=.venv\pytest-tmp`. _(observed 2026-11-03, Codex CLI 0.166)_
 - **Delete sandbox-owned folders from inside the sandbox.** `.venv\pytest-tmp` and other folders
   that Codex's Python created are private to the sandbox user, so `Remove-Item` and
   `git worktree remove` fail on them for your own user. No admin rights are needed; run the delete
