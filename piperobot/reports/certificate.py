@@ -144,7 +144,10 @@ def verify(
     except FileNotFoundError as exc:
         raise CertificateInputError(f"cannot find {gh}: {exc}") from exc
     if output.returncode:
-        if bundle is None and "no attestations found" in output.stderr:
+        if bundle is None and (
+            "no attestations found" in output.stderr
+            or ("HTTP 404" in output.stderr and f"/attestations/sha256:{digest}" in output.stderr)
+        ):
             raise CertificateNotFound(digest)
         raise CertificateError(output.stderr.strip())
     try:
