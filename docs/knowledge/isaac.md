@@ -306,6 +306,14 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   Ti; a worker peaks at ~2.9 GB of GPU memory. On Windows (WDDM) `nvidia-smi` gives no
   per-process memory: measure the total against the idle desktop load (~9.9 GB here).
   _(verified 2026-11-03)_
+- **Evaluator inputs live under one cache root**: `PIPEROBOT_CACHE`, else
+  `%LOCALAPPDATA%\piperobot` (XDG cache on Linux). `robots/so101/tools/prepare_caches.py` (repo
+  env, `uv sync --group so101-data`) fills and verifies it by sha256: the course's assets under
+  `course-assets/<commit>/` and the replay policy's `datasets/<repo>/<revision>/episodes.json`;
+  a second run does no network I/O. `episodes.json` is written as LF bytes on every platform; the
+  first pin (`ae786b9c…`) was a Windows CRLF file extracted before `control_hz` was recorded,
+  with episodes identical to today's (`273e1823…`). A replay seed through the new root matches
+  the acceptance run's fingerprint. _(verified 2026-11-03)_
 - **Teleporting an object relative to another one must use the other one's settled pose**, not
   its configured initial pose: the rack drops 1.9 cm from its spawn height, which made check S7b
   hold a tube 1.9 cm too high on its first run. _(verified 2026-11-02)_

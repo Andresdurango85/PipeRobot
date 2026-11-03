@@ -62,3 +62,7 @@ unit mapping and fixed analysis rules live in `so101/envs/`.
 - `so101/envs/vials_to_rack_randomization.py`: independent seeded scene layouts.
 - `so101/policies/demo_replay.py`: open-loop replay policy indexed by demo seed.
 - `so101/policies/demo_replay.json`: pinned offline policy inputs and preparation command.
+
+- `so101/tools/prepare_caches.py`: idempotent verified asset and episode cache preparation.
+- `so101/policies/demo_replay_weak_grip.json`: replay with a 25-unit gripper floor.
+- `so101/policies/weak_grip_expectation.json`: pre-registered weak-grip BLOCK prediction.

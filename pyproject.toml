@@ -37,6 +37,11 @@ dev = [
 ]
 # Mutation testing of piperobot/stats. mutmut 3 needs fork(): Linux only, run by mutation.yml.
 mutation = ["mutmut>=3.8.1"]
+# SO-101 cache preparation: the course dataset's parquet episodes, without torch (prepare_caches.py).
+so101-data = [
+    "huggingface-hub>=1.33,<2",
+    "pyarrow>=26,<27",
+]
 
 [tool.uv]
 # Security: LeRobot 0.6.1 caps Pillow<13, but 13.0.0 fixes 41 advisories (5 critical). See ADR 0012.

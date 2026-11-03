@@ -7,6 +7,7 @@ import importlib.util
 import json
 import math
 import os
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Protocol, cast, runtime_checkable
 
+from piperobot.cache import cache_root
 from piperobot.results import ResultsError
 
 
@@ -44,8 +46,21 @@ def required_string(data: Mapping[str, object], key: str) -> str:
     return value
 
 
+def expand_variables(value: str) -> str:
+    environ = dict(os.environ)
+    environ["PIPEROBOT_CACHE"] = str(cache_root())
+    pattern = r"\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z_0-9]*)"
+    if os.name == "nt":
+        pattern += r"|%([^%]+)%"
+    return re.sub(
+        pattern,
+        lambda match: environ.get(next(g for g in match.groups() if g is not None), match[0]),
+        value,
+    )
+
+
 def resolve_path(value: str, parent: Path) -> Path:
-    path = Path(os.path.expandvars(value))
+    path = Path(expand_variables(value))
     return (parent / path).resolve() if not path.is_absolute() else path.resolve()
 
 
@@ -110,9 +125,7 @@ class PolicySpec:
             files.append({"path": str(file), "sha256": sha256})
         options = object_dict(data.get("options", {}), "options").copy()
         # Expand path variables in factory options as well as integrity-checked files.
-        options = {
-            k: os.path.expandvars(v) if isinstance(v, str) else v for k, v in options.items()
-        }
+        options = {k: expand_variables(v) if isinstance(v, str) else v for k, v in options.items()}
         return cls(
             required_string(data, "name"),
             resolve_path(required_string(data, "module"), path.resolve().parent),
