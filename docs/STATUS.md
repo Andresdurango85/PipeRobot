@@ -23,6 +23,11 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: success-rate history, core part: `piperobot/reports/history.py` appends one record
+  per evaluation to an append-only `history.json` and renders a static page (inline SVG, no JS);
+  `piperobot/platform_info.py` labels the CPU like `pr-gate`
+  ([ADR 0026](decisions/0026-success-rate-history-data-branch-and-pages.md)). The workflow
+  (`history.yml`, Pages) and three repo settings follow after the workflow-hardening PR.
 - 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
   `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
   ([testing.md](knowledge/testing.md)).
@@ -30,7 +35,7 @@ Project Cangrejo, the `piperobot` package).
   runner refuses any job that is not one of our self-hosted workflows on a push, dispatch or
   schedule; the runner folder's ACL no longer lets every local account write it; every action is
   pinned by SHA; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly
-  ([ADR 0026](decisions/0026-self-hosted-runner-push-only-and-pinned-actions.md),
+  ([ADR 0027](decisions/0027-self-hosted-runner-push-only-and-pinned-actions.md),
   [ci.md](knowledge/ci.md)).
 - 2026-11-02: Hypothesis property tests and weekly mutation testing (`mutation.yml`, Linux) for
   `piperobot/stats`. **Gate verdicts change**: a drop of exactly the tolerance (e.g. 35/50 vs
@@ -77,7 +82,7 @@ Project Cangrejo, the `piperobot` package).
    reproducibility with cameras and a policy in the loop.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. After the ADR 0026 PR merges: set the repo's Actions permissions (selected actions only,
+5. After the ADR 0027 PR merges: set the repo's Actions permissions (selected actions only,
    SHA pinning required), check that a workflow, CodeQL's default setup and Monday's Dependabot
    run still work, note Scorecard's first score and top findings in [ci.md](knowledge/ci.md),
    and ask Andrés to add `zizmor` to the ruleset's required checks.

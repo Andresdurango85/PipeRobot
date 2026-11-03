@@ -1,5 +1,5 @@
 # Runner job-started hook: install the live copy by hand outside the repo on the runner machine
-# (ADR 0026, docs/knowledge/ci.md). Adding a self-hosted workflow requires updating this allowlist
+# (ADR 0027, docs/knowledge/ci.md). Adding a self-hosted workflow requires updating this allowlist
 # and redeploying the live copy before the new workflow can run.
 $AllowedWorkflows = @('gpu-smoke.yml', 'isaac-render.yml')
 

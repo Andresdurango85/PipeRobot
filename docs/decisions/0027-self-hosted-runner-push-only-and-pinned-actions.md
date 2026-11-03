@@ -1,4 +1,4 @@
-# 0026. Self-hosted jobs run on push only, behind a runner-side hook; actions pinned by SHA
+# 0027. Self-hosted jobs run on push only, behind a runner-side hook; actions pinned by SHA
 
 - Status: Accepted
 - Date: 2026-11-02
