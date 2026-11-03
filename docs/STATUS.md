@@ -108,7 +108,8 @@ Project Cangrejo, the `piperobot` package).
    `uv` job stays green with the torch ignore rule ([ci.md](knowledge/ci.md)); ask Andrés to add
    `zizmor` to the ruleset's required checks.
 6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
-   after a few weekly `mutation.yml` runs, decide a mutation-score threshold
+   after about four clean weekly `mutation.yml` runs, make a NEW surviving mutant (one not in
+   `tests/mutation_equivalents.txt`) fail the job, instead of a score threshold
    ([testing.md](knowledge/testing.md)).
 
 ## Open questions for Andrés

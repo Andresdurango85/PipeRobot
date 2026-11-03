@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   evaluate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned like pr-gate; moving images is deliberate (ci.md)
     timeout-minutes: 90
     permissions:
       contents: read
@@ -84,6 +84,8 @@ jobs:
           printf '%s\n' "$REFERENCE_COMMIT" > "$OUT/reference_commit.txt"
           printf '%s\n' "$GITHUB_SHA" > "$OUT/candidate_commit.txt"
           grep -m 1 '^flags[[:space:]]*:' /proc/cpuinfo > "$OUT/cpu_flags.txt"
+          printf '%s %s\n' "$ImageOS" "$ImageVersion" > "$OUT/runner_image.txt"
+          echo "Runner image: $(cat "$OUT/runner_image.txt")" | tee -a "$GITHUB_STEP_SUMMARY"
           cd reference
           uv sync --locked --extra lerobot --group sim-pusht
           date -u +%Y-%m-%dT%H:%M:%SZ > "$OUT/evaluated_at.txt"
@@ -111,12 +113,13 @@ jobs:
             out/platform.txt
             out/evaluated_at.txt
             out/cpu_flags.txt
+            out/runner_image.txt
           retention-days: 30
           if-no-files-found: error
 
   verdict:
     needs: evaluate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned like pr-gate; moving images is deliberate (ci.md)
     timeout-minutes: 10
     permissions:
       contents: read

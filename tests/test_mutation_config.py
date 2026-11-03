@@ -50,3 +50,16 @@ def test_mutation_workflow_runs_when_selected_tests_change() -> None:
     paths = set(triggers["pull_request"]["paths"])
     missing = sorted(_selection() - paths)
     assert not missing, f"{missing} are mutation-tested but missing from mutation.yml's paths."
+
+
+def test_equivalent_mutant_modules_exist() -> None:
+    lines = (ROOT / "tests/mutation_equivalents.txt").read_text(encoding="utf-8").splitlines()
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        name = line.partition("#")[0].strip()
+        module, separator, _ = name.rpartition(".")
+        assert separator, name
+        assert module.startswith("piperobot.stats."), name
+        path = ROOT.joinpath(*module.split(".")).with_suffix(".py")
+        assert path.is_file(), f"Equivalent mutant {name} refers to a missing stats module: {path}"

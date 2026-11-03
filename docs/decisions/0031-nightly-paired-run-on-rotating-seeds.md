@@ -23,7 +23,7 @@ both logged "AMD EPYC 9V74" disagreed on 10 episodes; [lerobot.md](../knowledge/
 
 ## Decision
 
-1. **A nightly workflow** (`nightly.yml`, `ubuntu-latest`, never self-hosted, `contents: read`)
+1. **A nightly workflow** (`nightly.yml`, `ubuntu-24.04`, never self-hosted, `contents: read`)
    evaluates two arms on the **same 500 fresh seeds, in the same job**, one after the other:
    - the **reference**: the repository at the commit recorded in
      `robots/pusht/baselines/vqbet.json` (`"commit"`), with its own `uv.lock`;
@@ -49,8 +49,8 @@ both logged "AMD EPYC 9V74" disagreed on 10 episodes; [lerobot.md](../knowledge/
    dispatch with more episodes.
 6. **Nightly only evaluates and alerts.** It uploads a fixed artifact, `nightly-evaluation`
    (`reference.json`, `candidate.json`, `reference_commit.txt`, `candidate_commit.txt`,
-   `platform.txt`, `evaluated_at.txt`, and the raw `/proc/cpuinfo` flags line in
-   `cpu_flags.txt`). Signing it and appending it to the history page as a `nightly` series is
+   `platform.txt`, `evaluated_at.txt`, the raw `/proc/cpuinfo` flags line in `cpu_flags.txt`,
+   and `$ImageOS $ImageVersion` in `runner_image.txt`). Signing it and appending it to the history page as a `nightly` series is
    done by the reusable `certify.yml` from the success-rate history work, which recomputes the
    paired record from those files in the signing job.
 
@@ -77,6 +77,10 @@ both logged "AMD EPYC 9V74" disagreed on 10 episodes; [lerobot.md](../knowledge/
   refactor or dependency bump), each night re-tests that difference on fresh seeds at α = 0.025,
   so roughly one false BLOCK every 40 nights, about 9 a year, until the reference is refreshed.
   Hence decision 5.
+- The runner image is pinned to `ubuntu-24.04`, like pr-gate and the baseline, and logged in
+  `runner_image.txt`: `ubuntu-latest` becomes Ubuntu 26.04 by 2026-11-19, and a new OS can move
+  near-miss episodes. Both arms share the job, so the paired verdict would survive an image
+  change; the unpaired comparison with the committed counts would not.
 - About 50 minutes of hosted runner time per night (two arms of ~22 min, two installs).
 - The reference commit's evaluator CLI (`piperobot.adapters.lerobot.evaluate`) must keep
   working for as long as that commit is the reference; a baseline refresh moves it forward.

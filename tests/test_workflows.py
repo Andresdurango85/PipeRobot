@@ -353,7 +353,7 @@ def test_nightly_hosted_read_only_jobs() -> None:
     assert data["permissions"] == {}
     assert set(data["jobs"]) == {"evaluate", "verdict"}
     for job in data["jobs"].values():
-        assert job["runs-on"] == "ubuntu-latest"
+        assert job["runs-on"] == "ubuntu-24.04"
         assert job["permissions"] == {"contents": "read"}
         for step in job["steps"]:
             assert "${{" not in step.get("run", "")
@@ -377,6 +377,7 @@ def test_nightly_artifact_contract() -> None:
         "out/platform.txt",
         "out/evaluated_at.txt",
         "out/cpu_flags.txt",
+        "out/runner_image.txt",
     ]
     downloads = [
         step["with"]
@@ -384,3 +385,22 @@ def test_nightly_artifact_contract() -> None:
         if step.get("uses", "").startswith("actions/download-artifact@")
     ]
     assert downloads == [{"name": "nightly-evaluation", "path": "out/"}]
+
+
+# Workflows whose torch results are compared across runs (with the committed baseline). They pin
+# the hosted image: a new OS brings new system libraries (libm) that can flip near-miss episodes.
+PINNED_IMAGE = "ubuntu-24.04"
+NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
+
+
+@pytest.mark.parametrize("name", NUMERIC_WORKFLOWS)
+def test_numeric_workflows_pin_the_runner_image(name: str) -> None:
+    for job in _load(ROOT / ".github" / "workflows" / name)["jobs"].values():
+        assert job["runs-on"] == PINNED_IMAGE, (
+            f"{name} must run on {PINNED_IMAGE}; move images only with a baseline comparison"
+        )
+
+
+def test_history_evaluate_job_pins_the_runner_image() -> None:
+    job = _load(ROOT / ".github" / "workflows" / "history.yml")["jobs"]["evaluate"]
+    assert job["runs-on"] == PINNED_IMAGE

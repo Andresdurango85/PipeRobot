@@ -117,6 +117,10 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   the VM's exposed instruction set (e.g. AVX-512, and so the oneDNN/MKL code path) varies
   between hosts with the same model name; logging a hash of the `/proc/cpuinfo` flags would
   test it. _(verified 2026-11-03, per-episode results; files in `robots/pusht/baselines/`)_
+- **The OS image does not explain those flips either**: the two disagreeing "EPYC 9V74" runs
+  (40621909121 and 41585590113) both ran on `ubuntu-24.04` image version 20261025.353.1. Their
+  commits differ, but the later one matches the 7763 run of the earlier commit exactly, so a code
+  effect is unlikely; the per-host hardware hypothesis stands. _(verified 2026-11-03, run logs)_
 - **On CUDA, `lerobot-eval` is not reproducible**: `lerobot/scripts/lerobot_eval.py:746-747`
   sets `torch.backends.cudnn.benchmark = True` and `torch.backends.cuda.matmul.allow_tf32 = True`
   unconditionally, and `set_seed` does not undo them. Two 50-episode runs on the same seeds gave
