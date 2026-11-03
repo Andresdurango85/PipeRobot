@@ -404,3 +404,33 @@ def test_numeric_workflows_pin_the_runner_image(name: str) -> None:
 def test_history_evaluate_job_pins_the_runner_image() -> None:
     job = _load(ROOT / ".github" / "workflows" / "history.yml")["jobs"]["evaluate"]
     assert job["runs-on"] == PINNED_IMAGE
+
+
+def test_readme_workflow() -> None:
+    data = _load(ROOT / ".github/workflows/readme.yml")
+    assert data["permissions"] == {}
+    assert set(data["jobs"]) == {"linux", "windows"}
+    assert data["jobs"]["linux"]["runs-on"] == PINNED_IMAGE
+    assert data["jobs"]["windows"]["runs-on"] == "windows-2025"
+    for job in data["jobs"].values():
+        assert job["permissions"] == {"contents": "read"}
+        setup = [
+            step for step in job["steps"] if step.get("uses", "").startswith("astral-sh/setup-uv@")
+        ]
+        assert len(setup) == 1
+        assert setup[0]["with"]["enable-cache"] is False
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+
+
+def test_degraded_policy_is_demo_only() -> None:
+    import json
+
+    name = "demo-degraded.json"
+    policy = json.loads((ROOT / "robots/pusht/policies" / name).read_text(encoding="utf-8"))
+    assert "DEMO ONLY" in policy["note"]
+    for path in WORKFLOWS:
+        assert name not in path.read_text(encoding="utf-8"), str(path)
+    for path in (ROOT / "piperobot").rglob("*"):
+        if path.is_file() and "__pycache__" not in path.parts:
+            assert name not in path.read_text(encoding="utf-8"), str(path)

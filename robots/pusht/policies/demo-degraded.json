@@ -1,0 +1,12 @@
+{
+  "name": "vqbet-pusht-demo-degraded",
+  "note": "DEMO ONLY, not a real policy: vqbet.json with its sampling temperature raised to 2.0, the deliberately worse policy of demo PR #14 (4/50). The README uses it to show the gate blocking a regression; no workflow may use it.",
+  "repo_id": "lerobot/vqbet_pusht",
+  "revision": "15c2d0af889c401c7e5db7a07499d3b498afc276",
+  "env": "pusht",
+  "drop_config_fields": ["mlp_hidden_dim"],
+  "migrate_legacy_normalization": true,
+  "config_overrides": {
+    "bet_softmax_temperature": 2.0
+  }
+}

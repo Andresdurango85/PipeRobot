@@ -1,0 +1,63 @@
+name: readme
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 4 * * 3"
+  pull_request:
+    paths: [README.md, .github/scripts/readme_commands.py, .github/workflows/readme.yml]
+  # TEMPORARY: measurement run before merge, remove
+  push:
+    branches: [docs/readme-30-minutes]
+
+permissions: {}
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      UV_CACHE_DIR: ${{ runner.temp }}/readme-uv
+      HF_HOME: ${{ runner.temp }}/readme-hf
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: fresh-clone
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+      - name: Run and time README commands
+        working-directory: fresh-clone
+        shell: bash
+        run: |
+          mkdir "$UV_CACHE_DIR" "$HF_HOME"
+          uv run --no-project python .github/scripts/readme_commands.py run README.md --shell bash --summary "$GITHUB_STEP_SUMMARY" --budget-minutes 30
+
+  # Informational platform coverage; unexpected verdicts still fail this job.
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      UV_CACHE_DIR: ${{ runner.temp }}/readme-uv
+      HF_HOME: ${{ runner.temp }}/readme-hf
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: fresh-clone
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+      - name: Run and time README commands
+        working-directory: fresh-clone
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path $env:UV_CACHE_DIR, $env:HF_HOME | Out-Null
+          uv run --no-project python .github/scripts/readme_commands.py run README.md --shell powershell --summary "$env:GITHUB_STEP_SUMMARY" --budget-minutes 30

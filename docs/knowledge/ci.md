@@ -100,6 +100,16 @@
 - **The 7-day cooldown works**: the log shows "Filtered out N versions due to cooldown", and the
   first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
   _(verified 2026-11-03)_
+- **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
+  `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
+  policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced
+  block preceded by `<!-- readme-test -->` is executed, one command per line, from the
+  repository root; `<!-- readme-test: exit N -->` expects exit code N and allows a single
+  command. Lines may not end in `\` (continuations differ between bash and PowerShell).
+  `.github/scripts/readme_commands.py extract README.md` lists the steps. Runs on PRs that touch
+  the README or its tooling, weekly (drift from code and dependencies) and by hand. Not a
+  required check. `robots/pusht/policies/demo-degraded.json` exists only for the README's BLOCK
+  step; a test keeps every workflow and `piperobot/` from referencing it. _(2026-11-03)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
