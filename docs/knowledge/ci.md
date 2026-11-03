@@ -100,6 +100,18 @@
 - **The 7-day cooldown works**: the log shows "Filtered out N versions due to cooldown", and the
   first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
   _(verified 2026-11-03)_
+- **`so101-gate.yml`** ([ADR 0034](../decisions/0034-so101-gate-on-the-self-hosted-runner.md)):
+  the SO-101 gate. On pushes touching the SO-101 policy, scene, baselines or cache script, the
+  Isaac adapter, the paired statistics or comment code, or itself (and by hand, with
+  `mode: gate | baseline`). Job `evaluate` on the self-hosted GPU runner (`contents: read`):
+  reuses `isaac-render`'s tool-cache Isaac Lab, verifies inputs with `prepare_caches.py` into
+  `$RUNNER_TOOL_CACHE\piperobot-cache`, fails fast below 3584 MiB of free VRAM, evaluates seeds
+  0–74 and uploads the `so101-gate` artifact. Job `report` on `ubuntu-24.04` (the only job with
+  `pull-requests: write`): paired verdict against `robots/so101/baselines/demo-replay-episodes.json`,
+  sticky comment `<!-- piperobot-gate:so101 -->` on the open PRs whose head is the commit,
+  failure on BLOCK; with no baseline committed yet it only writes a summary. Not a required
+  check. A push before the hook allowed it was refused on the runner, as intended (run
+  41607023801). _(2026-11-03)_
 - **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
   policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced

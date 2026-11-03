@@ -118,6 +118,9 @@ Project Cangrejo, the `piperobot` package).
    after about four clean weekly `mutation.yml` runs, make a NEW surviving mutant (one not in
    `tests/mutation_equivalents.txt`) fail the job, instead of a score threshold
    ([testing.md](knowledge/testing.md)).
+7. SO-101 gate: two parallel Isaac workers with a registered repeatability test (fingerprints
+   identical to the sequential run, 0 flips), to bring 75 seeds well under the 30-minute budget
+   ([ADR 0034](decisions/0034-so101-gate-on-the-self-hosted-runner.md)).
 
 ## Open questions for Andrés
 
