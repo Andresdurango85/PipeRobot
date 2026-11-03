@@ -102,8 +102,11 @@
   With a required review that meant merging through the admin bypass (`gh pr merge <n> --admin`),
   hence ADR 0018. _(GitHub behaviour, 2026-10-27)_
 - **With 0 required approvals, PRs merge with a plain `gh pr merge <n> --merge`** once the checks
-  pass, and Claude Code's auto mode allows it. "Require review from Code Owners" is still on in the
-  ruleset and does not block it. _(verified 2026-10-28, PR #17)_
+  pass, and Claude Code's auto mode allows it. ~~"Require review from Code Owners" is still on in
+  the ruleset and does not block it.~~ _(verified 2026-10-28, PR #17)_
+- **"Require review from Code Owners" blocked Dependabot's PRs** (the owner's own PRs were
+  unaffected), so Andrés turned it off in the `main` ruleset, in line with
+  [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md). _(2026-11-03, PRs #36, #37)_
 - **Claude Code's auto mode refuses admin-bypass merges** ("Merge Without Review") even when the
   owner asked in chat and even with a `Bash(gh pr merge:*)` allow rule in
   `.claude/settings.local.json`. It also refuses editing the ruleset through the API ("CI Bypass"):
@@ -218,6 +221,14 @@
 - **Repo Actions permissions before ADR 0027**: `allowed_actions: all`,
   `sha_pinning_required: false`, default workflow token read-only, fork approval
   `all_external_contributors`. _(verified 2026-11-02, API)_
+- **Repo Actions permissions since ADR 0027**: `allowed_actions: selected` with
+  `github_owned_allowed: true` (`actions/*`, `github/*`), `verified_allowed: false`,
+  `patterns_allowed: [astral-sh/setup-uv@*, ossf/scorecard-action@*]`, and
+  `sha_pinning_required: true`. A new third-party action must be added to the patterns first.
+  Applied by the orchestrator session with Andrés's explicit OK; a worker session's auto mode
+  refuses the `PUT` ("Modify Shared Resources"). Read back with
+  `gh api repos/<o>/<r>/actions/permissions` and `…/permissions/selected-actions`.
+  _(verified 2026-11-03, API)_
 - **Secret scanning's non-provider patterns and validity checks stay disabled** on this repo:
   the API returns 200 to the request but nothing changes, likely because they need GitHub Secret
   Protection, which a personal public repo does not have. Do not retry. _(verified 2026-11-02)_
