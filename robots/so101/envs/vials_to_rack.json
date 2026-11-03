@@ -50,7 +50,11 @@
       "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
       "path": "source/sim_to_real_so101/tasks/vials_to_rack_env_cfg.py",
       "license": "Apache-2.0"
-    }
+    },
+    "usd": "Vial_opaque.usda",
+    "mass_kg": 0.02,
+    "angular_damping": 100,
+    "note": "Rolling damper retained for fidelity to the training data."
   },
   "rack": {
     "origin_m": [
@@ -117,7 +121,8 @@
         "path": "source/sim_to_real_so101/tasks/task_env_cfg.py",
         "license": "Apache-2.0"
       }
-    ]
+    ],
+    "mass_kg": 0.2
   },
   "tcp": {
     "body": "gripper",
@@ -132,6 +137,67 @@
       "path": "Simulation/SO101/so101_new_calib.urdf",
       "joint": "gripper_frame_joint",
       "parent": "gripper_link"
+    }
+  },
+  "light_box": {
+    "usd": "lightbox-simple.usd",
+    "position_m": [
+      -0.1,
+      0,
+      0.0257
+    ],
+    "unloaded_payloads": [
+      "LightBox/camera_mount/rsd455"
+    ],
+    "source": {
+      "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+      "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+      "path": "source/sim_to_real_so101/tasks/task_env_cfg.py",
+      "license": "Apache-2.0"
+    }
+  },
+  "mat": {
+    "usd": "mat.usda",
+    "position_m": [
+      0.22,
+      0,
+      0.032
+    ],
+    "yaw_deg": 90,
+    "source": {
+      "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+      "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+      "path": "source/sim_to_real_so101/tasks/task_env_cfg.py",
+      "license": "Apache-2.0"
+    }
+  },
+  "contact_sensor": {
+    "body": "moving_jaw_so101_v1",
+    "filtered_tubes": [
+      "Vial_1",
+      "Vial_2",
+      "Vial_3"
+    ],
+    "history_length": 1,
+    "update_period": 0,
+    "source": {
+      "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+      "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+      "path": "source/sim_to_real_so101/tasks/vials_to_rack_env_cfg.py",
+      "license": "Apache-2.0"
+    },
+    "note": "The course sensor is on its moving jaw (jaw) only."
+  },
+  "control": {
+    "physics_dt": 0.008333333333333333,
+    "substeps": 2,
+    "control_hz": 60,
+    "adr": "0024",
+    "source": {
+      "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+      "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+      "path": "source/sim_to_real_so101/tasks/so101_env_cfg.py",
+      "license": "Apache-2.0"
     }
   }
 }

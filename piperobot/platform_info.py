@@ -31,7 +31,8 @@ def describe_platform(
     except OSError:
         pass
     model = model or platform.processor() or platform.machine() or "unknown CPU"
-    return f"{model}, {count()} CPUs"
+    cpus = count()
+    return f"{model}, {cpus if cpus is not None else 'unknown'} CPUs"
 
 
 if __name__ == "__main__":

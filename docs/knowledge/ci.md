@@ -43,6 +43,17 @@
   scorecard-action and harden-runner as steps. Only `push` and `schedule` are supported triggers;
   `workflow_dispatch` and `pull_request` are experimental. Not a gate.
   _(verified 2026-11-02, scorecard-action v2.5.0 README)_
+- **`mutation.yml`**: mutmut on `piperobot/stats` on `ubuntu-latest`, weekly, by hand, and on
+  PRs that touch the stats code or its tests; score and survivors in the job summary and log. Not
+  a gate ([testing.md](testing.md)). _(verified 2026-11-02, mutmut 3.8.1)_
+- **`history.yml`**: on push to `main` touching `piperobot/`, `robots/pusht/`, `uv.lock` or itself,
+  and by hand: evaluates PushT (`contents: read`), appends one record to `history.json` on the
+  append-only `history` branch through `.github/scripts/append_history.sh` (the only job with
+  `contents: write`; fetch–append–push with retries, explicit `refs/heads/history` refspec), and
+  deploys the rendered page to Pages (`pages: write`, `id-token: write`, `github-pages`
+  environment). `append` and `deploy` run only on `refs/heads/main`
+  ([ADR 0026](../decisions/0026-success-rate-history-data-branch-and-pages.md)). Needs Pages from
+  GitHub Actions, the `history` branch and its ruleset first. _(written 2026-11-03; not yet run)_
 - **Scorecard's first score: 6.3/10** (Scorecard v5.6.0 on `7779d43`). 10/10: Pinned-Dependencies,
   Token-Permissions, Dangerous-Workflow, SAST, CI-Tests, Security-Policy,
   Dependency-Update-Tool, Binary-Artifacts, License. Low, and why: Code-Review 0 (no approving
@@ -144,9 +155,25 @@
   had left in `out/` (run 41573497209). The job's actions are downloaded before the hook runs.
   On this runner the hook is invoked as `powershell -command ". '<script>'"`, so Windows
   PowerShell 5.1 under the machine's execution policy runs it; an allowed job prints
-  "Allowed job: …" (run 41573361134). The fork approval setting stays the primary barrier until
-  the follow-up (end the worker process on refusal, wipe the workspace after each job) lands.
-  _(verified 2026-11-03, runner 2.338.2, throwaway PR #35)_
+  "Allowed job: …" (run 41573361134). _(verified 2026-11-03, runner 2.338.2, throwaway PR #35)_
+- **Fixed by ending the worker** ([ADR 0029](../decisions/0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md)):
+  the hook runs as a direct child of the job's `Runner.Worker.exe`
+  (`RunnerService → Runner.Listener → Runner.Worker → powershell`), and on refusal it stops that
+  process. Then no step runs, `always()` ones included, and no artifact is uploaded; the run
+  fails in about 20 s, and the Listener logs "worker encounter an unhandled exception or app
+  crash", marks the job Failed and keeps listening (runs 41580283257, 41580287237). The cost: a
+  refused job has **no log on GitHub** (log API 404, `BlobNotFound`); look in
+  `C:\actions-runner\_diag\Runner_*.log`. The Listener's `ERR BrokerServer … TaskCanceledException`
+  lines at each job end are normal: the same pattern shows on ordinary jobs.
+  _(verified 2026-11-03, runner 2.338.2)_
+- **The job-completed hook wipes the workspace** after every allowed job: "Wiped job workspace:
+  C:\actions-runner\_work\PipeRobot\PipeRobot (21 entries)" under "Complete runner", ~13 s for
+  `gpu-smoke`. A cold workspace costs no measurable time: `gpu-smoke` ran in 2 min 30 s cold
+  (install 17 s, evaluation 94 s, run 41580744632) against 2 min 25 s–2 min 43 s warm, since the
+  uv cache lives in the tool cache and the Hugging Face cache in `gh-runner`'s profile. Another
+  session's GPU study was running at the same time. _(verified 2026-11-03)_
+- **A killed (refused) job does not run the job-completed hook**, so the wipe after the previous
+  allowed job is what keeps its workspace empty. _(verified 2026-11-03)_
 - ~~`C:\actions-runner` inherits from `C:\`: "Authenticated Users" have Modify and "Users" read,
   including `.credentials_rsaparams` (the runner's key), so every local account, the Codex
   sandbox users included, could rewrite or read the runner.~~ _(verified 2026-11-02, ACL)_

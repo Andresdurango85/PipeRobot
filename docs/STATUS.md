@@ -23,20 +23,29 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: the course's tube-to-rack scene runs on Isaac Lab 3.0's SO-101 asset at the
+  course pose with the course's gains; assets are fetched by sha256 outside the repo; the success
+  term is ported with a 5 N grasp threshold and a slot-depth rule; registered sensing checks pass
+  ([ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)). Replays with contacts vary run to
+  run (2/75 outcomes).
 - 2026-11-03: success-rate history, core part: `piperobot/reports/history.py` appends one record
   per evaluation to an append-only `history.json` and renders a static page (inline SVG, no JS);
   `piperobot/platform_info.py` labels the CPU like `pr-gate`
-  ([ADR 0026](decisions/0026-success-rate-history-data-branch-and-pages.md)). The workflow
-  (`history.yml`, Pages) and three repo settings follow after the workflow-hardening PR.
+  ([ADR 0026](decisions/0026-success-rate-history-data-branch-and-pages.md)). `history.yml`
+  evaluates each relevant push to `main`, appends to the `history` branch and deploys to Pages;
+  `pr-gate` and `baseline` now label the CPU with the same helper. It needs three settings from
+  Andrés before its first run: Pages from GitHub Actions, the `history` branch, its ruleset.
 - 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
   `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
   ([testing.md](knowledge/testing.md)).
 - 2026-11-03: CI hardening. `gpu-smoke` runs on push, never on PRs; a job-started hook on the
   runner skips the steps of any job that is not one of our self-hosted workflows on a push,
-  dispatch or schedule (but not its `if: always()` steps, a follow-up); the runner folder's ACL
-  no longer lets every local account read or write it; every action is
-  pinned by SHA; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly
+  dispatch or schedule, and ends the job's worker so not even `if: always()` steps run; a
+  job-completed hook wipes the workspace; the runner folder's ACL no longer lets every local
+  account read or write it; every action is pinned by SHA, and the repo allows only GitHub's and
+  two listed actions; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly (6.3)
   ([ADR 0027](decisions/0027-self-hosted-runner-push-only-and-pinned-actions.md),
+  [ADR 0029](decisions/0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md),
   [ci.md](knowledge/ci.md)).
 - 2026-11-02: Hypothesis property tests and weekly mutation testing (`mutation.yml`, Linux) for
   `piperobot/stats`. **Gate verdicts change**: a drop of exactly the tolerance (e.g. 35/50 vs
@@ -75,19 +84,17 @@ Project Cangrejo, the `piperobot` package).
 1. Start the crab's v0 in Onshape, in its private repo.
 2. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
-3. Isaac: port the course's tube-to-rack task to Isaac Lab 3.0, in small PRs, Codex coding.
-   PR 1 (go/no-go, units, 60 Hz) is done. PR 2: the scene on the 3.0 asset with the course's
-   assets fetched by sha256 outside the repo, success detection validated by scripting a tube
-   into the rack, and a decision (own ADR) on running the course's gains or the asset's SysID
-   gains. Then the `piperobot.adapters.isaaclab` evaluator (lazy Isaac imports) and
-   reproducibility with cameras and a policy in the loop.
+3. Isaac: the `piperobot.adapters.isaaclab` evaluator on the tube-to-rack scene (lazy Isaac
+   imports, task data in `robots/so101/envs/`, results contract, `failure` from the success
+   tracker), Codex coding. First measure same-seed repeatability with contacts (2/75 outcomes
+   flipped between runs, [ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)) and whether
+   PhysX's enhanced determinism or a fresh process per episode fixes it; then per-episode
+   randomization with seeds, cameras, and a policy in the loop.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. Runner hook follow-up (approved): on refusal, end the job's `Runner.Worker` process so
-   `if: always()` steps cannot run, and a job-completed hook that wipes the workspace; test on
-   draft PR #35, then Andrés redeploys elevated. Also: note Scorecard's first score and top
-   findings in [ci.md](knowledge/ci.md), check that Monday's Dependabot run works under the new
-   Actions permissions, and ask Andrés to add `zizmor` to the ruleset's required checks.
+5. CI: check that Monday's Dependabot run works under the new Actions permissions, fix its
+   failing `uv` job (torch/torchvision, [ci.md](knowledge/ci.md)), and ask Andrés to add `zizmor`
+   to the ruleset's required checks.
 6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
    after a few weekly `mutation.yml` runs, decide a mutation-score threshold
    ([testing.md](knowledge/testing.md)).
