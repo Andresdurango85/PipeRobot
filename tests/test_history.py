@@ -306,6 +306,75 @@ def test_golden() -> None:
     assert page.count("<table>") == 2
 
 
+def test_golden_single() -> None:
+    baseline = SuccessCount(265, 500)
+    result = decide(SuccessCount(29, 50), baseline)
+    record = replace(
+        _record(successes=29),
+        baseline=baseline,
+        difference_interval=result.difference_interval,
+        verdict=result.verdict,
+        platform="AMD EPYC 7763 64-Core Processor, 4 CPUs",
+    )
+    page = render_html([record])
+    path = Path(__file__).parent / "golden" / "history_single.html"
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+
+
+def test_golden_long_platform() -> None:
+    records = [
+        replace(
+            _record(i + 1, successes, baseline_successes=40 if i == 2 else 45),
+            platform=(
+                f"AMD EPYC 7763 64-Core Processor, 4 CPUs, Linux x86_64, "
+                f"self-hosted GPU runner {i + 1}, RTX 4090"
+                if i < 2
+                else "CPU A"
+            ),
+            commit_date=f"2026-11-{i + 3:02}T10:00:00Z",
+        )
+        for i, successes in enumerate((45, 38, 25))
+    ]
+    page = render_html(records)
+    path = Path(__file__).parent / "golden" / "history_long_platform.html"
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("baselines", "expected"),
+    [
+        ([45], [(60, 62), (660, 62)]),
+        (
+            [45, 40, 40, 35],
+            [(60, 62), (260, 62), (260, 84), (660, 84), (660, 106), (660, 106)],
+        ),
+    ],
+)
+def test_baseline_spans_plot(baselines: list[int], expected: list[tuple[int, int]]) -> None:
+    page = render_html([_record(i + 1, baseline_successes=b) for i, b in enumerate(baselines)])
+    match = re.search(r'<polyline points="([^"]+)" class="baseline" />', page)
+    assert match is not None
+    vertices = [tuple(map(float, point.split(","))) for point in match[1].split()]
+    assert len(vertices) >= 2
+    assert vertices == expected
+    assert vertices[0][0] == 60
+    assert vertices[-1][0] == 660
+    assert page.index("<polyline") < page.index("<g class=")
+    assert "stroke-dasharray:6 4" in page
+
+
+def test_tables_have_scroll_wrappers() -> None:
+    page = render_html([_record(), replace(_record(2), policy="second policy")])
+    wrapped = re.findall(r'<div class="table-wrap">\s*<table>.*?</table></div>', page, re.S)
+    assert len(wrapped) == page.count("<table>") == 2
+    assert ".table-wrap{overflow-x:auto}" in page
+    assert "white-space:nowrap" in page
+
+
 def test_cli_defaults_are_idempotent(tmp_path: Path) -> None:
     history = tmp_path / "history.json"
     results = tmp_path / "results.json"

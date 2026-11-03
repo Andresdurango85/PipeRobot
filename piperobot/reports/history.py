@@ -293,12 +293,14 @@ def _series(records: Sequence[HistoryRecord]) -> list[str]:
         ]
     # The plot ends at x=660, leaving room for the last centred date label in the 720-wide box.
     positions = [60 + i * 600 / max(1, len(records) - 1) for i in range(len(records))]
-    baseline: list[str] = []
-    for i, (x, record) in enumerate(zip(positions, records, strict=True)):
+    baseline_y = 260 - records[0].baseline.rate * 220
+    baseline = [f"60.00,{baseline_y:.2f}"]
+    for x, record in zip(positions, records, strict=True):
         y = 260 - record.baseline.rate * 220
-        if i:
-            baseline.append(f"{x:.2f},{260 - records[i - 1].baseline.rate * 220:.2f}")
-        baseline.append(f"{x:.2f},{y:.2f}")
+        if y != baseline_y:
+            baseline.extend((f"{x:.2f},{baseline_y:.2f}", f"{x:.2f},{y:.2f}"))
+            baseline_y = y
+    baseline.append(f"660.00,{baseline_y:.2f}")
     lines.append(f'<polyline points="{" ".join(baseline)}" class="baseline" />')
     stride = max(1, math.ceil(len(records) / 12))
     for i, (x, record) in enumerate(zip(positions, records, strict=True)):
@@ -338,6 +340,7 @@ def _series(records: Sequence[HistoryRecord]) -> list[str]:
         )
     lines += [
         "</ul>",
+        '<div class="table-wrap">',
         "<table><thead><tr><th>Commit date</th><th>Commit</th>"
         "<th>Successes/trials</th><th>Rate</th><th>Interval</th><th>Verdict</th>"
         "<th>Platform</th><th>Run</th></tr></thead><tbody>",
@@ -354,7 +357,7 @@ def _series(records: Sequence[HistoryRecord]) -> list[str]:
             _link(record.run_url, f"#{record.run_id}.{record.run_attempt}"),
         ]
         lines.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in cells) + "</tr>")
-    return [*lines, "</tbody></table>"]
+    return [*lines, "</tbody></table></div>"]
 
 
 def render_html(history: Sequence[HistoryRecord], *, title: str = "PipeRobot gate history") -> str:
@@ -367,6 +370,7 @@ def render_html(history: Sequence[HistoryRecord], *, title: str = "PipeRobot gat
         "<style>",
         "body{font-family:system-ui,sans-serif;margin:2rem;color:#222;background:#fff}"
         "table{border-collapse:collapse}"
+        ".table-wrap{overflow-x:auto}"
         "td,th{padding:.5rem;border:1px solid #ccc;white-space:nowrap}"
         "ul{list-style:none;padding-left:0}"
         "svg{max-width:100%}.grid{stroke:#ddd}.baseline{fill:none;stroke:#444;stroke-dasharray:6 4}"

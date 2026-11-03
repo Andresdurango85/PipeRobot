@@ -53,7 +53,15 @@
   deploys the rendered page to Pages (`pages: write`, `id-token: write`, `github-pages`
   environment). `append` and `deploy` run only on `refs/heads/main`
   ([ADR 0026](../decisions/0026-success-rate-history-data-branch-and-pages.md)). Needs Pages from
-  GitHub Actions, the `history` branch and its ruleset first. _(written 2026-11-03; not yet run)_
+  GitHub Actions, the `history` branch and its ruleset first. First run: 41579899042 on the merge
+  of #39, all three jobs green, one record (29/50, PASS) at
+  <https://andresdurango85.github.io/PipeRobot/>. _(verified 2026-11-03)_
+- **The history's repo settings were applied on 2026-11-03** through the REST API by the
+  orchestrator session, with Andrés's explicit OK: Pages `build_type=workflow`; the orphan
+  `history` branch seeded with `[]`; the ruleset "history (append-only)" (id 26424151, deletion +
+  non-fast-forward, no bypass actors); the `github-pages` environment deploys from `main` only
+  (set by enabling Pages). Re-check with `gh api repos/<owner>/<repo>/rulesets/26424151` and
+  `.../environments/github-pages/deployment-branch-policies`. _(verified 2026-11-03)_
 - **Scorecard's first score: 6.3/10** (Scorecard v5.6.0 on `7779d43`). 10/10: Pinned-Dependencies,
   Token-Permissions, Dangerous-Workflow, SAST, CI-Tests, Security-Policy,
   Dependency-Update-Tool, Binary-Artifacts, License. Low, and why: Code-Review 0 (no approving

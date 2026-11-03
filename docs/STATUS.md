@@ -33,8 +33,8 @@ Project Cangrejo, the `piperobot` package).
   `piperobot/platform_info.py` labels the CPU like `pr-gate`
   ([ADR 0026](decisions/0026-success-rate-history-data-branch-and-pages.md)). `history.yml`
   evaluates each relevant push to `main`, appends to the `history` branch and deploys to Pages;
-  `pr-gate` and `baseline` now label the CPU with the same helper. It needs three settings from
-  Andrés before its first run: Pages from GitHub Actions, the `history` branch, its ruleset.
+  `pr-gate` and `baseline` now label the CPU with the same helper. Live since 2026-11-03 at
+  <https://andresdurango85.github.io/PipeRobot/> (first point 29/50, PASS).
 - 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
   `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
   ([testing.md](knowledge/testing.md)).
