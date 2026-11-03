@@ -34,6 +34,10 @@ def _outside_any_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     # tmp_path can sit inside a checkout (e.g. --basetemp under .venv); the specs written there
     # must not resolve to that checkout as the evaluated repo.
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
+    # Inside a git hook (prek's pre-push runs pytest) git exports GIT_DIR for this checkout;
+    # a test git command that inherits it would write to the real repository.
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX"):
+        monkeypatch.delenv(key, raising=False)
 
 
 @pytest.fixture
@@ -682,11 +686,20 @@ def test_driver_anchors_to_evaluated_repo(tmp_path: Path, monkeypatch: pytest.Mo
         specs_dir / "policy.json",
         {"name": "p", "module": "policy.py", "factory": "make", "options": {}},
     )
+    clean = dict(os.environ)  # the autouse fixture removed any inherited GIT_DIR
     for command in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "specs"]):
-        subprocess.run([git, "-C", str(repo), *command], check=True)  # noqa: S603 - test git
+        subprocess.run([git, "-C", str(repo), *command], check=True, env=clean)  # noqa: S603
     head = subprocess.run(  # noqa: S603 - test git
-        [git, "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+        [git, "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=clean,
     ).stdout.strip()
+    # A decoy repository in GIT_DIR, as inside a git hook: the driver must ignore it.
+    decoy = tmp_path / "decoy"
+    subprocess.run([git, "init", "-q", str(decoy)], check=True, env=clean)  # noqa: S603
+    monkeypatch.setenv("GIT_DIR", str(decoy / ".git"))
     site_packages = tmp_path / "site-packages"
     monkeypatch.setattr(evaluate, "PACKAGE_PARENT", site_packages)
     assert evaluate.evaluated_repo(task) == repo.resolve()

@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -73,6 +73,13 @@ def kill_process_tree(process: subprocess.Popen[str]) -> None:
             os.killpg(process.pid, signal.SIGKILL)  # type: ignore[attr-defined, unused-ignore]
 
 
+_GIT_LOCATION = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX")
+
+
+def _without_git_location(environ: Mapping[str, str]) -> dict[str, str]:
+    return {key: value for key, value in environ.items() if key not in _GIT_LOCATION}
+
+
 def _git(directory: Path, *arguments: str) -> str | None:
     git = shutil.which("git")
     if git is None:
@@ -80,6 +87,8 @@ def _git(directory: Path, *arguments: str) -> str | None:
     try:
         result = subprocess.run(  # noqa: S603 - resolved git executable and fixed arguments
             [git, "-C", str(directory), *arguments],
+            # Inherited GIT_DIR/GIT_WORK_TREE (set inside git hooks) would override -C.
+            env=_without_git_location(os.environ),
             capture_output=True,
             text=True,
             check=False,
