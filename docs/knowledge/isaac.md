@@ -257,7 +257,7 @@ The object-free go/no-go of [ADR 0024](../decisions/0024-so101-demo-replay-go-no
 
 ## SO-101 tube-to-rack scene in Isaac Lab 3.0
 
-Scene, checks and decisions: [ADR 0027](../decisions/0027-so101-scene-gains-and-mount.md).
+Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-mount.md).
 
 - **The course's scene needs four files and no local dependencies**: `lightbox-simple.usd`,
   `mat.usda`, `Vial_opaque.usda`, `Vial_rack_simple.usda` (~3.5 MB; the `tex/*.png` in the repo

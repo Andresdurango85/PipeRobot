@@ -4,24 +4,31 @@ name: gpu-smoke
 # CUDA, and a short PushT evaluation runs on it within the Phase 0 budget. Not a required check
 # and not a gate: CUDA runs of lerobot-eval are not reproducible on the same seeds (ADR 0016), so
 # the count is reported, never compared with the CPU baseline.
+# Runs on pushes to this repo's branches that touch the code it exercises (forks cannot push
+# here), and by hand; never on pull requests, whose workflow files a fork controls (ADR 0027).
+# The check still shows on the PR, because it runs on the PR's head commit.
 on:
-  pull_request:
+  push:
+    branches-ignore: ["dependabot/**"]
+    paths:
+      - "piperobot/**"
+      - "robots/pusht/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/gpu-smoke.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: gpu-smoke-${{ github.event.pull_request.number || github.ref }}
+  group: gpu-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   gpu-smoke:
-    # Trusted code only: no fork or Dependabot PRs on the home PC (ADR 0020).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]')
+    # Forks and Dependabot must not queue work on the home PC (ADR 0027).
+    if: github.repository == 'Andresdurango85/PipeRobot' && github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Windows, gpu]
     timeout-minutes: 30 # Phase 0 budget per PR
     defaults:
@@ -41,9 +48,11 @@ jobs:
           "JOB_START=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" |
             Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: false # the uv cache stays on the runner; no upload of GBs of CUDA wheels
           cache-local-path: ${{ runner.tool_cache }}/uv-cache
@@ -94,7 +103,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gpu-smoke-${{ github.run_id }}
           path: out/

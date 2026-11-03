@@ -1,4 +1,4 @@
-# 0027. SO-101 scene: course gains, course mount, and our own success judgement
+# 0028. SO-101 scene: course gains, course mount, and our own success judgement
 
 - Status: Accepted
 - Date: 2026-11-02

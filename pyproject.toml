@@ -13,7 +13,7 @@ dependencies = []
 lerobot = ["lerobot[dataset]>=0.6.1,<0.7", "torch>=2.11,<2.12", "torchvision>=0.26,<0.27"]
 
 [build-system]
-requires = ["uv_build>=0.10.8,<0.11"]
+requires = ["uv_build>=0.10.8,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
@@ -30,7 +30,10 @@ dev = [
     "mypy>=2.4.1",
     "prek>=0.5",
     "pytest>=8.4",
+    "pyyaml>=6.0",
     "ruff>=0.14",
+    "types-pyyaml>=6.0",
+    "zizmor>=1.32",
 ]
 # Mutation testing of piperobot/stats. mutmut 3 needs fork(): Linux only, run by mutation.yml.
 mutation = ["mutmut>=3.8.1"]

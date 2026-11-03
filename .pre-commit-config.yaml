@@ -29,6 +29,14 @@ repos:
         files: ^(pyproject\.toml|uv\.lock)$
         pass_filenames: false
 
+      # Offline: hooks need no token or network; CI adds the online audits (ADR 0027).
+      - id: zizmor
+        name: zizmor (offline)
+        entry: uv run --locked zizmor --offline .
+        language: system
+        files: ^(\.github/|\.pre-commit-config\.yaml$)
+        pass_filenames: false
+
       # --- On push: the same checks as the lint-and-test CI job, on the whole repo ---
       - id: ci-ruff
         name: "CI: ruff check"
@@ -60,6 +68,14 @@ repos:
         # Catches imports that only work because the extra is installed on this machine.
         name: "CI: pytest in a clean environment"
         entry: uv run --isolated --locked pytest -q
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: ci-zizmor
+        name: "CI: zizmor"
+        entry: uv run --locked zizmor --offline .
         language: system
         stages: [pre-push]
         pass_filenames: false

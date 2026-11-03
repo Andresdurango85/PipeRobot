@@ -30,7 +30,7 @@ class SuccessParams:
     grasp_history_window: int = 20
     # The course uses 2 N; 5 N sits in the measured gap: pushes <= 1.98 N,
     # genuine grasp medians 10-19 N, about 2.5x margin on each side.
-    # See the SO-101 scene ADR (number to be filled in later).
+    # See ADR 0028.
     force_threshold_n: float = 5.0
     tube_axis_span_m: tuple[float, float] = (-0.017, 0.0995)  # Vial_opaque.usda
     rack_rim_z: float = 0.073  # Vial_rack_simple.usda, rack-local top surface
