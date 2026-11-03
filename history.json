@@ -118,5 +118,35 @@
     "verdict": "pass",
     "seeds": "1000-1049",
     "platform": "INTEL(R) XEON(R) PLATINUM 8573C, 4 CPUs"
+  },
+  {
+    "schema": 1,
+    "commit": "e3126f83899854421da452ab6a5a04753b9bd84a",
+    "commit_date": "2026-11-03T05:58:30Z",
+    "evaluated_at": "2026-11-03T05:58:44Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/41587001325",
+    "run_id": 41587001325,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 27,
+    "trials": 50,
+    "confidence": 0.95,
+    "interval": [
+      0.4039887139915749,
+      0.6703034780777565
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.1327531482311236,
+      0.147470944853511
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "1000-1049",
+    "platform": "AMD EPYC 9V45 96-Core Processor, 4 CPUs"
   }
 ]
