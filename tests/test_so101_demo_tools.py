@@ -168,3 +168,68 @@ def test_measured_rate_uses_lower_error_and_rejects_nan() -> None:
     raw["runs"][0]["episodes"][0]["joint_pos_rad"][0][0] = float("nan")
     with pytest.raises(ValueError, match="Invalid raw"):
         R.build_report(episodes, raw, R.read_json(ENV / "vials_to_rack.json"), R.UNITS.load_table())
+
+
+@pytest.mark.parametrize("mode", ["go", "tracking", "offset"])
+def test_course_diagnostics_do_not_change_verdict(tmp_path: Path, mode: str) -> None:
+    episodes, raw = fixture_payload(mode)
+    scene = R.read_json(ENV / "vials_to_rack.json")
+    table = R.UNITS.load_table()
+    original = R.build_report(episodes, raw, scene, table)
+    # A course run exactly reproduces the recorded state, independently of USD errors.
+    course = copy.deepcopy(raw["runs"][0])
+    course["actuators"] = "course"
+    for source, simulated in zip(episodes["episodes"], course["episodes"], strict=True):
+        simulated["joint_pos_rad"] = [
+            list(R.UNITS.to_radians(dict(zip(table, row, strict=True)), table).values())
+            for row in source["state"]
+        ]
+    slower = copy.deepcopy(course)
+    slower["substeps"] = 4
+    for simulated in slower["episodes"]:
+        for row in simulated["joint_pos_rad"]:
+            row[0] += 0.5
+    raw["runs"].insert(0, slower)
+    raw["runs"].insert(0, course)
+    combined = R.build_report(episodes, raw, scene, table)
+    for key in ("runs", "final_verdict", "measured_substeps", "thresholds", "rules"):
+        assert combined[key] == original[key]
+    assert R.write_report(combined, tmp_path / "combined") == R.write_report(
+        original, tmp_path / "original"
+    )
+    diagnostic = combined["diagnostics"]["runs"]["course/2"]
+    assert diagnostic["residual"]["pooled_arm_p95"] == pytest.approx(0, abs=1e-12)
+    assert diagnostic["sim_vs_recorded_shift_frames"]["lag_frames"] == 0
+    assert diagnostic["action_to_state_lag_frames"]["lag_frames"] == 0
+    markdown = (tmp_path / "combined/report.md").read_text()
+    assert "## Diagnostics (not part of the registered verdict)" in markdown
+    assert "| course/2 | 60.0 |" in markdown
+    assert "Dataset action->state lag (frames): 0.0" in markdown
+    for joint in diagnostic["residual"]["joints"].values():
+        for key in ("mean", "p95", "max", "signed_mean"):
+            assert joint[key] == pytest.approx(0, abs=1e-12)
+
+
+def test_course_only_and_recorded_gains(tmp_path: Path) -> None:
+    episodes, raw = fixture_payload("go")
+    raw["runs"] = [raw["runs"][0]]
+    raw["runs"][0]["actuators"] = "course"
+    names = raw["metadata"]["joint_names"]
+    raw["metadata"]["actuators"] = {
+        mode: {
+            "joint_stiffness": dict.fromkeys(names, stiffness),
+            "joint_damping": dict.fromkeys(names, damping),
+            "joint_effort_limits": dict.fromkeys(names, 30),
+        }
+        for mode, stiffness, damping in (("usd", 9, 0.1), ("course", 55, 0.7))
+    }
+    report = R.build_report(
+        episodes, raw, R.read_json(ENV / "vials_to_rack.json"), R.UNITS.load_table()
+    )
+    assert report["final_verdict"] is None
+    assert report["measured_substeps"] is None
+    assert report["runs"] == {}
+    assert R.write_report(report, tmp_path) == 0
+    markdown = (tmp_path / "report.md").read_text()
+    assert "| shoulder_pan | 9/0.1 | 55/0.7 |" in markdown
+    assert "diagnostics only" in markdown

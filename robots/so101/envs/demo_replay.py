@@ -308,3 +308,58 @@ def verdict(
             if min(shifted.values()) >= CLUSTER_SHARE_MIN:
                 result.update(verdict="BASE_OFFSET", offset_m=offset, failed_rules=[])
     return result
+
+
+def best_lag(
+    reference: Sequence[Sequence[Sequence[float]]],
+    follower: Sequence[Sequence[Sequence[float]]],
+    max_lag: int,
+) -> dict[str, Any]:
+    """Pool episode/frame/arm-joint pairs; positive lag means follower is behind.
+
+    Inputs contain only the five arm joints. Never pair frames across episodes.
+    """
+    if max_lag < 0 or not reference or len(reference) != len(follower):
+        raise ValueError("Invalid lag inputs")
+    curve = {}
+    for k in range(-max_lag, max_lag + 1):
+        errors = [
+            abs(a - b)
+            for ref, follow in zip(reference, follower, strict=True)
+            for t, row in enumerate(ref)
+            if 0 <= t + k < len(follow)
+            for a, b in zip(row, follow[t + k], strict=True)
+        ]
+        if errors:
+            curve[k] = statistics.fmean(errors)
+    if not curve:
+        raise ValueError("No overlapping lag samples")
+    k = min(curve, key=lambda k: (curve[k], abs(k), k))
+    refined = float(k)
+    if k - 1 in curve and k + 1 in curve:
+        left, centre, right = curve[k - 1], curve[k], curve[k + 1]
+        curvature = left - 2 * centre + right
+        if curvature > 0:
+            refined += (left - right) / (2 * curvature)
+    return {"lag_frames": refined, "curve": {str(k): v for k, v in curve.items()}}
+
+
+def residual_stats(
+    recorded: Sequence[Sequence[float]],
+    simulated: Sequence[Sequence[float]],
+    joint_names: Sequence[str],
+    gripper_mask: Sequence[bool],
+) -> dict[str, Any]:
+    """Absolute residual summaries and signed mean in dataset joint units."""
+    result = tracking_stats(recorded, simulated, joint_names, gripper_mask)
+    for j, name in enumerate(joint_names):
+        signed = [
+            b[j] - a[j]
+            for i, (a, b) in enumerate(zip(recorded, simulated, strict=True))
+            if name != "gripper" or gripper_mask[i]
+        ]
+        result["joints"][name].update(
+            mean=statistics.fmean(map(abs, signed)) if signed else None,
+            signed_mean=statistics.fmean(signed) if signed else None,
+        )
+    return result

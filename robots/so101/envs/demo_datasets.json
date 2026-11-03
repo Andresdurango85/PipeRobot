@@ -4,8 +4,8 @@
       "repo_id": "sreetz-nv/so101_teleop_vials_rack_left",
       "revision": "69802873f4a26bffb716fca1f4fb1bb0e3d2a07a",
       "metadata_fps": 30,
-      "control_hz": null,
-      "control_hz_provenance": null,
+      "control_hz": 60,
+      "control_hz_provenance": "Measured 2026-11-02 (ADR 0024): replaying all 75 episodes on the Isaac Lab 3.0 SO-101 asset with the course's actuator gains (course_actuators.json) reproduces the recorded states at 2 physics substeps of 1/120 s (pooled arm p95 0.71 LeRobot units, action-to-state lag 1.30 frames vs the dataset's own 1.34, sim-vs-recorded shift 0.01 frames) and runs ahead at 4 (p95 2.72, lag 0.47, shift +0.91). Consistent with the course's published code at ce807d9 (one frame per env.step of dt 1/120 x decimation 2), which postdates the dataset.",
       "source": "Training set of NVIDIA's Sim-to-Real SO-101 course (75 sim teleop episodes)"
     }
   ]

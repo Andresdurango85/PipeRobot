@@ -34,10 +34,12 @@ REPORT = load_module("demo_replay_report", Path(__file__).with_name("demo_replay
 def replay(args: argparse.Namespace, sim_cfg: object) -> int:
     import isaaclab.sim as sim_utils
     import torch
+    from isaaclab.actuators import ImplicitActuatorCfg
     from isaaclab.assets import Articulation
     from isaaclab.sim import SimulationContext
     from isaaclab.utils import clone
     from isaaclab_assets.robots.so101 import SO101_CFG
+    from isaaclab_physx.sim.schemas import PhysxArticulationCfg
 
     scene = REPORT.read_json(ENV / "vials_to_rack.json")
     episodes = REPORT.read_json(args.episodes_json)
@@ -50,15 +52,31 @@ def replay(args: argparse.Namespace, sim_cfg: object) -> int:
     ground.func("/World/Ground", ground)
     light = sim_utils.DomeLightCfg(intensity=3000.0)
     light.func("/World/Light", light)
-    cfg = clone(SO101_CFG)
-    cfg.prim_path = "/World/Robot"
-    cfg.spawn.variants = {"Robot": "robot", "Sensor": "sensors", "Physics": "physx"}
-    cfg.init_state.pos = tuple(scene["robot"]["position_m"])
-    cfg.init_state.rot = CORE.yaw_to_quat_xyzw(scene["robot"]["yaw_deg"])
-    robot = Articulation(cfg=cfg)
+    robots = {}
+    configs = {}
+    offsets = {}
+    course = REPORT.read_json(ENV / "course_actuators.json")
+    for mode in dict.fromkeys(args.actuators):
+        cfg = clone(SO101_CFG)
+        cfg.prim_path = f"/World/Robot_{mode}"
+        cfg.spawn.variants = {"Robot": "robot", "Sensor": "sensors", "Physics": "physx"}
+        offset = 1.0 if mode == "course" and "usd" in args.actuators else 0.0
+        position = list(scene["robot"]["position_m"])
+        position[1] += offset
+        cfg.init_state.pos = tuple(position)
+        cfg.init_state.rot = CORE.yaw_to_quat_xyzw(scene["robot"]["yaw_deg"])
+        if mode == "course":
+            cfg.actuators = {
+                name: ImplicitActuatorCfg(joint_names_expr=[name], **values)
+                for name, values in course["joints"].items()
+            }
+            cfg.spawn.articulation_props = [PhysxArticulationCfg(**course["articulation"])]
+        configs[mode] = cfg
+        offsets[mode] = offset
+        robots[mode] = Articulation(cfg=cfg)
     sim.reset()
-    joint_ids = [robot.joint_names.index(n) for n in names]
-    body_id = robot.body_names.index(scene["tcp"]["body"])
+    robot = robots.get("usd", next(iter(robots.values())))
+    cfg = configs.get("usd", next(iter(configs.values())))
     dt = sim.get_physics_dt()
     try:
         version = importlib.metadata.version("isaaclab")
@@ -76,6 +94,19 @@ def replay(args: argparse.Namespace, sim_cfg: object) -> int:
             "default_joint_pos_rad": robot.data.default_joint_pos.torch[0].cpu().tolist(),
             "physics_dt": dt,
             "recorded_joint_order": names,
+            "actuators": {
+                mode: {
+                    field: dict(
+                        zip(
+                            articulation.joint_names,
+                            getattr(articulation.data, field).torch[0].cpu().tolist(),
+                            strict=True,
+                        )
+                    )
+                    for field in ("joint_stiffness", "joint_damping", "joint_effort_limits")
+                }
+                for mode, articulation in robots.items()
+            },
         },
         "runs": [],
     }
@@ -85,44 +116,47 @@ def replay(args: argparse.Namespace, sim_cfg: object) -> int:
         return torch.tensor([[values[n] for n in names]], device=sim.device)
 
     with torch.inference_mode():
-        for substeps in args.substeps:
-            start = time.perf_counter()
-            run: dict[str, Any] = {"substeps": substeps, "episodes": []}
-            for episode in episodes["episodes"]:
-                initial = robot.data.default_joint_pos.torch.clone()
-                initial[:, joint_ids] = converted(episode["state"][0])
-                robot.write_joint_position_to_sim_index(position=initial)
-                robot.write_joint_velocity_to_sim_index(velocity=torch.zeros_like(initial))
-                robot.set_joint_position_target_index(target=initial)
-                robot.reset()
-                recorded: dict[str, Any] = {
-                    "index": episode["index"],
-                    "joint_pos_rad": [],
-                    "body_pos_m": [],
-                    "body_quat_xyzw": [],
-                }
-                episode_start = time.perf_counter()
-                for action in episode["action"]:
-                    robot.set_joint_position_target_index(
-                        target=converted(action), joint_ids=joint_ids
-                    )
-                    for _ in range(substeps):
-                        robot.write_data_to_sim()
-                        sim.step(render=False)
-                        robot.update(dt)
-                    recorded["joint_pos_rad"].append(
-                        robot.data.joint_pos.torch[0, joint_ids].cpu().tolist()
-                    )
-                    recorded["body_pos_m"].append(
-                        robot.data.body_pos_w.torch[0, body_id].cpu().tolist()
-                    )
-                    recorded["body_quat_xyzw"].append(
-                        robot.data.body_quat_w.torch[0, body_id].cpu().tolist()
-                    )
-                recorded["wall_seconds"] = time.perf_counter() - episode_start
-                run["episodes"].append(recorded)
-            run["wall_seconds"] = time.perf_counter() - start
-            raw["runs"].append(run)
+        for mode, robot in robots.items():
+            joint_ids = [robot.joint_names.index(n) for n in names]
+            body_id = robot.body_names.index(scene["tcp"]["body"])
+            for substeps in args.substeps:
+                start = time.perf_counter()
+                run: dict[str, Any] = {"actuators": mode, "substeps": substeps, "episodes": []}
+                for episode in episodes["episodes"]:
+                    initial = robot.data.default_joint_pos.torch.clone()
+                    initial[:, joint_ids] = converted(episode["state"][0])
+                    robot.write_joint_position_to_sim_index(position=initial)
+                    robot.write_joint_velocity_to_sim_index(velocity=torch.zeros_like(initial))
+                    robot.set_joint_position_target_index(target=initial)
+                    robot.reset()
+                    recorded: dict[str, Any] = {
+                        "index": episode["index"],
+                        "joint_pos_rad": [],
+                        "body_pos_m": [],
+                        "body_quat_xyzw": [],
+                    }
+                    episode_start = time.perf_counter()
+                    for action in episode["action"]:
+                        robot.set_joint_position_target_index(
+                            target=converted(action), joint_ids=joint_ids
+                        )
+                        for _ in range(substeps):
+                            robot.write_data_to_sim()
+                            sim.step(render=False)
+                            robot.update(dt)
+                        recorded["joint_pos_rad"].append(
+                            robot.data.joint_pos.torch[0, joint_ids].cpu().tolist()
+                        )
+                        body_pos = robot.data.body_pos_w.torch[0, body_id].cpu().tolist()
+                        body_pos[1] -= offsets[mode]
+                        recorded["body_pos_m"].append(body_pos)
+                        recorded["body_quat_xyzw"].append(
+                            robot.data.body_quat_w.torch[0, body_id].cpu().tolist()
+                        )
+                    recorded["wall_seconds"] = time.perf_counter() - episode_start
+                    run["episodes"].append(recorded)
+                run["wall_seconds"] = time.perf_counter() - start
+                raw["runs"].append(run)
     (args.out_dir / "replay_raw.json").write_text(
         json.dumps(raw, allow_nan=False) + "\n", encoding="utf-8"
     )
@@ -135,6 +169,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--substeps", type=int, nargs="+", default=[2, 4])
     parser.add_argument("--max-episodes", type=int)
+    parser.add_argument("--actuators", choices=("usd", "course"), nargs="+", default=["usd"])
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--help" in argv or "-h" in argv:
         parser.add_argument("--viz", help="Isaac launcher visualizer; use none")

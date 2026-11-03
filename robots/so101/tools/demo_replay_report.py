@@ -54,12 +54,25 @@ def build_report(
     ):
         raise ValueError("Invalid joint limits")
     reports = {}
+    diagnostics = {}
+    run_keys = set()
+    arm = [j for j, n in enumerate(names) if n != "gripper"]
+
+    def arm_series(rows: list[list[float]]) -> list[list[float]]:
+        return [[row[j] for j in arm] for row in rows]
+
     compared_episodes = None
     for run in raw["runs"]:
         if run["substeps"] < 1 or int(run["substeps"]) != run["substeps"]:
             raise ValueError("Invalid substeps")
-        if str(run["substeps"]) in reports:
-            raise ValueError("Duplicate substep count")
+        actuators = run.get("actuators", "usd")
+        if actuators not in {"usd", "course"}:
+            raise ValueError("Unknown actuators")
+        run_key = f"{actuators}/{run['substeps']}"
+        if run_key in run_keys:
+            raise ValueError("Duplicate substep count for actuators")
+        run_keys.add(run_key)
+        action_series, state_series, sim_series = [], [], []
         recorded, simulated, targets, positions, masks = [], [], [], [], []
         grasps, releases, durations = [], [], []
         seen = set()
@@ -103,6 +116,9 @@ def build_report(
                 simulated.append([converted[n] for n in names])
                 targets.append([target[n] for n in names])
                 positions.append(rad)
+            action_series.append(arm_series(source["action"]))
+            state_series.append(arm_series(source["state"]))
+            sim_series.append(arm_series(simulated[-count:]))
             events = CORE.grasp_release_frames(sg, ag)
             if events is not None:
                 points = [
@@ -120,6 +136,14 @@ def build_report(
             raise ValueError("Rate comparison requires the same episodes")
         compared_episodes = seen
         tracking = CORE.tracking_stats(recorded, simulated, names, masks)
+        diagnostics[run_key] = {
+            "control_hz": hz,
+            "residual": CORE.residual_stats(recorded, simulated, names, masks),
+            "action_to_state_lag_frames": CORE.best_lag(action_series, sim_series, 8),
+            "sim_vs_recorded_shift_frames": CORE.best_lag(sim_series, state_series, 8),
+        }
+        if actuators != "usd":
+            continue
         shares = CORE.limit_shares(targets, positions, limits, names, masks)
         decision = CORE.verdict(tracking, shares, grasps, releases, scene)
         reports[str(run["substeps"])] = {
@@ -130,10 +154,23 @@ def build_report(
             "mean_episode_duration_s": sum(durations) / len(durations),
             "wall_seconds": run.get("wall_seconds"),
         }
-    if not reports:
+    if not diagnostics:
         raise ValueError("No replay runs")
-    measured = min(reports, key=lambda k: reports[k]["tracking"]["pooled_arm_p95"])
+    measured = (
+        min(reports, key=lambda k: reports[k]["tracking"]["pooled_arm_p95"]) if reports else None
+    )
     return {
+        "diagnostics": {
+            "dataset_action_to_state_lag_frames": CORE.best_lag(
+                [arm_series(e["action"]) for e in episodes["episodes"]],
+                [arm_series(e["state"]) for e in episodes["episodes"]],
+                8,
+            ),
+            "runs": diagnostics,
+        },
+        "diagnostics_note": (
+            "Diagnostics do not change the registered verdict. Lags are in dataset frames."
+        ),
         "repo_id": episodes["repo_id"],
         "revision": episodes["revision"],
         "metadata": meta,
@@ -145,9 +182,9 @@ def build_report(
         "rules": CORE.RULES,
         "thresholds": {k: v for k, v in vars(CORE).items() if k.isupper() and k != "RULES"},
         "runs": reports,
-        "measured_substeps": int(measured),
+        "measured_substeps": int(measured) if measured is not None else None,
         "rate_selection": "Lowest pooled arm p95; ties choose the first supplied run.",
-        "final_verdict": reports[measured]["verdict"],
+        "final_verdict": reports[measured]["verdict"] if measured is not None else None,
     }
 
 
@@ -157,7 +194,7 @@ def write_report(report: dict[str, Any], out_dir: Path) -> int:
         json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )
     lines = [
-        f"# SO-101 demo replay: {report['final_verdict']}",
+        f"# SO-101 demo replay: {report['final_verdict'] or 'diagnostics only'}",
         "",
         *report["rules"],
         "",
@@ -193,8 +230,48 @@ def write_report(report: dict[str, Any], out_dir: Path) -> int:
         ):
             lines.extend(["", f"{key}: {json.dumps(run.get(key))}"])
     lines.extend(["", "Thresholds: " + json.dumps(report["thresholds"], sort_keys=True)])
+    lines.extend(
+        [
+            "",
+            "## Diagnostics (not part of the registered verdict)",
+            "",
+            report["diagnostics_note"],
+            "",
+            "Dataset action->state lag (frames): "
+            + str(report["diagnostics"]["dataset_action_to_state_lag_frames"]["lag_frames"]),
+            "",
+            "| Run | Hz | Arm pooled p95 | Per-joint p95 | Action->state lag (frames) | "
+            "Sim-vs-recorded shift (frames) |",
+            "| --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+    for key, diagnostic in report["diagnostics"]["runs"].items():
+        residual = diagnostic["residual"]
+        joints = "; ".join(f"{n}: {v['p95']}" for n, v in residual["joints"].items())
+        lag = diagnostic["action_to_state_lag_frames"]["lag_frames"]
+        shift = diagnostic["sim_vs_recorded_shift_frames"]["lag_frames"]
+        lines.append(
+            f"| {key} | {diagnostic['control_hz']} | {residual['pooled_arm_p95']} | "
+            f"{joints} | {lag} | {shift} |"
+        )
+    gains = report["metadata"].get("actuators", {})
+    lines.extend(
+        [
+            "",
+            "| Joint | USD stiffness/damping | Course stiffness/damping |",
+            "| --- | --- | --- |",
+        ]
+    )
+    for name in report["metadata"]["joint_names"]:
+        cells = []
+        for mode in ("usd", "course"):
+            values = gains.get(mode, {})
+            stiffness = values.get("joint_stiffness", {}).get(name, "unavailable")
+            damping = values.get("joint_damping", {}).get(name, "unavailable")
+            cells.append(f"{stiffness}/{damping}")
+        lines.append(f"| {name} | {cells[0]} | {cells[1]} |")
     (out_dir / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return {"GO": 0, "BASE_OFFSET": 3, "NO_GO": 4}[report["final_verdict"]]
+    return {None: 0, "GO": 0, "BASE_OFFSET": 3, "NO_GO": 4}[report["final_verdict"]]
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -51,3 +51,56 @@ def test_stats_and_limits() -> None:
     assert C.limit_shares(
         [[0, 3], [2, 0]], [[0, 1], [1, 0]], [[-1, 1], [-1, 1]], ["arm", "gripper"], [False, True]
     ) == {"target_outside": 0.5, "simulated_near": 0.5}
+
+
+@pytest.mark.parametrize("lag", [-3, 0, 2, 0.5, -0.5, 8, -8])
+def test_best_lag(lag: float) -> None:
+    reference = [[[float(t)] * 5 for t in range(40)]]
+    follower = [[[t - lag] * 5 for t in range(40)]]
+    result = C.best_lag(reference, follower, 8)
+    assert result["lag_frames"] == pytest.approx(lag, abs=0.15)
+    assert len(result["curve"]) == 17
+
+
+def test_lag_boundaries_and_episode_pooling() -> None:
+    # Each episode contributes only its own valid pairs, weighted by pair count.
+    result = C.best_lag([[[0.0] * 5], [[100.0] * 5]], [[[0.0] * 5], [[100.0] * 5]], 8)
+    assert result == {"lag_frames": 0.0, "curve": {"0": 0.0}}
+    assert C.best_lag([[[1.0] * 5]], [[[2.0] * 5]], 0)["lag_frames"] == 0
+    with pytest.raises(ValueError, match="Invalid lag inputs"):
+        C.best_lag([], [], 8)
+
+
+def test_course_actuators() -> None:
+    data = json.loads((SCENE_PATH.parent / "course_actuators.json").read_text())
+    expected = {
+        "shoulder_pan": (55, 0.7),
+        "shoulder_lift": (30, 0.8),
+        "elbow_flex": (25, 0.7),
+        "wrist_flex": (12, 0.5),
+        "wrist_roll": (7, 0.5),
+        "gripper": (4, 0.3),
+    }
+    assert set(data["joints"]) == set(expected)
+    for name, (stiffness, damping) in expected.items():
+        assert data["joints"][name] == {
+            "stiffness": stiffness,
+            "damping": damping,
+            "joint_effort_limit": 30,
+        }
+        assert all(v > 0 for v in data["joints"][name].values())
+    assert data["articulation"] == {
+        "enabled_self_collisions": False,
+        "solver_position_iteration_count": 32,
+        "solver_velocity_iteration_count": 1,
+    }
+
+
+def test_signed_residual_and_hold_mask() -> None:
+    result = C.residual_stats(
+        [[1, 20], [3, 20]], [[3, 99], [1, 17]], ["arm", "gripper"], [False, True]
+    )
+    assert result["joints"]["arm"]["mean"] == 2
+    assert result["joints"]["arm"]["signed_mean"] == 0
+    assert result["joints"]["gripper"]["mean"] == 3
+    assert result["joints"]["gripper"]["signed_mean"] == -3
