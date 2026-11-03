@@ -300,3 +300,47 @@ def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str) -> None:
     assert result.stdout.startswith("Refused workspace wipe:")
     assert len(result.stdout.strip().splitlines()) == 1
     assert sentinel.read_text(encoding="utf-8") == "keep"
+
+
+def test_history_signing_boundary() -> None:
+    jobs = _load(ROOT / ".github/workflows/history.yml")["jobs"]
+    assert jobs["evaluate"]["permissions"] == {"contents": "read"}
+    attest = jobs["attest"]
+    assert attest["needs"] == "evaluate"
+    assert attest["if"] == "github.ref == 'refs/heads/main'"
+    assert attest["runs-on"] == "ubuntu-latest"
+    assert attest["permissions"] == {
+        "contents": "read",
+        "id-token": "write",
+        "attestations": "write",
+    }
+    for step in attest["steps"]:
+        assert "${{" not in step.get("run", "")
+        assert "artifact-metadata" not in step.get("with", {})
+    verdict = next(step for step in attest["steps"] if step.get("id") == "verdict")
+    assert verdict["with"] == {
+        "subject-path": "out/results.json",
+        "predicate-type": "${{ steps.record.outputs.type }}",
+        "predicate-path": "out/record.json",
+    }
+    provenance = next(step for step in attest["steps"] if step.get("id") == "provenance")
+    assert provenance["with"]["subject-path"].splitlines() == [
+        "out/results.json",
+        "out/record.json",
+    ]
+    append = jobs["append"]
+    assert append["needs"] == ["evaluate", "attest"]
+    assert "concurrency" not in append
+    downloads = [
+        step["with"]["name"]
+        for step in append["steps"]
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert downloads == ["history-certified"]
+    script = next(
+        step["run"]
+        for step in append["steps"]
+        if step.get("name") == "Append evaluation to history"
+    )
+    assert "--record out/record.json" in script
+    assert script.count("--attach") == 2

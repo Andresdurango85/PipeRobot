@@ -367,3 +367,14 @@ def test_api_errors(tmp_path: Path, stderr: str, error: type[CertificateError]) 
     assert type(exc.value) is error
     if error is CertificateError:
         assert str(exc.value) == stderr.strip()
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_single_json_bundle(tmp_path: Path, pretty: bool) -> None:
+    path = tmp_path / "results.json"
+    payload = evidence(path)
+    bundle = tmp_path / "bundle.jsonl"
+    write_bundle(bundle, [payload[0]["verificationResult"]["statement"]])
+    document = json.loads(bundle.read_text(encoding="utf-8"))
+    bundle.write_text(json.dumps(document, indent=2 if pretty else None), encoding="utf-8")
+    assert verify(path, bundle=bundle, run=fake(payload)).record.successes == 30

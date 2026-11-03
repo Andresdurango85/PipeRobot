@@ -371,7 +371,7 @@ def test_tables_have_scroll_wrappers() -> None:
     page = render_html([_record(), replace(_record(2), policy="second policy")])
     wrapped = re.findall(r'<div class="table-wrap">\s*<table>.*?</table></div>', page, re.S)
     assert len(wrapped) == page.count("<table>") == 2
-    assert ".table-wrap{overflow-x:auto}" in page
+    assert ".table-wrap,pre{overflow-x:auto}" in page  # tables and verify commands scroll
     assert "white-space:nowrap" in page
 
 
@@ -483,3 +483,49 @@ def test_record_cli_roundtrip(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     capsys.readouterr()
     assert main(["predicate-type"]) == 0
     assert capsys.readouterr().out == GATE_VERDICT_PREDICATE_TYPE + "\n"
+
+
+def test_certified_golden() -> None:
+    records = [_record(1), _record(2)]
+    page = render_html(records, evidence=lambda record: record.run_id == 2)
+    assert "<th>Certificate</th>" in page
+    assert "<td>not signed</td>" in page
+    assert '<a href="results/2.1.json">results</a>' in page
+    assert '<a href="bundles/2.1.jsonl">bundle</a>' in page
+    assert "Verify a point" in page
+    assert (
+        "python -m piperobot.reports.certificate verify results.json --bundle bundle.jsonl" in page
+    )
+    from piperobot.reports.certificate import verification_command
+
+    assert html.escape(" ".join(verification_command(Path("results.json")))) in page
+    path = Path(__file__).parent / "golden" / "history_certified.html"
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+    unsigned = render_html(records, evidence=lambda record: False)
+    assert unsigned.count("<td>not signed</td>") == 2
+    assert "Verify a point" not in unsigned
+    assert "<th>Certificate</th>" not in render_html(records)
+
+
+def test_render_evidence_directory(tmp_path: Path) -> None:
+    history, output = tmp_path / "history.json", tmp_path / "index.html"
+    save_history([_record()], history, previous=[])
+    args = [
+        "render",
+        "--history",
+        str(history),
+        "--output",
+        str(output),
+        "--evidence-dir",
+        str(tmp_path),
+    ]
+    for directory, suffix in (("results", "json"), ("bundles", "jsonl")):
+        assert main(args) == 0
+        assert "<td>not signed</td>" in output.read_text(encoding="utf-8")
+        folder = tmp_path / directory
+        folder.mkdir()
+        (folder / f"1.1.{suffix}").write_text("evidence", encoding="utf-8")
+    assert main(args) == 0
+    assert '<a href="results/1.1.json">results</a>' in output.read_text(encoding="utf-8")

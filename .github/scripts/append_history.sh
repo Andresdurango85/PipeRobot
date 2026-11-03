@@ -6,22 +6,40 @@ cd "$PROJECT_DIR"
 PROJECT_DIR="$PWD"
 : "${HISTORY_REMOTE:?HISTORY_REMOTE must be set}"
 
-# Parse only the identity needed for the commit; Python validates all append inputs.
-commit="" run_id="" run_attempt=""
-args=("$@")
-for ((i=0; i<${#args[@]}; i++)); do
-  case "${args[i]}" in
-    --commit) commit="${args[i+1]:-}" ;;
-    --commit=*) commit="${args[i]#*=}" ;;
-    --run-id) run_id="${args[i+1]:-}" ;;
-    --run-id=*) run_id="${args[i]#*=}" ;;
-    --run-attempt) run_attempt="${args[i+1]:-}" ;;
-    --run-attempt=*) run_attempt="${args[i]#*=}" ;;
+# Consume attachment options; Python validates the remaining append inputs.
+run_id="" run_attempt=""
+args=() sources=() destinations=()
+while (( $# )); do
+  case "$1" in
+    --attach|--attach=*)
+      if [[ "$1" == --attach ]]; then
+        attachment="${2:-}"
+        (( $# >= 2 )) || { echo "ERROR: --attach requires SRC=DEST" >&2; exit 2; }
+        shift
+      else
+        attachment="${1#*=}"
+      fi
+      source="${attachment%%=*}" destination="${attachment#*=}"
+      if [[ "$attachment" != *=* || -z "$source" || ! "$destination" =~ ^(results|bundles)/[0-9]+\.[0-9]+\.(json|jsonl)$ ]]; then
+        echo "ERROR: invalid --attach SRC=DEST" >&2
+        exit 2
+      fi
+      sources+=("$source") destinations+=("$destination") ;;
+    --run-id) run_id="${2:-}"; args+=("$1") ;;
+    --run-id=*) run_id="${1#*=}"; args+=("$1") ;;
+    --run-attempt) run_attempt="${2:-}"; args+=("$1") ;;
+    --run-attempt=*) run_attempt="${1#*=}"; args+=("$1") ;;
     --new|--history|--history=*|--new=*)
       echo "ERROR: --new and --history are managed by this script" >&2
       exit 2 ;;
+    *) args+=("$1") ;;
   esac
+  shift
 done
+message="History: run $run_id.$run_attempt"
+if [[ -n "${GITHUB_SHA:-}" ]]; then
+  message+=" ($GITHUB_SHA)"
+fi
 
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
@@ -45,23 +63,32 @@ for attempt in 1 2 3 4 5; do
   if [[ -n "${HISTORY_PYTHON:-}" ]]; then
     # A command string supplied by the caller; append arguments remain positional, not code.
     bash -c "$HISTORY_PYTHON \"\$@\"" -- -m piperobot.reports.history append \
-      --history "$scratch/history.json" "$@"
+      --history "$scratch/history.json" "${args[@]}"
   else
     uv run --project "$PROJECT_DIR" --locked --no-dev python -m piperobot.reports.history append \
-      --history "$scratch/history.json" "$@"
+      --history "$scratch/history.json" "${args[@]}"
   fi
+  for ((i=0; i<${#sources[@]}; i++)); do
+    target="$scratch/${destinations[i]}"
+    if [[ -e "$target" ]] && ! cmp -s -- "${sources[i]}" "$target"; then
+      echo "ERROR: evidence for this run already exists and differs; history is append-only" >&2
+      exit 2
+    fi
+    mkdir -p -- "$(dirname "$target")"
+    cp -- "${sources[i]}" "$target"
+  done
   if [[ -z "$("${git_cmd[@]}" status --porcelain)" ]]; then
     echo "already present"
     exit 0
   fi
-  "${git_cmd[@]}" add history.json
+  "${git_cmd[@]}" add history.json "${destinations[@]}"
   GIT_AUTHOR_NAME='github-actions[bot]' \
     GIT_AUTHOR_EMAIL='41898282+github-actions[bot]@users.noreply.github.com' \
     GIT_COMMITTER_NAME='github-actions[bot]' \
     GIT_COMMITTER_EMAIL='41898282+github-actions[bot]@users.noreply.github.com' \
     "${git_cmd[@]}" -c user.name='github-actions[bot]' \
     -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-    -c commit.gpgsign=false commit -q -m "History: $commit (run $run_id.$run_attempt)"
+    -c commit.gpgsign=false commit -q -m "$message"
   if "${git_cmd[@]}" push "$HISTORY_REMOTE" HEAD:refs/heads/history; then
     exit 0
   fi

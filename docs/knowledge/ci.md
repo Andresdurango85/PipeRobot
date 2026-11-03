@@ -53,7 +53,10 @@
   deploys the rendered page to Pages (`pages: write`, `id-token: write`, `github-pages`
   environment). `append` and `deploy` run only on `refs/heads/main`
   ([ADR 0026](../decisions/0026-success-rate-history-data-branch-and-pages.md)). Needs Pages from
-  GitHub Actions, the `history` branch and its ruleset first. First run: 41579899042 on the merge
+  GitHub Actions, the `history` branch and its ruleset first. Since ADR 0030 an `attest` job
+  (`id-token: write`, `attestations: write`, our stdlib module only) signs each point between
+  `evaluate` and `append`; `append` commits the signed record plus `results/<run>.<attempt>.json`
+  and `bundles/<run>.<attempt>.jsonl`, and the page links them. First run: 41579899042 on the merge
   of #39, all three jobs green, one record (29/50, PASS) at
   <https://andresdurango85.github.io/PipeRobot/>. _(verified 2026-11-03)_
 - **The history's repo settings were applied on 2026-11-03** through the REST API by the
