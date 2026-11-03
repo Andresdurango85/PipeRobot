@@ -399,3 +399,18 @@ def test_cli_preserves_argparse_error(capsys: pytest.CaptureFixture[str]) -> Non
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == "ERROR: argument --alpha: invalid float value: 'x'\n"
+
+
+def test_cli_help_shows_the_module_summary(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("COLUMNS", "200")
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    output = " ".join(capsys.readouterr().out.split())
+    assert (
+        "Compare a candidate with a reference policy evaluated on the same seeds, episode by "
+        "episode." in output
+    )
