@@ -1,4 +1,4 @@
-"""Workflow and runner trust boundaries (ADR 0020, ADR 0025)."""
+"""Workflow and runner trust boundaries (ADR 0020, ADR 0026)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _labels(job: dict[str, Any]) -> list[str]:
 
 @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
 def test_self_hosted_events(path: Path) -> None:
-    """Check our workflows for regressions; only the runner hook stops fork additions (ADR 0025)."""
+    """Check our workflows for regressions; only the runner hook stops fork additions (ADR 0026)."""
     data = _load(path)
     if _self_hosted_jobs(data):
         triggers = data.get("on", data.get(True))

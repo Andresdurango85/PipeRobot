@@ -29,7 +29,7 @@ repos:
         files: ^(pyproject\.toml|uv\.lock)$
         pass_filenames: false
 
-      # Offline: hooks need no token or network; CI adds the online audits (ADR 0025).
+      # Offline: hooks need no token or network; CI adds the online audits (ADR 0026).
       - id: zizmor
         name: zizmor (offline)
         entry: uv run --locked zizmor --offline .
@@ -49,6 +49,15 @@ repos:
       - id: ci-ruff-format
         name: "CI: ruff format --check"
         entry: uv run --locked ruff format --check .
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
+      - id: ci-mypy
+        # --isolated keeps the lerobot extra out, like CI (ADR 0025).
+        name: "CI: mypy --strict"
+        entry: uv run --isolated --locked mypy
         language: system
         stages: [pre-push]
         pass_filenames: false

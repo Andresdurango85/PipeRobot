@@ -1,4 +1,4 @@
-# Posture score, not a gate (ADR 0011 follow-up, ADR 0025).
+# Posture score, not a gate (ADR 0011 follow-up, ADR 0026).
 name: scorecard
 
 on:

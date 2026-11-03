@@ -27,9 +27,13 @@ Project Cangrejo, the `piperobot` package).
   runner refuses any job that is not one of our self-hosted workflows on a push, dispatch or
   schedule; the runner folder's ACL no longer lets every local account write it; every action is
   pinned by SHA; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly
-  ([ADR 0025](decisions/0025-self-hosted-runner-push-only-and-pinned-actions.md),
+  ([ADR 0026](decisions/0026-self-hosted-runner-push-only-and-pinned-actions.md),
   [ci.md](knowledge/ci.md)).
-
+- 2026-11-02: mypy --strict checks the `piperobot` package on push and in CI (`type-check`
+  job); it found no errors in our own code
+  ([ADR 0025](decisions/0025-mypy-strict-type-checking.md), [testing.md](knowledge/testing.md)).
+  Next: Hypothesis property tests and mutation testing for `piperobot/stats`, and a fix for a
+  drop of exactly the tolerance that can WARN through float rounding.
 - 2026-11-02: the Isaac Lab 3.0 SO-101 asset passed the object-free go/no-go on the course's
   75 demos (all grasps and releases in the course's tube and rack regions, no limit hits), and
   the course dataset's real rate is 60 Hz despite its 30-fps label, measured by replaying it with
@@ -66,7 +70,7 @@ Project Cangrejo, the `piperobot` package).
    reproducibility with cameras and a policy in the loop.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. After the ADR 0025 PR merges: set the repo's Actions permissions (selected actions only,
+5. After the ADR 0026 PR merges: set the repo's Actions permissions (selected actions only,
    SHA pinning required), check that a workflow, CodeQL's default setup and Monday's Dependabot
    run still work, note Scorecard's first score and top findings in [ci.md](knowledge/ci.md),
    and ask Andrés to add `zizmor` to the ruleset's required checks.

@@ -5,7 +5,7 @@ name: gpu-smoke
 # and not a gate: CUDA runs of lerobot-eval are not reproducible on the same seeds (ADR 0016), so
 # the count is reported, never compared with the CPU baseline.
 # Runs on pushes to this repo's branches that touch the code it exercises (forks cannot push
-# here), and by hand; never on pull requests, whose workflow files a fork controls (ADR 0025).
+# here), and by hand; never on pull requests, whose workflow files a fork controls (ADR 0026).
 # The check still shows on the PR, because it runs on the PR's head commit.
 on:
   push:
@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   gpu-smoke:
-    # Forks and Dependabot must not queue work on the home PC (ADR 0025).
+    # Forks and Dependabot must not queue work on the home PC (ADR 0026).
     if: github.repository == 'Andresdurango85/PipeRobot' && github.actor != 'dependabot[bot]'
     runs-on: [self-hosted, Windows, gpu]
     timeout-minutes: 30 # Phase 0 budget per PR

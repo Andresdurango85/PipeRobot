@@ -28,7 +28,7 @@ jobs:
       - name: Install dev dependencies (from uv.lock)
         run: uv sync --locked
 
-      - name: Audit workflows including online checks (ADR 0025)
+      - name: Audit workflows including online checks (ADR 0026)
         run: uv run --locked zizmor --format=github .
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
