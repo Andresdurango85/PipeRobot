@@ -3,7 +3,7 @@
   "evaluator": "lerobot-eval",
   "commit": "53fdcbb6dd87b94b4daa5ab022b28a66a2102e46",
   "platform": "ubuntu-latest, AMD EPYC 7763, 4 CPUs, torch 2.11.0+cpu",
-  "how": "Historical record: per-episode results of baseline.yml run 40621897268 (2026-10-27, artifact baseline-40621897268, expires 2026-11-27), the run behind the original 265/500. Its commit predates the ADR 0019 layout.",
+  "how": "Historical record: per-episode results of baseline.yml run 40621897268 (2026-10-27, artifact baseline-40621897268, expires 2026-11-27), the run behind the original 265/500 (EPYC 7763). Its commit predates the ADR 0019 layout.",
   "episodes": [
     {
       "seed": 1000,
