@@ -148,5 +148,35 @@
     "verdict": "pass",
     "seeds": "1000-1049",
     "platform": "AMD EPYC 9V45 96-Core Processor, 4 CPUs"
+  },
+  {
+    "schema": 1,
+    "commit": "8baa0534f8f29a48a07d5727c235dba4c356ecdb",
+    "commit_date": "2026-11-03T06:35:54Z",
+    "evaluated_at": "2026-11-03T06:36:17Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/41590895627",
+    "run_id": 41590895627,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 29,
+    "trials": 50,
+    "confidence": 0.95,
+    "interval": [
+      0.4423344176857824,
+      0.7062499664528801
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.09433019075073706,
+      0.1836350190223732
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "1000-1049",
+    "platform": "AMD EPYC 7763 64-Core Processor, 4 CPUs"
   }
 ]
