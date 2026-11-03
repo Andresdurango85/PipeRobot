@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-02 (home PC)
+Last updated: 2026-11-03 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -10,7 +10,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | Done-criterion | State |
 | --- | --- |
 | GPU workflow, headless, < 30 min per PR | **Done for PushT**: `gpu-smoke` on the self-hosted RTX runner, ~2–3 min per PR, not a gate ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)); the gate stays on CPU ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)). Isaac's time on it not yet measured |
-| ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min); SO-101 scenes pending ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)) |
+| ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min) ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). **SO-101 on Isaac**: evaluator runs 75 seeds, one process each, ~20 s per seed, repeatable bit for bit; replay policy only, seeded randomized layout built but not yet run ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)) |
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
@@ -23,6 +23,12 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: the Isaac Lab evaluator (`piperobot.adapters.isaaclab`) runs every seed in a fresh
+  Isaac process: in one process an episode's outcome depends on the episodes before it (12/75
+  change in reverse order), and neither enhanced determinism nor a full reset fixes it. Worker
+  crashes are retried once and never count as trials. Acceptance (registered): first attempt
+  failed on a Kit shutdown hang; after the fix, 2 × 75 seeds bit-identical, 6/75 replay
+  successes, ~20 s per seed ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)).
 - 2026-11-03: the README reproduces the PushT gate in about 5 minutes, PASS and a demo BLOCK,
   and CI runs it as written on Linux and Windows (`readme.yml`, [ci.md](knowledge/ci.md)).
 - 2026-11-03: `nightly.yml` runs the reference and `main` on the same 500 fresh seeds every
@@ -90,12 +96,6 @@ Project Cangrejo, the `piperobot` package).
   Hub uploads from the real arm, Developer Mode for training, and
   `piperobot.adapters.manual.evaluate` to turn hand-scored attempts (CSV) into gate results
   ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)).
-- 2026-11-01: Isaac Lab 3.0 + Isaac Sim 6.2 installed natively on the home PC, without Arena
-  (Linux-only). Headless RTX rendering works, Isaac Lab ships an SO-101 task, and same-seed runs
-  are bit-identical (random actions, no camera, no policy)
-  ([ADR 0021](decisions/0021-isaac-lab-3-on-windows-without-arena.md),
-  [isaac.md](knowledge/isaac.md)).
-
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
@@ -104,12 +104,11 @@ Project Cangrejo, the `piperobot` package).
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
    [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
    nightlies, decide on a paired mode for pr-gate.
-3. Isaac: the `piperobot.adapters.isaaclab` evaluator on the tube-to-rack scene (lazy Isaac
-   imports, task data in `robots/so101/envs/`, results contract, `failure` from the success
-   tracker), Codex coding. First measure same-seed repeatability with contacts (2/75 outcomes
-   flipped between runs, [ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)) and whether
-   PhysX's enhanced determinism or a fresh process per episode fixes it; then per-episode
-   randomization with seeds, cameras, and a policy in the loop.
+3. Isaac: measure the replay baseline the gate will use (50 seeds, one process each,
+   [ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)) and wire the
+   evaluator into a self-hosted workflow (Berta's area: `.github/`); then a reactive scripted
+   policy so the seeded randomized layout can run, cameras for failed-episode videos, and 2–3
+   parallel workers (measure GPU memory first).
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 5. CI: check that Monday's Dependabot runs work under the new Actions permissions and that the

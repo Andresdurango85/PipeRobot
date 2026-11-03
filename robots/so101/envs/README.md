@@ -25,3 +25,16 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `vials_to_rack_layout.py`: pure deterministic reconstructed-demo layouts.
 - `../tools/isaac_mount_compare.py`: verified course/native asset mount comparison.
 - `../tools/isaac_success_check.py`: registered static sensing checks and demo diagnostics.
+
+- `vials_to_rack_episodes.py`: reusable Isaac reconstructed-episode runtime.
+- `repeatability.py`: registered stdlib repeatability and decision rules.
+- `../tools/isaac_repeatability.py`: one-process Isaac study.
+- `../tools/repeatability_driver.py`: isolated episode subprocess driver.
+- `../tools/repeatability_report.py`: portable JSON and Markdown study report.
+
+- `vials_to_rack_task.py`: policy-driven task using the registered episode runtime.
+- `vials_to_rack_task.json`: default task spec with course actuators.
+- `vials_to_rack_randomization.py`: pure seeded tube/rack poses in meters and radians.
+- `../policies/demo_replay.py`: replay policy; six actions in dataset joint order.
+- `../policies/demo_replay.json`: pinned input hash and offline preparation instructions.
+- `evaluator_acceptance.json`: the evaluator's registered acceptance test and expected study fingerprints.

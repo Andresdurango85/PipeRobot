@@ -1,0 +1,17 @@
+{
+  "name": "course-demo-replay",
+  "module": "demo_replay.py",
+  "factory": "DemoReplayPolicy",
+  "repo_id": "sreetz-nv/so101_teleop_vials_rack_left",
+  "revision": "69802873f4a26bffb716fca1f4fb1bb0e3d2a07a",
+  "options": {
+    "episodes_json": "${LOCALAPPDATA}/piperobot/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json"
+  },
+  "files": [
+    {
+      "path": "${LOCALAPPDATA}/piperobot/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json",
+      "sha256": "ae786b9c1cc0dce50f1d6853c406dac4fb06fbdd33242964d326694dd98afc1c"
+    }
+  ],
+  "prepare": "From the repository root, with huggingface_hub and pyarrow (the lerobot extra, not the Isaac venv): python robots/so101/tools/demo_extract.py --datasets robots/so101/envs/demo_datasets.json --repo-id sreetz-nv/so101_teleop_vials_rack_left --out \"${LOCALAPPDATA}/piperobot/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json\" (expand ${LOCALAPPDATA} for your shell)."
+}

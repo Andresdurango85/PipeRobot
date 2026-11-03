@@ -1,0 +1,269 @@
+"""Isaac-only reconstructed demo runtime; no reference source is imported."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import time
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import asdict
+from pathlib import Path
+
+import torch
+from isaac_demo_replay import CORE, ENV, UNITS, load_module
+from isaac_success_check import INITIAL_JOINTS, distribution
+from isaaclab.sim import SimulationContext
+from isaaclab.utils import instantiate
+
+LAYOUT = load_module("episode_layout", ENV / "vials_to_rack_layout.py")
+SUCCESS = load_module("episode_success", ENV / "vials_to_rack_success.py")
+
+
+class ReconstructedEpisodes:
+    """Own one scene and preserve the diagnostic's write/step ordering."""
+
+    def __init__(
+        self,
+        assets_dir: Path,
+        actuators: str,
+        sim_cfg: object,
+        joint_names: Sequence[str],
+        full_reset: bool = False,
+    ) -> None:
+        self.full_reset = full_reset
+        self.names = [name.removesuffix(".pos") for name in joint_names]
+        self.gripper = self.names.index("gripper")
+        self.table = UNITS.load_table()
+        scene_module = load_module("tube_scene", ENV / "vials_to_rack_scene.py")
+        self.data = json.loads((ENV / "vials_to_rack.json").read_text(encoding="utf-8"))
+        self.sim = SimulationContext(sim_cfg)
+        self.scene = instantiate(scene_module.build_scene_cfg(assets_dir, actuators))
+        self.sim.reset()
+        self.robot = self.scene["robot"]
+        self.rack = self.scene["rack"]
+        self.tubes = [self.scene[f"tube_{i}"] for i in range(1, 4)]
+        self.sensor = self.scene["contact_grasp"]
+        self.dt = self.data["control"]["physics_dt"]
+        self.substeps = self.data["control"]["substeps"]
+        self.lying = LAYOUT.pitch_quat_xyzw(self.data["tubes"]["pitch_deg"])
+        self.identity = (0.0, 0.0, 0.0, 1.0)
+        self.tracker = SUCCESS.SuccessTracker()
+
+        self.dump_steps: list[dict[str, object]] = []
+
+    def tensor(self, values: object) -> object:
+        return torch.tensor(values, device=self.sim.device, dtype=torch.float32)
+
+    def set_joints(self, values: dict[str, float]) -> None:
+        q = self.robot.data.default_joint_pos.torch.clone()
+        for name, value in values.items():
+            q[0, self.robot.joint_names.index(name)] = value
+        self.robot.write_joint_position_to_sim_index(position=q)
+        self.robot.write_joint_velocity_to_sim_index(velocity=torch.zeros_like(q))
+        self.robot.set_joint_position_target_index(target=q)
+        self.robot.reset()
+
+    def write_pose(self, obj: object, pose: Sequence[float]) -> None:
+        obj.write_root_pose_to_sim_index(root_pose=self.tensor([pose]))
+        obj.write_root_velocity_to_sim_index(
+            root_velocity=torch.zeros((1, 6), device=self.sim.device)
+        )
+
+    def teleport(self, obj: object, pose: Sequence[float]) -> None:
+        self.write_pose(obj, pose)
+        obj.reset()
+
+    def physics_step(self) -> None:
+        self.scene.write_data_to_sim()
+        self.sim.step(render=False)
+        self.scene.update(self.dt)
+
+    def forces(self) -> list[float]:
+        matrix = self.sensor.data.force_matrix_w
+        if matrix is None:
+            raise RuntimeError("Jaw filtered force_matrix_w unavailable")
+        values = matrix.torch
+        if values.shape[2] != len(self.tubes):
+            raise RuntimeError(f"Expected three tube filters, got {values.shape}")
+        return values[0].norm(dim=-1).sum(dim=0).cpu().tolist()
+
+    def sample(self, index: int) -> object:
+        states = [
+            SUCCESS.VialState(
+                force,
+                tuple(obj.data.root_pos_w.torch[0].cpu().tolist()),
+                tuple(obj.data.root_quat_w.torch[0].cpu().tolist()),
+            )
+            for obj, force in zip(self.tubes, self.forces(), strict=True)
+        ]
+        rack_position = tuple(self.rack.data.root_pos_w.torch[0].cpu().tolist())
+        rack_quaternion = tuple(self.rack.data.root_quat_w.torch[0].cpu().tolist())
+        if self.dump_steps is not None:
+            self.dump_steps.append(
+                {
+                    "step_index": index,
+                    "vials": [asdict(state) for state in states],
+                    "rack_position": rack_position,
+                    "rack_quaternion_xyzw": rack_quaternion,
+                }
+            )
+        return self.tracker.step(index, states, rack_position, rack_quaternion)
+
+    def _full_reset(self) -> None:
+        # Isaac Lab 3.0: simulation_context.py resets physics and invokes reset callbacks.
+        # interactive_scene.py resets entities in place; fetch their handles afterward.
+        self.sim.reset(soft=False)
+        self.scene.reset()
+        self._handles()
+
+    def reset_layout(self, yaw: float = 0.0, nominal: bool = False) -> None:
+        self.set_joints(INITIAL_JOINTS)
+        self.teleport(
+            self.rack,
+            (*self.data["rack"]["origin_m"], *CORE.yaw_to_quat_xyzw(math.degrees(yaw))),
+        )
+        poses = (
+            [(*pos, *self.lying) for pos in self.data["tubes"]["origins_m"]]
+            if nominal
+            else [
+                (-0.15, 0.0, self.data["tubes"]["origins_m"][0][2], *self.lying),
+                *LAYOUT.park_poses(self.data),
+            ]
+        )
+        for tube, pose in zip(self.tubes, poses, strict=True):
+            self.teleport(tube, pose)
+        self.sensor.reset()
+        self.tracker.reset()
+
+    def _handles(self) -> None:
+        self.robot = self.scene["robot"]
+        self.rack = self.scene["rack"]
+        self.tubes = [self.scene[f"tube_{i}"] for i in range(1, 4)]
+        self.sensor = self.scene["contact_grasp"]
+
+    def converted(self, row: Sequence[float]) -> dict[str, float]:
+        return UNITS.to_radians(dict(zip(self.names, row, strict=True)), self.table)
+
+    def grasp_release_tcps(self, episode: dict) -> tuple | None:
+        state_g = [row[self.gripper] for row in episode["state"]]
+        action_g = [row[self.gripper] for row in episode["action"]]
+        events = CORE.grasp_release_frames(state_g, action_g)
+        if events is None:
+            return None
+        points = []
+        body = self.robot.body_names.index(self.data["tcp"]["body"])
+        for frame in events:
+            self.set_joints(self.converted(episode["state"][frame]))
+            self.physics_step()
+            points.append(
+                CORE.tcp_point(
+                    self.robot.data.body_pos_w.torch[0, body].cpu().tolist(),
+                    self.robot.data.body_quat_w.torch[0, body].cpu().tolist(),
+                    self.data["tcp"]["offset_m"],
+                )
+            )
+        return (*events, *points)
+
+    def run_reconstructed_episode(
+        self,
+        episode: dict,
+        record_steps: bool,
+        action_source: Callable[[int, Mapping[str, object]], Sequence[float]] | None = None,
+        layout_source: Callable[[], None] | None = None,
+    ) -> dict:
+        started = time.perf_counter()
+        self.dump_steps = []
+        with torch.inference_mode():
+            if self.full_reset:
+                # Before the TCP probe too, so nothing from the previous episode reaches it.
+                self._full_reset()
+            events = (
+                self.grasp_release_tcps(episode)
+                if layout_source is None
+                else (0, 0, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
+            )
+            result_dict = {
+                "index": episode["index"],
+                "success": False,
+                "success_step": None,
+                "failure_reason": "no_recorded_hold",
+                "release_frame": None,
+                "rack_pose": None,
+                "forces": {},
+            }
+            if events is not None:
+                grasp, release, grasp_tcp, release_tcp = events
+                placement = None
+                if layout_source is None:
+                    placement = LAYOUT.rack_pose_for_release(release_tcp[:2], self.data)
+                    self.reset_layout()
+                    self.teleport(
+                        self.rack,
+                        (
+                            *placement.origin_xyz,
+                            *CORE.yaw_to_quat_xyzw(math.degrees(placement.yaw)),
+                        ),
+                    )
+                    poses = [
+                        LAYOUT.tube_pose_for_grasp(grasp_tcp, self.data),
+                        *LAYOUT.park_poses(self.data),
+                    ]
+                    for tube, pose in zip(self.tubes, poses, strict=True):
+                        self.teleport(tube, pose)
+                else:
+                    self.reset_layout(nominal=True)
+                    layout_source()
+                self.set_joints(self.converted(episode["state"][0]))
+                self.tracker.reset()
+                self.sensor.reset()
+                windows = {"open_approach": [], "hold": []}
+                state_g = [row[self.gripper] for row in episode["state"]]
+                action_g = [row[self.gripper] for row in episode["action"]]
+                holds = CORE.find_holds(state_g, action_g)
+                peak_force = 0.0
+                for index, action in enumerate(episode["action"]):
+                    if action_source is not None:
+                        radians = {
+                            name: float(
+                                self.robot.data.joint_pos.torch[
+                                    0, self.robot.joint_names.index(name)
+                                ].item()
+                            )
+                            for name in self.names
+                        }
+                        observation = {
+                            "step": index,
+                            "joint_pos": UNITS.to_lerobot(radians, self.table),
+                        }
+                        action = action_source(index, observation)
+                    values = self.converted(action)
+                    ids = [self.robot.joint_names.index(name) for name in self.names]
+                    self.robot.set_joint_position_target_index(
+                        target=self.tensor([[values[name] for name in self.names]]), joint_ids=ids
+                    )
+                    for _ in range(self.substeps):
+                        self.physics_step()
+                        peak_force = max(peak_force, self.forces()[0])
+                    result = self.sample(index)
+                    force = self.forces()[0]
+                    if index < grasp and state_g[index] > action_g[grasp] + CORE.HOLD_GAP:
+                        windows["open_approach"].append(force)
+                    if any(start <= index < end for start, end in holds):
+                        windows["hold"].append(force)
+                result_dict.update(
+                    success=result.success,
+                    success_step=result.success_step,
+                    failure_reason=self.tracker.failure_reason(),
+                    release_frame=release,
+                    rack_pose=asdict(placement) if placement is not None else None,
+                    forces={key: distribution(values) for key, values in windows.items()},
+                )
+        canonical = json.dumps(
+            self.dump_steps, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+        result_dict["trajectory_sha256"] = hashlib.sha256(canonical).hexdigest()
+        result_dict["wall_seconds"] = time.perf_counter() - started
+        if record_steps:
+            result_dict["steps"] = self.dump_steps
+        return result_dict

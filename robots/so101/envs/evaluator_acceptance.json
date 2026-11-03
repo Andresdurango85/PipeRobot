@@ -1,0 +1,124 @@
+{
+  "registered": "2026-11-03, before the first acceptance run; changing it needs a new ADR.",
+  "code_commit": "d3823c9",
+  "run": {
+    "evaluator": "piperobot.adapters.isaaclab.evaluate",
+    "task": "robots/so101/envs/vials_to_rack_task.json",
+    "policy": "robots/so101/policies/demo_replay.json",
+    "seeds": "0-74",
+    "device": "cuda:0",
+    "enhanced_determinism": false,
+    "runs": [
+      "A1",
+      "A2"
+    ],
+    "process_per_seed": true
+  },
+  "pass_criteria": [
+    "Both runs complete without an evaluator error.",
+    "Zero outcome flips between A1 and A2; outcome = (success, failure, success_step).",
+    "Identical trajectory_sha256 for all 75 seeds between A1 and A2.",
+    "For the 15 study-subset seeds, A1 and A2 match the study's process-per-episode run c_r1 (fb5100b) in outcome and trajectory_sha256 (expected below).",
+    "Mean end-to-end wall time per seed <= 36 s (50 seeds within the 30-minute budget)."
+  ],
+  "predictions_not_criteria": [
+    "About 22 s per seed end to end.",
+    "Few successes: in fresh processes none of the 15 subset seeds succeeds, against 1 in-process."
+  ],
+  "measured_no_threshold": [
+    "Peak GPU memory used during a run (nvidia-smi, sampled every second)."
+  ],
+  "not_counted": "A smoke run of seed 1 (API check, d3823c9's parent) before this file: not_placed.",
+  "expected_subset_c_r1": {
+    "0": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "4c9a10c99ea7fe4ddc05ad143d0b2c96e0f410c5184a0b0afa6b509b22b7b295"
+    },
+    "7": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "2b41104adc1ef30fc1989028458de0292c34903ac92e510aab91e94d6a352583"
+    },
+    "12": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "3c4f3df897846cdae42d0b64d7e9e1dfc11bb983784980c8e3b11b34a71b929d"
+    },
+    "17": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "5275f7e5cc26557e73b5d42be23ab401db4f0dcfaa2b9a3aa3afed874e97ec12"
+    },
+    "18": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "4a8bc0e1d391fa31eab3c2e60af767e4cbd5bda881cdb2c804427e1f18d9b6e5"
+    },
+    "19": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "a734bdb59e734c7638724ca0169d8fd068f94c7bc2a3eca71a51d4077ab6b1e8"
+    },
+    "21": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "d1c81595e0543dfcccf5efe070ed05cd332b756522df8c1d450b12b82219f6a9"
+    },
+    "25": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "4cc2cfbf4aba9dcd5559683a3ead42fd682d92f65194b6ec7ba65f3533e92183"
+    },
+    "27": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "5d3273e546378683700de0e568c7d61de865e8b1a4c6fad27b98e9e8b5d10d86"
+    },
+    "35": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "13fecb26b858c35f46140f58814ed89484d92e12cd6ca44c1d2593602489a36d"
+    },
+    "46": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "afae3834a2c155107b2505a820501a1d30203449b81a81021264845a2b3b364d"
+    },
+    "51": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "22fc21d98ad626f23fc9c2d33b09743993b97469fc59a7ba634d057d0a998eb4"
+    },
+    "55": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "4931f96d736cbea7bc14bd1fc417f334766c74f6f86ab5cbe73dc24942d7765f"
+    },
+    "67": {
+      "success": false,
+      "failure": "no_grasp",
+      "success_step": null,
+      "trajectory_sha256": "a524830c2ef75f90d4b0366f6818ff097b9c5391a5308bae292fb1bdc503e9d9"
+    },
+    "72": {
+      "success": false,
+      "failure": "not_placed",
+      "success_step": null,
+      "trajectory_sha256": "a1ca0c6f6cb35ddc3cea7555930ecb59096e6ef8b535af066cd38e53dfa0dc9a"
+    }
+  }
+}

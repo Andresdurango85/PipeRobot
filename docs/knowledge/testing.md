@@ -209,3 +209,16 @@ testing of `piperobot/stats`.
   `buildConfigURI` the caller** (`job_workflow_ref` and `workflow_ref`); the v2 verifier binds a
   record's series to `buildConfigURI`. _(Fulcio `docs/oid-info.md`, checked 2026-11-03; to be
   confirmed on the first `certify.yml` certificate)_
+
+## Tests that run git
+
+- **Inside a git hook, git exports `GIT_DIR` (and friends), and it overrides `git -C <dir>`.**
+  prek's pre-push hook runs pytest, so a test that runs `git -C <tmp> init/add/commit` writes to
+  the real repository instead: on 2026-11-03 one such run replaced a worktree's index with the
+  temporary repo's files and `git init` set `core.bare = true` in the shared `.git/config`, which
+  broke the main checkout ("this operation must be run in a work tree") until it was set back to
+  `false`. Tests that run git delete `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`,
+  `GIT_COMMON_DIR` and `GIT_PREFIX` first (an autouse fixture in
+  `tests/test_so101_isaac_evaluator.py`), and set `GIT_CEILING_DIRECTORIES` to the temp dir's
+  parent so a `--basetemp` inside a checkout does not resolve to it. Code that locates a repo with
+  git (the Isaac evaluator) drops the same variables. _(verified 2026-11-03, git 2.x on Windows)_
