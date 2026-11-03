@@ -9,7 +9,7 @@ import math
 import statistics
 import sys
 import traceback
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
@@ -20,6 +20,7 @@ LAYOUT = load_module("scene_layout", ENV / "vials_to_rack_layout.py")
 SUCCESS = load_module("scene_success", ENV / "vials_to_rack_success.py")
 
 # Fixed on 2026-11-02 before the first run; changing them needs a new ADR.
+# S7, S7b and the slot-depth rule added on 2026-11-02 before their first run.
 SETTLE_STEPS = 120
 RACK_Z = (0.03, 0.07)
 TUBE_Z = (0.02, 0.07)
@@ -30,6 +31,10 @@ SLOT_LOCAL_Z_MAX = 0.1
 RACK_TOP_Z = 0.073
 BESIDE_XY = (-0.05, 0.06)
 SENSOR_MAX_N = 0.01
+UPRIGHT_TOP_XY = (0.06, 0.06)
+UPRIGHT_BOTTOM_OFFSET_Z = 0.017
+UPRIGHT_TOP_CLEARANCE_Z = 0.005
+HELD_SLOT_CLEARANCE_Z = 0.003
 INITIAL_JOINTS = {
     "shoulder_pan": -0.2736,
     "shoulder_lift": -0.6109,
@@ -38,6 +43,26 @@ INITIAL_JOINTS = {
     "wrist_roll": -1.6034,
     "gripper": -0.1465,
 }
+
+
+def placement_subpredicates(
+    vial: SUCCESS.VialResult, params: SUCCESS.SuccessParams
+) -> dict[str, object]:
+    """Expose the independent placement conditions from one tracker sample."""
+    x, y, z = vial.rack_local_position
+    return {
+        "vertical": vial.vertical,
+        "xy_in_footprint": (
+            params.rack_local_x_min <= x <= params.rack_local_x_max
+            and params.rack_local_y_min <= y <= params.rack_local_y_max
+        ),
+        "origin_z_below_course_max": z < params.rack_local_z_max,
+        "bottom_below_rim_margin": vial.bottom_local_z < params.rack_rim_z - params.rim_margin_m,
+        "in_box": vial.in_box,
+        "placed": vial.placed,
+        "bottom_local_z": vial.bottom_local_z,
+        "rack_local_position": vial.rack_local_position,
+    }
 
 
 def check_assets(
@@ -156,9 +181,12 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
         robot.set_joint_position_target_index(target=q)
         robot.reset()
 
-    def teleport(obj: object, pose: Sequence[float]) -> None:
+    def write_pose(obj: object, pose: Sequence[float]) -> None:
         obj.write_root_pose_to_sim_index(root_pose=tensor([pose]))
         obj.write_root_velocity_to_sim_index(root_velocity=torch.zeros((1, 6), device=sim.device))
+
+    def teleport(obj: object, pose: Sequence[float]) -> None:
+        write_pose(obj, pose)
         obj.reset()
 
     def physics_step() -> None:
@@ -204,11 +232,13 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
         sensor.reset()
         tracker.reset()
 
-    def settle() -> tuple[object, list[float]]:
+    def settle(hold: Callable[[], None] | None = None) -> tuple[object, list[float]]:
         peaks = [0.0] * len(tubes)
         result = None
         for index in range(SETTLE_STEPS // substeps):
             for _ in range(substeps):
+                if hold is not None:
+                    hold()
                 physics_step()
                 peaks = [max(a, b) for a, b in zip(peaks, forces(), strict=True)]
             result = sample(index)
@@ -319,6 +349,51 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
             all(f < SENSOR_MAX_N for f in peaks),
         )
 
+        reset()
+        teleport(
+            tubes[0],
+            (
+                origin[0] + UPRIGHT_TOP_XY[0],
+                origin[1] + UPRIGHT_TOP_XY[1],
+                origin[2] + RACK_TOP_Z + UPRIGHT_BOTTOM_OFFSET_Z + UPRIGHT_TOP_CLEARANCE_Z,
+                *identity,
+            ),
+        )
+        result, _ = settle()
+        vial = result.vials[0]
+        record(
+            "S7 upright on rack top",
+            "vertical True; in_box False; placed False",
+            asdict(vial),
+            vial.vertical and not vial.in_box and not vial.placed,
+        )
+
+        reset()
+        slot = data["rack"]["slots_m"][0]
+        held_pose = (
+            origin[0] + slot[0],
+            origin[1] + slot[1],
+            origin[2] + RACK_TOP_Z + UPRIGHT_BOTTOM_OFFSET_Z + HELD_SLOT_CLEARANCE_Z,
+            *identity,
+        )
+        # A free tube falls into the opening; restore pose/zero velocity before every step.
+        result, _ = settle(hold=lambda: write_pose(tubes[0], held_pose))
+        measured = placement_subpredicates(result.vials[0], tracker.params)
+        expected = {
+            "vertical": True,
+            "xy_in_footprint": True,
+            "origin_z_below_course_max": True,
+            "bottom_below_rim_margin": False,
+            "in_box": False,
+            "placed": False,
+        }
+        record(
+            "S7b upright held over slot 0",
+            "; ".join(f"{key} {value}" for key, value in expected.items()),
+            measured,
+            all(measured[key] == value for key, value in expected.items()),
+        )
+
         diagnostic: dict[str, object] = {"episodes": [], "pooled": {}}
         report = {"checks": checks, "diagnostic": diagnostic}
         # Preserve registered measurements even if the optional diagnostic fails.
@@ -331,6 +406,7 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
             pooled = {"open_approach": [], "hold": []}
             delays = []
             successes = 0
+            episode_peak_forces = []
             body = robot.body_names.index(data["tcp"]["body"])
 
             def converted(row: Sequence[float]) -> dict[str, float]:
@@ -350,6 +426,7 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                 action_g = [row[gripper] for row in episode["action"]]
                 events = CORE.grasp_release_frames(state_g, action_g)
                 if events is None:
+                    episode_peak_forces.append({"index": episode["index"], "max_force_n": None})
                     diagnostic["episodes"].append(
                         {
                             "index": episode["index"],
@@ -379,6 +456,7 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                 sensor.reset()
                 windows = {"open_approach": [], "hold": []}
                 holds = CORE.find_holds(state_g, action_g)
+                peak_force = 0.0
                 for index, action in enumerate(episode["action"]):
                     values = converted(action)
                     ids = [robot.joint_names.index(name) for name in names]
@@ -387,6 +465,7 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                     )
                     for _ in range(substeps):
                         physics_step()
+                        peak_force = max(peak_force, forces()[0])
                     result = sample(index)
                     force = forces()[0]
                     # Open means wider than the recorded closing command by HOLD_GAP raw units.
@@ -395,6 +474,7 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                     if any(start <= index < end for start, end in holds):
                         windows["hold"].append(force)
                 successes += int(result.success)
+                episode_peak_forces.append({"index": episode["index"], "max_force_n": peak_force})
                 if result.success_step is not None:
                     delays.append(result.success_step - release)
                 for key, values in windows.items():
@@ -412,6 +492,7 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                 )
             diagnostic["pooled"] = {
                 "success_count": successes,
+                "tube_1_episode_peak_force_n": episode_peak_forces,
                 "median_success_step_minus_release_frame": (
                     statistics.median(delays) if delays else None
                 ),

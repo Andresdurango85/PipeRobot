@@ -9,6 +9,10 @@
 The course shares placement/history state between environments and tasks, and its Eval
 observation and termination both advance history. Here each step advances it exactly once;
 reset() clears all episode state. All quaternions are XYZW; the course used WXYZ.
+
+Deliberate judgement changes: use 5 N to separate pushes from genuine grasps, and require
+the lowest tube end below the rack rim by a margin. The course's origin z < 0.1 box
+alone admits an upright tube standing on top of the rack.
 """
 
 import math
@@ -24,7 +28,13 @@ Quat = tuple[float, float, float, float]
 class SuccessParams:
     warmup_steps: int = 30
     grasp_history_window: int = 20
-    force_threshold_n: float = 2.0
+    # The course uses 2 N; 5 N sits in the measured gap: pushes <= 1.98 N,
+    # genuine grasp medians 10-19 N, about 2.5x margin on each side.
+    # See the SO-101 scene ADR (number to be filled in later).
+    force_threshold_n: float = 5.0
+    tube_axis_span_m: tuple[float, float] = (-0.017, 0.0995)  # Vial_opaque.usda
+    rack_rim_z: float = 0.073  # Vial_rack_simple.usda, rack-local top surface
+    rim_margin_m: float = 0.02
     rack_local_x_min: float = 0.0
     rack_local_x_max: float = 0.12
     rack_local_y_min: float = 0.0
@@ -55,6 +65,7 @@ class VialResult:
     in_box: bool
     placed: bool
     rack_local_position: Vec3
+    bottom_local_z: float
 
 
 @dataclass(frozen=True)
@@ -120,10 +131,9 @@ class SuccessTracker:
             )
             for v in vials
         ]
-        verticals = [
-            abs(rotate_xyzw(v.quaternion_xyzw, (0.0, 0.0, 1.0))[2]) > p.vertical_threshold
-            for v in vials
-        ]
+        axes = [rotate_xyzw(v.quaternion_xyzw, (0.0, 0.0, 1.0)) for v in vials]
+        verticals = [abs(axis[2]) > p.vertical_threshold for axis in axes]
+        local_axes = [rotate_xyzw(inverse, axis) for axis in axes]
         if not self._history:
             self._history = [deque(maxlen=p.grasp_history_window) for _ in vials]
             self._placed = [False] * len(vials)
@@ -133,17 +143,25 @@ class SuccessTracker:
             self._history[i].append(grasped)
             recent = any(self._history[i])
             x, y, z = local_positions[i]
+            bottom_local_z = z + min(end * local_axes[i][2] for end in p.tube_axis_span_m)
             in_box = (
                 p.rack_local_x_min <= x <= p.rack_local_x_max
                 and p.rack_local_y_min <= y <= p.rack_local_y_max
                 and z < p.rack_local_z_max
+                and bottom_local_z < p.rack_rim_z - p.rim_margin_m
             )
             if step_index >= p.warmup_steps:
                 self._ever_grasped |= grasped
                 self._placed[i] |= verticals[i] and in_box and recent and not grasped
             results.append(
                 VialResult(
-                    grasped, recent, verticals[i], in_box, self._placed[i], local_positions[i]
+                    grasped,
+                    recent,
+                    verticals[i],
+                    in_box,
+                    self._placed[i],
+                    local_positions[i],
+                    bottom_local_z,
                 )
             )
         valid = any(v.placed and v.vertical and v.in_box and not v.grasped_now for v in results)

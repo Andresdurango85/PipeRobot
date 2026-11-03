@@ -78,6 +78,68 @@ def test_scene_additions() -> None:
         assert SCENE[group]["usd"]
 
 
+def test_success_geometry_matches_scene() -> None:
+    assert S.SuccessParams().tube_axis_span_m == tuple(SCENE["tubes"]["axis_span_m"])
+
+
+@pytest.mark.parametrize(
+    ("origin_z", "depth"),
+    [(0.073 + 0.017 + 0.003, False), (0.0158, True)],
+    ids=["S7b-held-over-slot", "S2-measured-in-slot"],
+)
+def test_placement_subpredicates(
+    origin_z: float, depth: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / "robots/so101/tools"))
+    tool = load("tube_subpredicates_tests", "robots/so101/tools/isaac_success_check.py")
+    params = tool.SUCCESS.SuccessParams()
+    slot = SCENE["rack"]["slots_m"][0]
+    local = (slot[0], slot[1], origin_z)
+    tracker = tool.SUCCESS.SuccessTracker(params)
+    vial = tracker.step(
+        0,
+        [tool.SUCCESS.VialState(0.0, local, (0.0, 0.0, 0.0, 1.0))],
+        (0.0, 0.0, 0.0),
+        (0.0, 0.0, 0.0, 1.0),
+    ).vials[0]
+    assert tool.placement_subpredicates(vial, params) == {
+        "vertical": True,
+        "xy_in_footprint": True,
+        "origin_z_below_course_max": True,
+        "bottom_below_rim_margin": depth,
+        "in_box": depth,
+        "placed": False,
+        "bottom_local_z": pytest.approx(origin_z - 0.017),
+        "rack_local_position": pytest.approx(local),
+    }
+
+
+def test_success_report_preserves_depth_and_episode_peaks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / "robots/so101/tools"))
+    tool = load("tube_success_report_tests", "robots/so101/tools/isaac_success_check.py")
+    report = {
+        "checks": [
+            {
+                "name": "S7 upright on rack top",
+                "expectation": "vertical True; in_box False; placed False",
+                "measured": {"bottom_local_z": 0.073, "rack_local_position": [0.06, 0.06, 0.09]},
+                "passed": True,
+            }
+        ],
+        "diagnostic": {
+            "episodes": [],
+            "pooled": {"tube_1_episode_peak_force_n": [{"index": 7, "max_force_n": 19.0}]},
+        },
+    }
+    tool.write_report(tmp_path, report)
+    assert json.loads((tmp_path / "checks.json").read_text()) == report
+    markdown = (tmp_path / "report.md").read_text()
+    assert "bottom_local_z" in markdown
+    assert '"max_force_n": 19.0' in markdown
+
+
 @pytest.mark.parametrize("tool", ["isaac_mount_compare.py", "isaac_success_check.py"])
 def test_help_without_isaac(tool: str) -> None:
     result = subprocess.run(  # noqa: S603
