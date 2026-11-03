@@ -50,3 +50,9 @@ unit mapping and fixed analysis rules live in `so101/envs/`.
 - `so101/tools/isaac_mount_compare.py`: verified course/native asset mount comparison.
 - `so101/tools/isaac_success_check.py`: registered static sensing checks and demo diagnostics.
 - `so101/tools/success_variants.py`: replays dumped tracker inputs under 2/5 N x slot-depth on/off (diagnostic).
+
+- `so101/envs/vials_to_rack_episodes.py`: reusable Isaac reconstructed-episode runtime.
+- `so101/envs/repeatability.py`: registered stdlib repeatability and decision rules.
+- `so101/tools/isaac_repeatability.py`: one-process Isaac study.
+- `so101/tools/repeatability_driver.py`: isolated episode subprocess driver.
+- `so101/tools/repeatability_report.py`: portable JSON and Markdown study report.
