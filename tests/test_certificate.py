@@ -86,6 +86,12 @@ def fake(
     payload: object, *, code: int = 0, stderr: str = ""
 ) -> Callable[..., subprocess.CompletedProcess[str]]:
     def run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        if code == 0 and isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            statement = payload[0].get("verificationResult", {}).get("statement", {})
+            if statement.get(
+                "predicateType"
+            ) == GATE_VERDICT_PREDICATE_TYPE and "gate-verdict-v2.md" in str(args):
+                return subprocess.CompletedProcess([], 1, "", "no attestations found")
         return subprocess.CompletedProcess([], code, json.dumps(payload), stderr)
 
     return run
@@ -139,6 +145,10 @@ def test_success_and_command(tmp_path: Path, bundle: Path | None) -> None:
         ]
         if bundle is not None:
             expected += ["--bundle", str(bundle)]
+        if bundle is None and command[command.index("--predicate-type") + 1].endswith(
+            "gate-verdict-v2.md"
+        ):
+            return subprocess.CompletedProcess([], 1, "", "no attestations found")
         assert command == expected
         assert kwargs == {"capture_output": True, "text": True, "check": False}
         return fake(payload)(command)
@@ -316,7 +326,9 @@ def test_bundle_collects_all_subjects_and_lines(tmp_path: Path) -> None:
     statement = payload[0]["verificationResult"]["statement"]
     other = {"name": "other.json", "digest": {"sha256": "b" * 64}}
     bundle = tmp_path / "bundle.jsonl"
-    write_bundle(bundle, [{"subject": [other]}, {"subject": [other, *statement["subject"]]}])
+    write_bundle(
+        bundle, [{"subject": [other]}, {**statement, "subject": [other, *statement["subject"]]}]
+    )
     assert verify(path, bundle=bundle, run=fake(payload)).record.successes == 30
 
 

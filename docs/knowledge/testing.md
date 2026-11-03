@@ -200,3 +200,12 @@ testing of `piperobot/stats`.
 - **The history shows the CPU sensitivity of PushT**: the same 50 seeds gave 29/50 on three
   `AMD EPYC 7763` runners and 27/50 on an `INTEL(R) XEON(R) PLATINUM 8573C` one (points 1–4),
   which is why each point carries its platform ([lerobot.md](lerobot.md)). _(verified 2026-11-03)_
+- **Schema 2 loads the live schema-1 history unchanged**: loading the published `history.json`
+  (6 schema-1 records) with the schema-2 code and saving it again gives the same bytes, so the
+  append-only guard and the issued v1 certificates are unaffected
+  ([ADR 0031](../decisions/0031-history-schema-2-and-certify-trusted-builder.md)).
+  _(verified 2026-11-03)_
+- **In a reusable workflow, Fulcio's `buildSignerURI` is the reusable workflow and
+  `buildConfigURI` the caller** (`job_workflow_ref` and `workflow_ref`); the v2 verifier binds a
+  record's series to `buildConfigURI`. _(Fulcio `docs/oid-info.md`, checked 2026-11-03; to be
+  confirmed on the first `certify.yml` certificate)_
