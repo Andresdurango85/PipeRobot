@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,13 @@ RANDOM = load_module(
 def write(path: Path, data: object) -> Path:
     path.write_text(json.dumps(data), encoding="utf-8")
     return path
+
+
+@pytest.fixture(autouse=True)
+def _outside_any_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # tmp_path can sit inside a checkout (e.g. --basetemp under .venv); the specs written there
+    # must not resolve to that checkout as the evaluated repo.
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
 
 
 @pytest.fixture
@@ -127,8 +135,8 @@ def test_driver(
     capsys: pytest.CaptureFixture[str],
     mode: str,
 ) -> None:
-    monkeypatch.setattr(evaluate, "git_commit", lambda: "test-commit")
-    monkeypatch.setattr(evaluate, "REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setattr(evaluate, "git_commit", lambda repo: "test-commit")
+    monkeypatch.setattr(evaluate, "PACKAGE_PARENT", tmp_path / "repo")
     task, policy = specs
     output = tmp_path / "result" / "results.json"
     output.parent.mkdir()
@@ -442,7 +450,7 @@ def test_duplicate_driver_seeds(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task, policy = specs
-    monkeypatch.setattr(evaluate, "git_commit", lambda: None)
+    monkeypatch.setattr(evaluate, "git_commit", lambda repo: None)
     assert (
         evaluate.main(
             [
@@ -648,3 +656,66 @@ def test_timeout_kills_process_tree(
         assert events[1] == ["taskkill.exe", "/T", "/F", "/PID", "123"]
     else:
         assert events[1] == (123, evaluate.signal.SIGKILL)
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+def test_driver_anchors_to_evaluated_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Installed layout: piperobot lives in site-packages, the task specs in another repo.
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    for key in ("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"):
+        monkeypatch.setenv(key, "test")
+    for key in ("GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"):
+        monkeypatch.setenv(key, "test@example.com")
+    git = shutil.which("git")
+    assert git is not None
+    repo = tmp_path / "crab"
+    specs_dir = repo / "specs"
+    specs_dir.mkdir(parents=True)
+    task = write(
+        specs_dir / "task.json",
+        {"name": "t", "module": "task.py", "layout": "test", "options": {}},
+    )
+    policy = write(
+        specs_dir / "policy.json",
+        {"name": "p", "module": "policy.py", "factory": "make", "options": {}},
+    )
+    for command in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "specs"]):
+        subprocess.run([git, "-C", str(repo), *command], check=True)  # noqa: S603 - test git
+    head = subprocess.run(  # noqa: S603 - test git
+        [git, "-C", str(repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+    ).stdout.strip()
+    site_packages = tmp_path / "site-packages"
+    monkeypatch.setattr(evaluate, "PACKAGE_PARENT", site_packages)
+    assert evaluate.evaluated_repo(task) == repo.resolve()
+    seen: list[dict[str, str]] = []
+
+    def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        env = kwargs["env"]
+        assert isinstance(env, dict)
+        seen.append(env)
+        out = Path(command[command.index("--out") + 1])
+        out.write_text(
+            json.dumps({"seed": 0, "success": True, "scene": "s", "platform": {}}),
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    common = ["--task", str(task), "--policy", str(policy), "--seeds", "0"]
+    common += ["--isaac-python", "python"]
+    # A workdir inside the evaluated repo is refused; one inside site-packages is not the check.
+    inside = ["--workdir", str(repo / "work"), "--output", str(tmp_path / "a" / "results.json")]
+    assert evaluate.main([*common, *inside], runner=runner) == 2
+    output = tmp_path / "b" / "results.json"
+    outside = ["--workdir", str(tmp_path / "work"), "--output", str(output)]
+    assert evaluate.main([*common, *outside], runner=runner) == 0
+    metadata = json.loads(output.with_name("run_metadata.json").read_text(encoding="utf-8"))
+    assert metadata["git_commit"] == head
+    assert seen[0]["PYTHONPATH"].split(os.pathsep)[0] == str(site_packages)
+
+
+def test_git_commit_outside_a_checkout(tmp_path: Path) -> None:
+    assert evaluate.evaluated_repo(tmp_path / "task.json") is None
+    assert evaluate.git_commit(None) is None

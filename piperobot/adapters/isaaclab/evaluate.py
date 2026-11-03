@@ -24,7 +24,9 @@ from piperobot.results import EpisodeResult, EvalResults, ResultsError, save_res
 MAX_ATTEMPTS_PER_SEED = 2
 MAX_RETRIED_SEEDS = 3
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+# The directory that contains the piperobot package: the repo root in a checkout,
+# site-packages when installed. Only the worker's PYTHONPATH uses it.
+PACKAGE_PARENT = Path(__file__).resolve().parents[3]
 
 
 class Runner(Protocol):
@@ -71,14 +73,13 @@ def kill_process_tree(process: subprocess.Popen[str]) -> None:
             os.killpg(process.pid, signal.SIGKILL)  # type: ignore[attr-defined, unused-ignore]
 
 
-def git_commit() -> str | None:
+def _git(directory: Path, *arguments: str) -> str | None:
     git = shutil.which("git")
     if git is None:
         return None
     try:
         result = subprocess.run(  # noqa: S603 - resolved git executable and fixed arguments
-            [git, "rev-parse", "HEAD"],
-            cwd=REPO_ROOT,
+            [git, "-C", str(directory), *arguments],
             capture_output=True,
             text=True,
             check=False,
@@ -86,7 +87,19 @@ def git_commit() -> str | None:
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
-    return result.stdout.strip() if result.returncode == 0 else None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def evaluated_repo(task_spec: Path) -> Path | None:
+    """The git checkout that holds the task spec: the repo being evaluated, not piperobot's."""
+    top = _git(task_spec.resolve().parent, "rev-parse", "--show-toplevel")
+    return Path(top).resolve() if top else None
+
+
+def git_commit(repo: Path | None) -> str | None:
+    return _git(repo, "rev-parse", "HEAD") if repo is not None else None
 
 
 def parse_seeds(value: str) -> list[int]:
@@ -135,8 +148,9 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
     policy = PolicySpec.load(args.policy)
     seeds = select_seeds(args)
     workdir = args.workdir.resolve()
-    if workdir == REPO_ROOT or REPO_ROOT in workdir.parents:
-        raise ResultsError("--workdir must be outside the repository")
+    repo = evaluated_repo(args.task)
+    if repo is not None and (workdir == repo or repo in workdir.parents):
+        raise ResultsError("--workdir must be outside the evaluated repository")
     workdir.mkdir(parents=True, exist_ok=True)
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +161,7 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
         "policy": asdict(policy),
         "layout": task.layout,
         "device": args.device,
-        "git_commit": git_commit(),
+        "git_commit": git_commit(repo),
         "start_timestamp": start_timestamp,
     }
     retried_seeds: list[int] = []
@@ -159,7 +173,7 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
     error: str | None = None
     env = dict(os.environ)
     env["PYTHONUNBUFFERED"] = "1"
-    env["PYTHONPATH"] = str(REPO_ROOT) + (
+    env["PYTHONPATH"] = str(PACKAGE_PARENT) + (
         os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
     )
     with tempfile.TemporaryDirectory(prefix="piperobot-", dir=workdir) as temporary:
