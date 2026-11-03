@@ -1,4 +1,4 @@
-# 0031. A nightly paired run on rotating seeds, decided by an exact McNemar test
+# 0032. A nightly paired run on rotating seeds, decided by an exact McNemar test
 
 - Status: Accepted
 - Date: 2026-11-03

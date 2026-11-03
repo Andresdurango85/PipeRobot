@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import math
@@ -12,20 +13,27 @@ from typing import Any
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from test_certificate import REPO, evidence, fake, write_bundle
 
+from piperobot.reports.certificate import CertificateInputError, CertificateMismatch, verify
 from piperobot.reports.history import (
+    GATE_VERDICT_V2_PREDICATE_TYPE,
     HistoryError,
     HistoryRecord,
+    PairedRecord,
     append,
     compress_seeds,
+    cpu_flags_digest,
     load_history,
     main,
+    paired_record,
     record_from_gate,
     render_html,
     save_history,
 )
-from piperobot.results import EpisodeResult, EvalResults, save_results
+from piperobot.results import EpisodeResult, EvalResults, load_results, save_results
 from piperobot.stats.gate import SuccessCount, decide
+from piperobot.stats.paired import PairedCounts, decide_paired
 
 
 def _record(
@@ -55,7 +63,7 @@ def test_roundtrip() -> None:
     assert record.interval == decide(SuccessCount(45, 50), record.baseline).candidate_interval
 
 
-@pytest.mark.parametrize("field", list(HistoryRecord.__dataclass_fields__))
+@pytest.mark.parametrize("field", list(_record().to_dict()))
 def test_all_fields_required_and_typed(field: str) -> None:
     data = _record().to_dict()
     del data[field]
@@ -529,3 +537,393 @@ def test_render_evidence_directory(tmp_path: Path) -> None:
         (folder / f"1.1.{suffix}").write_text("evidence", encoding="utf-8")
     assert main(args) == 0
     assert '<a href="results/1.1.json">results</a>' in output.read_text(encoding="utf-8")
+
+
+def nightly(index: int = 3) -> HistoryRecord:
+    ref = EvalResults("policy", "sim", tuple(EpisodeResult(i, i < 47) for i in range(50)))
+    cand = EvalResults("policy", "sim", tuple(EpisodeResult(i, i < 45) for i in range(50)))
+    return replace(
+        _record(index),
+        schema=2,
+        series="nightly",
+        paired=paired_record(ref, cand, reference_commit="b" * 40),
+    )
+
+
+def test_schema1_bytes(tmp_path: Path) -> None:
+    path = tmp_path / "history.json"
+    fixture = Path("tests/golden/history_schema1.json").read_bytes()
+    path.write_bytes(fixture)
+    records = load_history(path)
+    save_history(records, path, previous=records)
+    assert path.read_bytes() == fixture
+    assert records[0].series == "main"
+    assert records[0].runner_image is None
+    assert "runner_image" not in records[0].to_dict()
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        replace(_record(), schema=2),
+        nightly(),
+        replace(nightly(), runner_image="ubuntu24 20261025.353.1"),
+    ],
+)
+def test_schema2_roundtrip(record: HistoryRecord) -> None:
+    assert HistoryRecord.from_dict(record.to_dict()) == record
+    for key in record.to_dict():
+        data = record.to_dict()
+        del data[key]
+        with pytest.raises(HistoryError):
+            HistoryRecord.from_dict(data)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("schema", 3),
+        ("schema", True),
+        ("series", "other"),
+        ("series", "main"),
+        ("paired", None),
+        ("runner_image", ""),
+        ("runner_image", "   "),
+        ("runner_image", "a" * 201),
+        ("runner_image", "bad\x00image"),
+        ("runner_image", "bad\x7fimage"),
+        ("runner_image", 42),
+        ("runner_image", []),
+        ("cpu_flags_sha256", "A" * 64),
+        ("cpu_flags_sha256", "a" * 63),
+        ("successes", 44),
+        ("trials", 51),
+        ("unknown", 0),
+    ],
+)
+def test_invalid_schema2(field: str, value: object) -> None:
+    data = nightly().to_dict()
+    data[field] = value
+    with pytest.raises(HistoryError):
+        HistoryRecord.from_dict(data)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("reference_commit", "A" * 40),
+        ("reference_commit", "a" * 39),
+        ("both", True),
+        ("reference_only", -1),
+        ("candidate_only", 1.0),
+        ("neither", False),
+        ("p_value", float("nan")),
+        ("p_value", 1.1),
+        ("p_value", -0.1),
+        ("alpha", 0),
+        ("alpha", 0.5),
+        ("alpha", float("inf")),
+        ("difference_interval", [-2, 0]),
+        ("difference_interval", [1, 0]),
+        ("difference_interval", [0, float("nan")]),
+        ("verdict", "green"),
+        ("unknown", 0),
+    ],
+)
+def test_invalid_paired(field: str, value: object) -> None:
+    record = nightly().paired
+    assert record is not None
+    data = record.to_dict()
+    data[field] = value
+    with pytest.raises(HistoryError):
+        PairedRecord.from_dict(data)
+
+
+def test_paired_and_flags() -> None:
+    ref = EvalResults("p", "e", tuple(EpisodeResult(i, True) for i in range(4)))
+    cand = EvalResults("p", "e", tuple(EpisodeResult(i, i < 2) for i in range(4)))
+    expected = decide_paired(PairedCounts.from_results(ref, cand))
+    actual = paired_record(ref, cand, reference_commit="a" * 40)
+    assert (actual.p_value, actual.verdict, actual.difference_interval) == (
+        expected.p_value,
+        expected.verdict,
+        expected.difference_interval,
+    )
+    assert cpu_flags_digest(" \tflags \t: sse   avx\n") == cpu_flags_digest("sse avx")
+    assert cpu_flags_digest("sse avx") == hashlib.sha256(b"sse avx").hexdigest()
+
+
+def test_predicate_and_golden(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = tmp_path / "record.json"
+    path.write_text(json.dumps(nightly().to_dict()), encoding="utf-8")
+    assert main(["predicate-type", "--record", str(path)]) == 0
+    assert capsys.readouterr().out.strip() == GATE_VERDICT_V2_PREDICATE_TYPE
+    page = render_html(
+        [
+            _record(),
+            replace(_record(2), schema=2, runner_image="ubuntu24 20261025.353.1"),
+            nightly(),
+            nightly(4),
+        ]
+    )
+    path = Path("tests/golden/history_nightly.html")
+    if os.environ.get("UPDATE_GOLDEN"):
+        path.write_text(page, encoding="utf-8", newline="\n")
+    assert page == path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        ["--series", "nightly"],
+        ["--cpu-flags", "flags"],
+        ["--runner-image", "image"],
+        ["--paired-reference", "ref"],
+        ["--reference-commit", "a" * 40],
+        ["--schema", "2", "--series", "nightly", "--paired-reference", "ref"],
+    ],
+)
+def test_cli_combinations(options: list[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["record", "--output", "unused", "--run-id", "1", "--run-attempt", "1", *options])
+    assert exc.value.code == 2
+
+
+def v2(path: Path, reference: Path | None = None) -> list[dict[str, Any]]:
+    payload = evidence(path)
+    verification = payload[0]["verificationResult"]
+    statement = verification["statement"]
+    record = HistoryRecord.from_dict(statement["predicate"])
+    paired = None
+    if reference is not None:
+        results = load_results(path)
+        reference_results = replace(
+            results,
+            episodes=tuple(
+                replace(e, success=True) if e.seed == 49 else e for e in results.episodes
+            ),
+        )
+        save_results(reference_results, reference)
+        paired = paired_record(reference_results, results, reference_commit="b" * 40)
+        statement["subject"].append(
+            {
+                "name": "reference",
+                "digest": {"sha256": hashlib.sha256(reference.read_bytes()).hexdigest()},
+            }
+        )
+    record = replace(
+        record,
+        schema=2,
+        series="nightly" if reference else "main",
+        paired=paired,
+        runner_image="ubuntu24 20261025.353.1",
+    )
+    statement["predicate"] = record.to_dict()
+    statement["predicateType"] = GATE_VERDICT_V2_PREDICATE_TYPE
+    cert = verification["signature"]["certificate"]
+    cert["buildSignerURI"] = (
+        f"https://github.com/{REPO}/.github/workflows/certify.yml@refs/heads/main"
+    )
+    caller = "nightly" if reference else "history"
+    cert["buildConfigURI"] = (
+        f"https://github.com/{REPO}/.github/workflows/{caller}.yml@refs/heads/main"
+    )
+    return payload
+
+
+@pytest.mark.parametrize("series", ["main", "nightly"])
+def test_v2_success_and_bundle(tmp_path: Path, series: str) -> None:
+    path = tmp_path / "results.json"
+    reference = tmp_path / "reference.json" if series == "nightly" else None
+    payload = v2(path, reference)
+    bundle = tmp_path / "bundle.jsonl"
+    write_bundle(bundle, [payload[0]["verificationResult"]["statement"]])
+    for source in (None, bundle):
+        result = verify(path, reference_path=reference, bundle=source, run=fake(payload))
+        assert result.record.series == series
+        assert result.record.runner_image == "ubuntu24 20261025.353.1"
+        assert f"policy/sim {series} " in str(result)
+
+
+@pytest.mark.parametrize("series", ["main", "nightly"])
+@pytest.mark.parametrize("field", ["buildConfigURI", "buildSignerURI"])
+def test_v2_binding(tmp_path: Path, series: str, field: str) -> None:
+    path = tmp_path / "results.json"
+    ref = tmp_path / "reference.json" if series == "nightly" else None
+    payload = v2(path, ref)
+    cert = payload[0]["verificationResult"]["signature"]["certificate"]
+    caller = "history" if series == "nightly" else "nightly"
+    cert[field] = f"https://github.com/{REPO}/.github/workflows/{caller}.yml@refs/heads/main"
+    with pytest.raises(CertificateMismatch, match=f"series {series}, caller"):
+        verify(path, reference_path=ref, run=fake(payload))
+
+
+def test_nightly_reference_checks(tmp_path: Path) -> None:
+    path, ref = tmp_path / "results.json", tmp_path / "reference.json"
+    payload = v2(path, ref)
+    with pytest.raises(CertificateInputError, match="a nightly certificate needs --reference"):
+        verify(path, run=fake(payload))
+    statement = payload[0]["verificationResult"]["statement"]
+    statement["subject"].pop()
+    with pytest.raises(CertificateMismatch, match="reference sha256"):
+        verify(path, reference_path=ref, run=fake(payload))
+    payload = v2(path, ref)
+    paired = payload[0]["verificationResult"]["statement"]["predicate"]["paired"]
+    paired["both"] -= 1
+    paired["candidate_only"] += 1
+    with pytest.raises(CertificateMismatch, match="paired cells"):
+        verify(path, reference_path=ref, run=fake(payload))
+
+
+@pytest.mark.parametrize("series", ["main", "nightly"])
+def test_schema2_record_and_append_cli(
+    tmp_path: Path, series: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    results = EvalResults("policy", "sim", tuple(EpisodeResult(i, i < 45) for i in range(50)))
+    result_path = tmp_path / "results.json"
+    baseline = tmp_path / "baseline.json"
+    output = tmp_path / "record.json"
+    flags = tmp_path / "flags.txt"
+    image = tmp_path / "image.txt"
+    image.write_text("  ubuntu24   20261025.353.1  \nignored second line", encoding="utf-8")
+    history = tmp_path / "history.json"
+    save_results(results, result_path)
+    baseline.write_text(json.dumps({"successes": 45, "trials": 50}), encoding="utf-8")
+    flags.write_text("flags : sse  avx", encoding="utf-8")
+    args = [
+        "record",
+        "--output",
+        str(output),
+        "--results",
+        str(result_path),
+        "--baseline-file",
+        str(baseline),
+        "--commit",
+        "a" * 40,
+        "--commit-date",
+        "2026-11-03T10:00:00Z",
+        "--run-url",
+        "https://github.com/owner/repo/actions/runs/1",
+        "--run-id",
+        "1",
+        "--run-attempt",
+        "1",
+        "--schema",
+        "2",
+        "--series",
+        series,
+        "--cpu-flags",
+        str(flags),
+        "--runner-image",
+        str(image),
+    ]
+    if series == "nightly":
+        args += ["--paired-reference", str(result_path), "--reference-commit", "b" * 40]
+    assert main(args) == 0
+    record = HistoryRecord.from_dict(json.loads(output.read_text(encoding="utf-8")))
+    assert record.series == series
+    assert record.runner_image == "ubuntu24 20261025.353.1"
+    image.write_text("", encoding="utf-8")
+    assert main(args) == 2
+    assert "runner_image file is empty" in capsys.readouterr().err
+    assert record.cpu_flags_sha256 == cpu_flags_digest("sse avx")
+    assert (
+        main(
+            [
+                "append",
+                "--record",
+                str(output),
+                "--history",
+                str(history),
+                "--run-id",
+                "1",
+                "--run-attempt",
+                "1",
+                "--new",
+            ]
+        )
+        == 0
+    )
+    assert load_history(history) == [record]
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"series": "nightly"},
+        {"cpu_flags_sha256": "a" * 64},
+        {"runner_image": "ubuntu24"},
+        {"paired": "invalid"},
+    ],
+)
+def test_record_from_gate_rejects_schema1_options(options: dict[str, Any]) -> None:
+    results = EvalResults("policy", "sim", (EpisodeResult(1, True),))
+    r = _record()
+    with pytest.raises(HistoryError, match="schema 1"):
+        record_from_gate(
+            results,
+            decide(SuccessCount(1, 1), SuccessCount(1, 1)),
+            commit=r.commit,
+            commit_date=r.commit_date,
+            evaluated_at=r.evaluated_at,
+            run_url=r.run_url,
+            run_id=r.run_id,
+            run_attempt=r.run_attempt,
+            platform=r.platform,
+            **options,
+        )
+
+
+def test_main_requires_null_paired() -> None:
+    data = replace(_record(), schema=2).to_dict()
+    data["paired"] = {}
+    with pytest.raises(HistoryError, match="main requires"):
+        HistoryRecord.from_dict(data)
+
+
+def test_api_fallback_and_bundle_routing(tmp_path: Path) -> None:
+    import subprocess
+
+    from piperobot.reports.history import GATE_VERDICT_PREDICATE_TYPE
+
+    path = tmp_path / "results.json"
+    payload = evidence(path)
+    calls: list[list[str]] = []
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if len(calls) == 1:
+            return subprocess.CompletedProcess([], 1, "", "no attestations found")
+        return subprocess.CompletedProcess([], 0, json.dumps(payload), "")
+
+    assert verify(path, run=run).record.schema == 1
+    assert [c[c.index("--predicate-type") + 1] for c in calls] == [
+        GATE_VERDICT_V2_PREDICATE_TYPE,
+        GATE_VERDICT_PREDICATE_TYPE,
+    ]
+    assert calls[0][calls[0].index("--signer-workflow") + 1].endswith("/certify.yml")
+    payload = v2(path)
+    bundle = tmp_path / "bundle.jsonl"
+    write_bundle(bundle, [payload[0]["verificationResult"]["statement"]])
+    calls.clear()
+
+    def bundled(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess([], 0, json.dumps(payload), "")
+
+    assert verify(path, bundle=bundle, run=bundled).record.schema == 2
+    assert len(calls) == 1
+    assert calls[0][calls[0].index("--predicate-type") + 1] == GATE_VERDICT_V2_PREDICATE_TYPE
+
+
+def test_runner_image_normalization_and_platform() -> None:
+    data = replace(_record(), schema=2).to_dict()
+    data["runner_image"] = " \tubuntu24   <image>& \n"
+    record = HistoryRecord.from_dict(data)
+    assert record.runner_image == "ubuntu24 <image>&"
+    assert HistoryRecord.from_dict(record.to_dict()) == record
+    assert f"<td>{html.escape(record.platform)} · ubuntu24 &lt;image&gt;&amp;</td>" in render_html(
+        [record]
+    )
+    data["runner_image"] = "a" * 200
+    assert HistoryRecord.from_dict(data).runner_image == "a" * 200

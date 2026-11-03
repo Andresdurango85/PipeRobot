@@ -4,7 +4,7 @@ name: nightly
 # Compare reference and candidate on identical seeds for paired statistical power.
 # Run both arms sequentially in one hosted job: CPU model labels cannot predict flips.
 # Keep each commit's lockfile and upload only evaluation evidence for later certification.
-# ADR 0031: a BLOCK is an alert to investigate on the next nights, never a merge block.
+# ADR 0032: a BLOCK is an alert to investigate on the next nights, never a merge block.
 on:
   schedule:
     - cron: "17 3 * * *"

@@ -25,7 +25,7 @@ Project Cangrejo, the `piperobot` package).
 
 - 2026-11-03: `nightly.yml` runs the reference and `main` on the same 500 fresh seeds every
   night and alerts on a paired regression (exact McNemar,
-  [ADR 0031](decisions/0031-nightly-paired-run-on-rotating-seeds.md), [ci.md](knowledge/ci.md)).
+  [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md), [ci.md](knowledge/ci.md)).
 - 2026-11-03: `piperobot.stats.paired` decides a same-seed comparison with an exact McNemar
   test; the PushT baseline was re-measured on main (265/500, identical episode by episode to
   10-27) and now records its commit and per-episode results ([lerobot.md](knowledge/lerobot.md)).
@@ -34,6 +34,10 @@ Project Cangrejo, the `piperobot` package).
   term is ported with a 5 N grasp threshold and a slot-depth rule; registered sensing checks pass
   ([ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)). Replays with contacts vary run to
   run (2/75 outcomes).
+- 2026-11-03: history schema 2, core part: `series` (main, nightly), a `paired` block, the CPU
+  flags digest and the runner image; v2 certificates whose series is bound to the calling workflow
+  ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md)). `certify.yml`, the
+  single signer for `history.yml` and the nightly job, follows.
 - 2026-11-03: certificates of evaluation, core part: `history record` / `append --record` and
   `python -m piperobot.reports.certificate verify` (pins signer workflow, `main`, hosted runner,
   predicate type; checks the signed record against `results.json`)
@@ -93,9 +97,11 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. Wire `nightly.yml` into the success-rate history as a `nightly` series once Carla's reusable
-   `certify.yml` lands (schema 2, [ADR 0031](decisions/0031-nightly-paired-run-on-rotating-seeds.md));
-   after a week of nightlies, decide on a paired mode for pr-gate.
+2. Add the `certify` job to `nightly.yml` once Carla's reusable `certify.yml` lands, so nights
+   join the history as a `nightly` series
+   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
+   [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
+   nightlies, decide on a paired mode for pr-gate.
 3. Isaac: the `piperobot.adapters.isaaclab` evaluator on the tube-to-rack scene (lazy Isaac
    imports, task data in `robots/so101/envs/`, results contract, `failure` from the success
    tracker), Codex coding. First measure same-seed repeatability with contacts (2/75 outcomes

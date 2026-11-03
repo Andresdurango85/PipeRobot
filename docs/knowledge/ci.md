@@ -103,7 +103,7 @@
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
-- **`nightly.yml`** ([ADR 0031](../decisions/0031-nightly-paired-run-on-rotating-seeds.md)):
+- **`nightly.yml`** ([ADR 0032](../decisions/0032-nightly-paired-run-on-rotating-seeds.md)):
   daily at 03:17 UTC and by hand, on `ubuntu-24.04`. One job evaluates the reference
   (`vqbet.json`'s `commit`, its own lock) and then `main` on the same 500 fresh seeds
   (`python -m piperobot.seeds`: first seed `100000 + episodes × days since 2026-01-01`) and
@@ -352,6 +352,17 @@
 
   Feed the brief on stdin from a file, or `codex exec` waits for input.
   _(verified 2026-11-01, Codex CLI 0.166, uv 0.10.8)_
+- **Codex can turn a non-ASCII character in code into `?`.** A brief asked for a ` · `
+  separator in `piperobot/reports/history.py`; the code came back with ` ? ` and the page
+  showed "CPU A ? ubuntu24". The brief reached Codex intact (the PowerShell pipe sent UTF-8,
+  checked byte by byte), and a `ǁ` (U+01C1) that Codex wrote into a data file the same day
+  survived, so where it is lost is not known. In briefs, give non-ASCII characters as escapes
+  (`\u00b7`) or name them, and grep a Codex diff for `?` where a symbol was intended; a
+  screenshot of rendered output catches it too. _(observed 2026-11-03, Codex CLI 0.166)_
+- **Codex leaves sandbox-owned folders besides `pytest-tmp`** (`.venv\pytest-focused`,
+  `.venv\pytest-*`), which `git worktree remove` cannot delete; remove them all from inside the
+  sandbox (`glob.glob(r'.venv\pytest-*')`) before removing a worktree, and tell Codex in the brief
+  to use only `--basetemp=.venv\pytest-tmp`. _(observed 2026-11-03, Codex CLI 0.166)_
 - **Delete sandbox-owned folders from inside the sandbox.** `.venv\pytest-tmp` and other folders
   that Codex's Python created are private to the sandbox user, so `Remove-Item` and
   `git worktree remove` fail on them for your own user. No admin rights are needed; run the delete

@@ -16,6 +16,7 @@ Exit codes: 0 success, 2 invalid inputs. --new permits bootstrap/local creation 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import math
@@ -42,6 +43,7 @@ from piperobot.stats.gate import (
     decide,
     format_percent,
 )
+from piperobot.stats.paired import PairedCounts, decide_paired
 
 # Every certificate ever issued carries this exact string; never change it, make a v2 instead.
 GATE_VERDICT_PREDICATE_TYPE = (
@@ -49,8 +51,107 @@ GATE_VERDICT_PREDICATE_TYPE = (
 )
 
 
+# Every certificate ever issued carries this exact string; never change it, make a new version.
+GATE_VERDICT_V2_PREDICATE_TYPE = (
+    "https://github.com/Andresdurango85/PipeRobot/blob/main/docs/attestations/gate-verdict-v2.md"
+)
+
+
 class HistoryError(ValueError):
     """History is invalid or an append would rewrite existing records."""
+
+
+@dataclass(frozen=True)
+class PairedRecord:
+    reference_commit: str
+    both: int
+    reference_only: int
+    candidate_only: int
+    neither: int
+    p_value: float
+    alpha: float
+    difference_interval: Interval
+    verdict: Verdict
+
+    def to_dict(self) -> dict[str, Any]:
+        data = dict(vars(self))
+        data["difference_interval"] = [
+            self.difference_interval.lower,
+            self.difference_interval.upper,
+        ]
+        data["verdict"] = self.verdict.value
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> PairedRecord:
+        if not isinstance(data, Mapping) or set(data) != set(cls.__dataclass_fields__):
+            raise HistoryError("paired must have exactly the paired fields")
+        values = dict(data)
+        if (
+            not isinstance(values["reference_commit"], str)
+            or re.fullmatch(r"[0-9a-f]{40}", values["reference_commit"]) is None
+        ):
+            raise HistoryError("reference_commit must be 40 lowercase hex characters")
+        for name in ("both", "reference_only", "candidate_only", "neither"):
+            if type(values[name]) is not int or values[name] < 0:
+                raise HistoryError(f"{name} must be a nonnegative int")
+        for name in ("p_value", "alpha"):
+            if type(values[name]) not in (int, float) or not math.isfinite(values[name]):
+                raise HistoryError(f"{name} must be finite numeric")
+        if not 0 <= values["p_value"] <= 1 or not 0 < values["alpha"] < 0.5:
+            raise HistoryError("invalid p_value or alpha")
+        pair = values["difference_interval"]
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or any(type(v) not in (int, float) or not math.isfinite(v) for v in pair)
+            or not -1 <= pair[0] <= pair[1] <= 1
+        ):
+            raise HistoryError("difference_interval must be an ordered finite pair in [-1, 1]")
+        values["difference_interval"] = Interval(*pair)
+        try:
+            values["verdict"] = Verdict(values["verdict"])
+        except (TypeError, ValueError) as exc:
+            raise HistoryError("invalid paired verdict") from exc
+        return cls(**values)
+
+
+def paired_record(
+    reference: EvalResults,
+    candidate: EvalResults,
+    *,
+    reference_commit: str,
+    alpha: float = 0.025,
+    tolerance: float = DEFAULT_TOLERANCE,
+) -> PairedRecord:
+    result = decide_paired(PairedCounts.from_results(reference, candidate), alpha, tolerance)
+    return PairedRecord.from_dict(
+        PairedRecord(
+            reference_commit,
+            **vars(result.counts),
+            p_value=result.p_value,
+            alpha=result.alpha,
+            difference_interval=result.difference_interval,
+            verdict=result.verdict,
+        ).to_dict()
+    )
+
+
+def cpu_flags_digest(text: str) -> str:
+    """Hash UTF-8 flags after dropping a leading ``flags :`` prefix and collapsing
+    all whitespace runs to single spaces, with surrounding whitespace stripped.
+    This normalization is part of the record's meaning; flag order is preserved.
+    """
+    text = re.sub(r"^\s*flags\s*:", "", text)
+    return hashlib.sha256(" ".join(text.split()).encode("utf-8")).hexdigest()
+
+
+def predicate_type_for(record: HistoryRecord) -> str:
+    if record.schema == 1:
+        return GATE_VERDICT_PREDICATE_TYPE
+    if record.schema == 2:
+        return GATE_VERDICT_V2_PREDICATE_TYPE
+    raise HistoryError("schema must be 1 or 2")
 
 
 @dataclass(frozen=True)
@@ -74,9 +175,18 @@ class HistoryRecord:
     verdict: Verdict
     seeds: str
     platform: str
+    series: str = "main"
+    paired: PairedRecord | None = None
+    cpu_flags_sha256: str | None = None
+    runner_image: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = dict(vars(self))
+        if self.schema == 1:
+            for name in ("series", "paired", "cpu_flags_sha256", "runner_image"):
+                del data[name]
+        else:
+            data["paired"] = self.paired.to_dict() if self.paired is not None else None
         data["interval"] = [self.interval.lower, self.interval.upper]
         data["difference_interval"] = [
             self.difference_interval.lower,
@@ -88,14 +198,49 @@ class HistoryRecord:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> HistoryRecord:
-        if not isinstance(data, Mapping) or set(data) != set(cls.__dataclass_fields__):
-            raise HistoryError("record must have exactly the schema 1 fields")
+        extra = {"series", "paired", "cpu_flags_sha256", "runner_image"}
+        if not isinstance(data, Mapping):
+            raise HistoryError("record must have exactly the schema fields")
+        schema = data.get("schema")
+        expected = set(cls.__dataclass_fields__) - (extra if schema == 1 else set())
+        if type(schema) is not int or schema not in (1, 2) or set(data) != expected:
+            raise HistoryError("record must have exactly the schema 1 or 2 fields")
         values = dict(data)
         for name in ("schema", "run_id", "run_attempt", "successes", "trials"):
             if type(values[name]) is not int:
                 raise HistoryError(f"{name} must be an int")
-        if values["schema"] != 1:
-            raise HistoryError("schema must equal 1")
+        if schema == 2:
+            if values["series"] not in ("main", "nightly"):
+                raise HistoryError("series must be main or nightly")
+            paired = values["paired"]
+            if values["series"] == "main":
+                if paired is not None:
+                    raise HistoryError("main requires paired null")
+            else:
+                paired = PairedRecord.from_dict(paired)
+                if (
+                    sum(
+                        getattr(paired, n)
+                        for n in ("both", "reference_only", "candidate_only", "neither")
+                    )
+                    != values["trials"]
+                    or paired.both + paired.candidate_only != values["successes"]
+                ):
+                    raise HistoryError("paired cells disagree with trials/successes")
+                values["paired"] = paired
+            digest = values["cpu_flags_sha256"]
+            if digest is not None and (
+                not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            ):
+                raise HistoryError("cpu_flags_sha256 must be null or 64 lowercase hex")
+            image = values["runner_image"]
+            if image is not None:
+                if not isinstance(image, str):
+                    raise HistoryError("runner_image must be a string or null")
+                image = " ".join(image.split())
+                if not image or len(image) > 200 or not image.isprintable():
+                    raise HistoryError("runner_image must be 1-200 printable characters or null")
+                values["runner_image"] = image
         if values["run_id"] < 0 or values["run_attempt"] < 1:
             raise HistoryError("run_id must be nonnegative and run_attempt positive")
         for name in (
@@ -175,11 +320,25 @@ def record_from_gate(
     run_id: int,
     run_attempt: int,
     platform: str,
+    schema: int = 1,
+    series: str = "main",
+    paired: PairedRecord | None = None,
+    cpu_flags_sha256: str | None = None,
+    runner_image: str | None = None,
 ) -> HistoryRecord:
+    if schema == 1 and (
+        series != "main"
+        or paired is not None
+        or cpu_flags_sha256 is not None
+        or runner_image is not None
+    ):
+        raise HistoryError(
+            "schema 1 only allows default series, paired, cpu flags and runner image"
+        )
     if result.candidate != SuccessCount(results.successes, results.trials):
         raise HistoryError("candidate does not match results successes/trials")
     record = HistoryRecord(
-        1,
+        schema,
         commit,
         commit_date,
         evaluated_at,
@@ -198,6 +357,10 @@ def record_from_gate(
         result.verdict,
         compress_seeds(e.seed for e in results.episodes),
         platform,
+        series,
+        paired,
+        cpu_flags_sha256,
+        runner_image,
     )
     return HistoryRecord.from_dict(record.to_dict())
 
@@ -355,6 +518,7 @@ def _series(
         "<table><thead><tr><th>Commit date</th><th>Commit</th>"
         "<th>Successes/trials</th><th>Rate</th><th>Interval</th><th>Verdict</th>"
         "<th>Platform</th><th>Run</th>"
+        + ("<th>Paired</th>" if records[0].series == "nightly" else "")
         + ("<th>Certificate</th>" if evidence is not None else "")
         + "</tr></thead><tbody>",
     ]
@@ -366,9 +530,16 @@ def _series(
             f"{record.successes / record.trials:.1%}",
             f"{record.interval.lower:.1%} to {record.interval.upper:.1%}",
             _escape(record.verdict.value),
-            _escape(record.platform),
+            _escape(record.platform)
+            + (f" · {_escape(record.runner_image)}" if record.runner_image is not None else ""),
             _link(record.run_url, f"#{record.run_id}.{record.run_attempt}"),
         ]
+        if record.paired is not None:
+            p = record.paired
+            cells.append(
+                f"{p.reference_only} lost / {p.candidate_only} gained, "
+                f"p={p.p_value:.3g}, {p.verdict.value.upper()}"
+            )
         if evidence is not None:
             identity = f"{record.run_id}.{record.run_attempt}"
             cells.append(
@@ -406,14 +577,15 @@ def render_html(
         "</style></head><body>",
         f"<h1>{_escape(title)}</h1>",
     ]
-    groups: dict[tuple[str, str], list[HistoryRecord]] = {}
+    groups: dict[tuple[str, str, str], list[HistoryRecord]] = {}
     for record in history:
-        groups.setdefault((record.policy, record.evaluator), []).append(record)
+        groups.setdefault((record.policy, record.evaluator, record.series), []).append(record)
     if not groups:
         lines.append("<p>No evaluations yet.</p>")
-    for (policy, evaluator), records in groups.items():
+    for (policy, evaluator, series), records in groups.items():
+        suffix = " \u00b7 nightly" if series == "nightly" else ""
         lines += [
-            f"<section><h2>{_escape(policy)} / {_escape(evaluator)}</h2>",
+            f"<section><h2>{_escape(policy)} / {_escape(evaluator)}{suffix}</h2>",
             *_series(records, evidence),
             "</section>",
         ]
@@ -451,6 +623,12 @@ def _build_record(args: argparse.Namespace, previous: Sequence[HistoryRecord]) -
         if existing is not None
         else datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     )
+    runner_image = None
+    if getattr(args, "runner_image", None) is not None:
+        with args.runner_image.open(encoding="utf-8") as stream:
+            runner_image = stream.readline()
+        if not runner_image:
+            raise HistoryError("runner_image file is empty")
     record = record_from_gate(
         results,
         result,
@@ -461,6 +639,24 @@ def _build_record(args: argparse.Namespace, previous: Sequence[HistoryRecord]) -
         run_id=args.run_id,
         run_attempt=args.run_attempt,
         platform=args.platform if args.platform is not None else describe_platform(),
+        runner_image=runner_image,
+        schema=getattr(args, "schema", 1),
+        series=getattr(args, "series", "main"),
+        paired=(
+            paired_record(
+                load_results(args.paired_reference),
+                results,
+                reference_commit=args.reference_commit,
+                tolerance=args.tolerance,
+            )
+            if getattr(args, "series", "main") == "nightly"
+            else None
+        ),
+        cpu_flags_sha256=(
+            cpu_flags_digest(args.cpu_flags.read_text(encoding="utf-8"))
+            if getattr(args, "cpu_flags", None) is not None
+            else None
+        ),
     )
     return record
 
@@ -470,7 +666,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     add = commands.add_parser("append")
     record_parser = commands.add_parser("record")
-    commands.add_parser("predicate-type")
+    predicate = commands.add_parser("predicate-type")
+    predicate.add_argument("--record", type=Path)
+    record_parser.add_argument(
+        "--schema",
+        type=int,
+        choices=(1, 2),
+        default=1,
+        help="Default is 1 until certify.yml signs schema 2",
+    )
+    record_parser.add_argument("--series", choices=("main", "nightly"), default="main")
+    record_parser.add_argument("--paired-reference", type=Path)
+    record_parser.add_argument("--reference-commit")
+    record_parser.add_argument("--cpu-flags", type=Path)
+    record_parser.add_argument("--runner-image", type=Path)
     add.add_argument("--history", type=Path, required=True)
     add.add_argument("--record", type=Path)
     record_parser.add_argument("--output", type=Path, required=True)
@@ -503,8 +712,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     render.add_argument("--output", type=Path, required=True)
     render.add_argument("--evidence-dir", type=Path)
     args = parser.parse_args(argv)
+    if args.command == "record":
+        if args.series == "nightly":
+            if args.schema != 2 or args.paired_reference is None or args.reference_commit is None:
+                parser.error(
+                    "nightly requires --schema 2, --paired-reference and --reference-commit"
+                )
+        elif args.paired_reference is not None or args.reference_commit is not None:
+            parser.error("main rejects --paired-reference and --reference-commit")
+        if args.cpu_flags is not None and args.schema != 2:
+            parser.error("--cpu-flags requires --schema 2")
+        if args.runner_image is not None and args.schema != 2:
+            parser.error("--runner-image requires --schema 2")
     if args.command == "predicate-type":
-        print(GATE_VERDICT_PREDICATE_TYPE)
+        try:
+            print(
+                predicate_type_for(
+                    HistoryRecord.from_dict(json.loads(args.record.read_text(encoding="utf-8")))
+                )
+                if args.record is not None
+                else GATE_VERDICT_PREDICATE_TYPE
+            )
+        except (OSError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
         return 0
     if args.command in ("append", "record"):
         if getattr(args, "record", None) is not None:
