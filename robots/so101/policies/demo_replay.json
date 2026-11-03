@@ -5,7 +5,8 @@
   "repo_id": "sreetz-nv/so101_teleop_vials_rack_left",
   "revision": "69802873f4a26bffb716fca1f4fb1bb0e3d2a07a",
   "options": {
-    "episodes_json": "${PIPEROBOT_CACHE}/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json"
+    "episodes_json": "${PIPEROBOT_CACHE}/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json",
+    "gripper_floor": 25.0
   },
   "files": [
     {
