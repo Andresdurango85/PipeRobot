@@ -100,6 +100,28 @@
 - **The 7-day cooldown works**: the log shows "Filtered out N versions due to cooldown", and the
   first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
   _(verified 2026-11-03)_
+- **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
+  `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
+  policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced
+  block preceded by `<!-- readme-test -->` is executed, one command per line, from the
+  repository root; `<!-- readme-test: exit N -->` expects exit code N and allows a single
+  command. Lines may not end in `\` (continuations differ between bash and PowerShell).
+  `.github/scripts/readme_commands.py extract README.md` lists the steps. Runs on PRs that touch
+  the README or its tooling, weekly (drift from code and dependencies) and by hand. Not a
+  required check. `robots/pusht/policies/demo-degraded.json` exists only for the README's BLOCK
+  step; a test keeps every workflow and `piperobot/` from referencing it. _(2026-11-03)_
+- **First README run** (41597539505, cold `UV_CACHE_DIR` and `HF_HOME`): `ubuntu-24.04` 254 s,
+  `windows-2025` 299 s from the first command to the last. Per step on Linux (Windows): `uv sync`
+  1 s (2 s), `pytest` 43 s (40 s), the `lerobot` + `sim-pusht` sync 4 s (7 s) including a torch
+  download of 182 MiB (109 MiB), the PASS evaluation with the first policy download 108 s
+  (130 s), the demo evaluation 98 s (117 s). PASS 27/50 on both; the demo BLOCK 5/50 on Linux,
+  4/50 on Windows (one near-miss episode). A home connection adds the ~300 MB of downloads.
+  _(verified 2026-11-03)_
+- **`${{ runner.temp }}` is invalid in a workflow- or job-level `env:`**: the `runner` context
+  exists only inside steps, and GitHub rejects the whole file ("This run likely failed because
+  of a workflow file issue", zero jobs). zizmor and PyYAML do not notice; a test in
+  `tests/test_workflows.py` now does. Use `$RUNNER_TEMP` inside the step. _(verified 2026-11-03,
+  run 41597215145)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
