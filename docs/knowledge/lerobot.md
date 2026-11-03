@@ -116,6 +116,10 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   varies between runs. AMD EPYC 9V45: 27/50, identical episode by episode to the home PC's Windows
   CPU (seeds 1000–1049). AMD EPYC 7763: 29/50, the same except 2 near misses (max reward 0.99)
   that succeeded. _(verified 2026-10-27, CI runs 40620220880 and 40620999554)_
+- **A third `ubuntu-latest` CPU: Intel Xeon 6975P-C (4 CPUs)** gave 27/50 on the same 50 seeds,
+  PASS against the committed baseline (265/500). GitHub's hosted runners mix AMD and Intel CPUs,
+  so the logged CPU model matters when comparing runs episode by episode.
+  _(verified 2026-11-01, `baseline.yml` run 41360188028)_
 - **500 PushT episodes (seeds 1000–1499) on four platforms**: laptop and home PC (Windows) 263/500,
   `ubuntu-latest` EPYC 7763 265/500 in 21 min 44 s, EPYC 9V74 267/500 in 17 min 21 s. Any two
   platforms differ in 6–10 near-miss episodes; totals stay within 0.8 pp. The committed baseline is

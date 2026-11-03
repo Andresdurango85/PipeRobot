@@ -164,3 +164,15 @@
 
   Feed the brief on stdin from a file, or `codex exec` waits for input.
   _(verified 2026-11-01, Codex CLI 0.166, uv 0.10.8)_
+- **Delete sandbox-owned folders from inside the sandbox.** `.venv\pytest-tmp` and other folders
+  that Codex's Python created are private to the sandbox user, so `Remove-Item` and
+  `git worktree remove` fail on them for your own user. No admin rights are needed; run the delete
+  as the sandbox user first, then remove the worktree:
+
+  ```powershell
+  codex sandbox -c 'sandbox_mode="workspace-write"' -- `
+    C:\Users\<you>\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\python.exe `
+    -c "import shutil; shutil.rmtree(r'.venv\pytest-tmp')"
+  ```
+
+  _(verified 2026-11-02, Codex CLI 0.166)_
