@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import ast
+import fnmatch
+import importlib.util
 import os
 import re
 import shutil
@@ -444,3 +447,182 @@ def test_runner_context_is_not_used_in_workflow_or_job_env(path: Path) -> None:
     for env in scopes:
         for value in env.values():
             assert "runner." not in str(value), f"{path.name}: runner context in an env block"
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_write_permissions_never_on_self_hosted(path: Path) -> None:
+    data = _load(path)
+    for job in data["jobs"].values():
+        permissions = job.get("permissions", data.get("permissions", {}))
+        writes = permissions == "write-all" or (
+            isinstance(permissions, dict) and "write" in permissions.values()
+        )
+        if writes:
+            assert "self-hosted" not in _labels(job)
+
+
+def test_so101_gate_trust_boundary() -> None:
+    """The report write token is safe only while this workflow stays push/dispatch-only."""
+    data = _load(ROOT / ".github/workflows/so101-gate.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    assert set(triggers) == {"push", "workflow_dispatch"}
+    assert not {"pull_request", "pull_request_target", "workflow_run", "issue_comment"} & set(
+        triggers
+    )
+    assert data["permissions"] == {}
+    jobs = data["jobs"]
+    assert jobs["evaluate"]["permissions"] == {"contents": "read"}
+    assert jobs["report"]["permissions"] == {"contents": "read", "pull-requests": "write"}
+    assert jobs["report"]["runs-on"] == "ubuntu-24.04"
+    assert jobs["report"]["needs"] == "evaluate"
+    uploads = [
+        s["with"]["name"]
+        for s in jobs["evaluate"]["steps"]
+        if s.get("uses", "").startswith("actions/upload-artifact@")
+    ]
+    downloads = [
+        s["with"]["name"]
+        for s in jobs["report"]["steps"]
+        if s.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert uploads == downloads == ["so101-gate"]
+    for job in jobs.values():
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+
+
+def test_gpu_smoke_excludes_isaaclab() -> None:
+    data = _load(ROOT / ".github/workflows/gpu-smoke.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    paths = triggers["push"]["paths"]
+    assert paths.index("!piperobot/adapters/isaaclab/**") > paths.index("piperobot/**")
+
+
+def test_so101_platform_guard_and_baseline_artifact() -> None:
+    report = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]["report"]
+    script = next(
+        step["run"] for step in report["steps"] if step.get("name") == "Verdict and PR comments"
+    )
+    assert script.index("piperobot.adapters.isaaclab.baseline check") < script.index(
+        "piperobot.reports.paired_comment"
+    )
+    upload = next(
+        step for step in report["steps"] if step.get("with", {}).get("name") == "so101-baseline"
+    )
+    assert upload["uses"].startswith("actions/upload-artifact@")
+    assert upload["with"]["retention-days"] == 30
+    assert "inputs.mode == 'baseline'" in upload["if"]
+
+
+def test_so101_missing_baseline_fails_closed_once_main_has_one() -> None:
+    """A branch that drops the baseline must not get a green 'no baseline yet'."""
+    report = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]["report"]
+    script = next(
+        step["run"] for step in report["steps"] if step.get("name") == "Verdict and PR comments"
+    )
+    lookup = script.index("contents/robots/so101/baselines/$file?ref=main")
+    green = script.index("no baseline committed yet")
+    assert lookup < green
+    missing_here = script.index("exists on main but is missing here; restore it")
+    lookup_failed = script.index("::error::could not check main for a baseline")
+    assert lookup < missing_here < green
+    assert lookup < lookup_failed < green
+    assert "HTTP 404" in script[lookup:green]
+
+
+def _matches_push_path(path: str, pattern: str) -> bool:
+    """Match path components with ** spanning zero or more directories."""
+    parts, patterns = path.split("/"), pattern.split("/")
+    if patterns[0] == "**":
+        return len(patterns) == 1 or any(
+            _matches_push_path("/".join(parts[index:]), "/".join(patterns[1:]))
+            for index in range(len(parts) + 1)
+        )
+    return fnmatch.fnmatchcase(parts[0], patterns[0]) and (
+        len(parts) == len(patterns) == 1
+        or (
+            len(parts) > 1
+            and len(patterns) > 1
+            and _matches_push_path("/".join(parts[1:]), "/".join(patterns[1:]))
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    ("path", "pattern", "expected"),
+    [
+        ("piperobot/results.py", "piperobot/**/*.py", True),
+        ("piperobot/stats/paired.py", "piperobot/*.py", False),
+    ],
+)
+def test_push_path_matching(path: str, pattern: str, expected: bool) -> None:
+    assert _matches_push_path(path, pattern) is expected
+
+
+def _in_repo_imports(entry_points: set[Path]) -> set[Path]:
+    pending = list(entry_points)
+    visited: set[Path] = set()
+    while pending:
+        path = pending.pop()
+        if path in visited:
+            continue
+        visited.add(path)
+        relative = path.relative_to(ROOT)
+        package = ".".join(relative.parts[:-1])
+        modules: list[str] = []
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                modules.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if node.level:
+                    module = importlib.util.resolve_name("." * node.level + module, package)
+                modules.append(module)
+                modules.extend(f"{module}.{alias.name}" for alias in node.names)
+        for module in modules:
+            parts = module.split(".")
+            if parts[0] != "piperobot":
+                continue
+            for index in range(1, len(parts) + 1):
+                base = ROOT.joinpath(*parts[:index])
+                for candidate in (base.with_suffix(".py"), base / "__init__.py"):
+                    if candidate.is_file() and candidate not in visited:
+                        pending.append(candidate)
+    return visited
+
+
+def test_so101_push_paths_cover_dependencies() -> None:
+    data = _load(ROOT / ".github/workflows/so101-gate.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    patterns = triggers["push"]["paths"]
+    dependencies = _in_repo_imports(
+        {
+            ROOT / path
+            for path in (
+                "piperobot/adapters/isaaclab/evaluate.py",
+                "piperobot/adapters/isaaclab/baseline.py",
+                "piperobot/reports/paired_comment.py",
+                "piperobot/reports/sticky_comment.py",
+                "robots/so101/tools/prepare_caches.py",
+            )
+        }
+    )
+    env = data["jobs"]["evaluate"]["env"]
+    dependencies.update(ROOT / env[key] for key in ("TASK", "POLICY"))
+    dependencies.update(ROOT / name for name in ("pyproject.toml", "uv.lock"))
+    for path in dependencies:
+        name = path.relative_to(ROOT).as_posix()
+        assert any(_matches_push_path(name, pattern) for pattern in patterns), name
+    assert {"pyproject.toml", "uv.lock"} <= set(patterns)
+
+
+def test_so101_concurrency_and_shared_seeds() -> None:
+    path = ROOT / ".github/workflows/so101-gate.yml"
+    data = _load(path)
+    assert "inputs.mode" in data["concurrency"]["group"]
+    assert data["concurrency"]["cancel-in-progress"] is not True
+    assert data["env"]["SEEDS"] == "0-74"
+    assert path.read_text(encoding="utf-8").count("0-74") == 1

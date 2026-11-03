@@ -109,9 +109,10 @@ Project Cangrejo, the `piperobot` package).
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
    [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
    nightlies, decide on a paired mode for pr-gate.
-3. Isaac (with Berta's gate workflow, ADR 0034 in its PR): switch the gate's policy to the
-   scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)), measure
-   its 500-seed baseline (100000-100499) with the workflow's baseline mode, and register a
+3. Isaac (with Berta's gate workflow,
+   [ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)): switch the gate's policy
+   to the scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)),
+   measure its 500-seed baseline (100000-100499) with the workflow's baseline mode, and register a
    deliberately worse scripted parameter for the BLOCK demo. Right after the first gate merge:
    two parallel workers with a registered repeatability test (~25 min per run with one).
    Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
@@ -125,6 +126,10 @@ Project Cangrejo, the `piperobot` package).
    after about four clean weekly `mutation.yml` runs, make a NEW surviving mutant (one not in
    `tests/mutation_equivalents.txt`) fail the job, instead of a score threshold
    ([testing.md](knowledge/testing.md)).
+7. SO-101 gate: two parallel Isaac workers with a registered repeatability test (fingerprints
+   identical to the sequential run, 0 flips), to bring 75 seeds well under the 30-minute budget
+   ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)). Then videos of failed
+   episodes in the SO-101 comment (a Phase 0 criterion; needs cameras in the Isaac scene).
 
 ## Open questions for Andrés
 

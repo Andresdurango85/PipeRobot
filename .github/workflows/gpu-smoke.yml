@@ -12,6 +12,7 @@ on:
     branches-ignore: ["dependabot/**"]
     paths:
       - "piperobot/**"
+      - "!piperobot/adapters/isaaclab/**"
       - "robots/pusht/**"
       - "pyproject.toml"
       - "uv.lock"

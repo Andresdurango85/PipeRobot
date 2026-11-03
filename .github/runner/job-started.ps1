@@ -3,7 +3,7 @@
 # and redeploying the live copy before the new workflow can run.
 # Failed hooks still allow always() steps; end only this job's worker on refusal
 # (ADR 0027 and its follow-up).
-$AllowedWorkflows = @('gpu-smoke.yml', 'isaac-render.yml')
+$AllowedWorkflows = @('gpu-smoke.yml', 'isaac-render.yml', 'so101-gate.yml')
 
 function Stop-RefusedJob {
     try {
