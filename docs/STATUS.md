@@ -23,6 +23,9 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
+  `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
+  ([testing.md](knowledge/testing.md)).
 - 2026-11-02: CI hardening. `gpu-smoke` runs on push, never on PRs; a job-started hook on the
   runner refuses any job that is not one of our self-hosted workflows on a push, dispatch or
   schedule; the runner folder's ACL no longer lets every local account write it; every action is
@@ -78,6 +81,9 @@ Project Cangrejo, the `piperobot` package).
    SHA pinning required), check that a workflow, CodeQL's default setup and Monday's Dependabot
    run still work, note Scorecard's first score and top findings in [ci.md](knowledge/ci.md),
    and ask Andrés to add `zizmor` to the ruleset's required checks.
+6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
+   after a few weekly `mutation.yml` runs, decide a mutation-score threshold
+   ([testing.md](knowledge/testing.md)).
 
 ## Open questions for Andrés
 

@@ -31,7 +31,7 @@ def test_pillow_override_is_installed() -> None:
     ],
     ids=["hwc-uint8", "chw-float"],
 )
-def test_lerobot_converts_arrays_to_pil(array: np.ndarray) -> None:
+def test_lerobot_converts_arrays_to_pil(array: object) -> None:
     image = image_writer.image_array_to_pil_image(array)
 
     assert image.size == (64, 48)

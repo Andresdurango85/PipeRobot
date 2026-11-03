@@ -8,7 +8,14 @@ testing of `piperobot/stats`.
 - **`uv run mypy`** checks the `piperobot` package in strict mode, configured in
   `pyproject.toml` (`[tool.mypy]`), and runs as the pre-push hook `ci-mypy` and the `type-check`
   job in `ci.yml` ([ADR 0025](../decisions/0025-mypy-strict-type-checking.md)).
-  `tests/` and `robots/` are not checked. _(verified 2026-11-02, mypy 2.4.1)_
+  ~~`tests/` and `robots/` are not checked.~~ _(verified 2026-11-02, mypy 2.4.1)_
+- **Since 2026-11-03 mypy also checks `tests/`** (`files = ["piperobot", "tests"]`), except
+  `tests/test_so101_*.py`, `tests/so101_loader.py` and `tests/test_dataset_stats.py`: they
+  exercise `robots/so101` code and join together with `robots/` after the SO-101 scene PR lands.
+  Tests that pass deliberately wrong types to `SuccessCount` carry `# type: ignore[arg-type]`
+  (strict's `warn_unused_ignores` flags them if they stop being needed), and the optional
+  `numpy`/`PIL` imports of `test_lerobot_compat.py` get a scoped `ignore_missing_imports`.
+  _(verified 2026-11-03, mypy 2.4.1)_
 - **On `main` at 68906ef, `--strict` found no errors in our own code**: only 5
   `import-not-found` errors, for the lazy `lerobot` and `huggingface_hub` imports in
   `piperobot/adapters/lerobot/policy.py`. A per-module `ignore_missing_imports` override
@@ -81,6 +88,11 @@ testing of `piperobot/stats`.
   - `diff_interval.upper < 0` → `<= 0` in `decide()`: they differ only when the Newcombe upper
     bound is exactly 0.0. A search of every pair with n ≤ 200 at 95% confidence, checking the
     two candidate counts at each BLOCK crossing, found no exact 0.0 and nothing within 1e-12.
+- **Accepted equivalent mutants in `format_percent`** (3, since 2026-11-03): format `"f"` →
+  `"F"` (differs only for inf and NaN, rejected before formatting), and `rstrip("0")` /
+  `rstrip(".")` → `rstrip("XX0XX")` / `rstrip("XX.XX")` (`rstrip` takes a set of characters, and
+  no `X` occurs in a number). With these, the score on 2026-11-03 is 354 / 361 killed, the 7
+  survivors all equivalent. _(verified 2026-11-03, mutmut 3.8.1)_
 
 ## Bugs found in `piperobot/stats` (fixed 2026-11-02)
 
@@ -101,3 +113,8 @@ testing of `piperobot/stats`.
   `40.7`, `40.0`, `"40"` and `true` raise `BaselineError`. `40.0` is rejected on purpose: our own
   writers emit integers, so a float means a hand edit or a foreign writer (ADR 0009). The
   committed baselines still load. _(verified 2026-11-02)_
+- **Percentages were rounded to whole numbers when printed**: a 0.125 tolerance showed as
+  "12 pp" and a 0.975 confidence as "98%", in the gate reason and the PR comment. They now print
+  the decimal as typed (`format_percent`: "12.5 pp", "97.5%"); the defaults still print "10 pp"
+  and "95%", so the golden file is unchanged. Observed drops keep one decimal on purpose.
+  _(verified 2026-11-03)_

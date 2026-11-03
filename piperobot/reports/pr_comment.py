@@ -29,6 +29,7 @@ from piperobot.stats.gate import (
     Interval,
     Verdict,
     decide,
+    format_percent,
 )
 
 COMMENT_MARKER = "<!-- piperobot-gate -->"
@@ -57,7 +58,7 @@ def _points(value: float) -> str:
 
 
 def _results_table(result: GateResult, commit: str | None) -> list[str]:
-    confidence = f"{result.confidence:.0%} CI"
+    confidence = f"{format_percent(result.confidence)}% CI"
     candidate_label = f"Candidate (`{commit[:7]}`)" if commit else "Candidate"
     diff = result.difference_interval
     return [
@@ -101,11 +102,13 @@ def _explanation(result: GateResult) -> list[str]:
         "<details><summary>How to read this verdict</summary>",
         "",
         "Each episode is a pass/fail attempt at the task with its own seed and scene variation. "
-        f"The {result.confidence:.0%} interval of the difference (candidate - baseline) "
+        f"The {format_percent(result.confidence)}% interval of the difference "
+        "(candidate - baseline) "
         "accounts for the luck of both runs.",
         "",
         "- **BLOCK**: the whole interval is below zero, so the policy is worse. The PR is blocked.",
-        f"- **WARN**: the rate dropped more than {result.tolerance * 100:.0f} pp, but the interval "
+        f"- **WARN**: the rate dropped more than {format_percent(result.tolerance)} pp, "
+        "but the interval "
         "still includes zero. The PR passes; more episodes are needed to tell.",
         "- **PASS**: no regression detected.",
         "",

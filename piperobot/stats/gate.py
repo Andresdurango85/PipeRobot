@@ -29,12 +29,19 @@ import math
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import StrEnum
 from fractions import Fraction
 from statistics import NormalDist
 
 DEFAULT_CONFIDENCE = 0.95
 DEFAULT_TOLERANCE = 0.10
+
+
+def format_percent(fraction: float) -> str:
+    """Format a fraction as a decimal percentage: 0.125 -> '12.5', 0.95 -> '95'."""
+    percent = format(Decimal(str(fraction)) * 100, "f")
+    return percent.rstrip("0").rstrip(".") if "." in percent else percent
 
 
 @dataclass(frozen=True)
@@ -152,14 +159,15 @@ def decide(
     if diff_interval.upper < 0:
         verdict = Verdict.BLOCK
         reason = (
-            f"Regression: success rate dropped {-difference * 100:.1f} pp and the {confidence:.0%} "
+            f"Regression: success rate dropped {-difference * 100:.1f} pp "
+            f"and the {format_percent(confidence)}% "
             f"interval of the difference {diff_interval} is entirely below zero."
         )
     elif exact_drop > Fraction(str(tolerance)):
         verdict = Verdict.WARN
         reason = (
             f"Success rate dropped {-difference * 100:.1f} pp "
-            f"(more than the {tolerance * 100:.0f} pp tolerance), but it is not significant: "
+            f"(more than the {format_percent(tolerance)} pp tolerance), but it is not significant: "
             f"the difference interval {diff_interval} includes zero. "
             "Run more episodes to tell."
         )

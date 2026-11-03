@@ -9,6 +9,7 @@ from piperobot.stats.gate import (
     SuccessCount,
     Verdict,
     decide,
+    format_percent,
     format_result,
     main,
     newcombe_interval,
@@ -59,7 +60,8 @@ def test_success_count_rejects_impossible_values(successes: int, trials: int) ->
 @pytest.mark.parametrize(("successes", "trials"), [(2.5, 5), (2, 5.0), (True, 5), (0, True)])
 def test_success_count_rejects_non_integer_values(successes: object, trials: object) -> None:
     with pytest.raises(TypeError, match="must be an int"):
-        SuccessCount(successes, trials)
+        # Wrong argument types are the point of this runtime validation test.
+        SuccessCount(successes, trials)  # type: ignore[arg-type]
 
 
 # --- Intervals: published reference values (Newcombe 1998) -------------------------------------
@@ -211,6 +213,40 @@ def test_deliberately_broken_policy_is_blocked() -> None:
 
 
 # --- CLI --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("fraction", "expected"),
+    [
+        (0.1, "10"),
+        (0.125, "12.5"),
+        (0.15, "15"),
+        (0.55, "55"),
+        (0.95, "95"),
+        (0.975, "97.5"),
+        (0.333, "33.3"),
+        (0.0, "0"),
+        (1e-5, "0.001"),
+        (1e-9, "0.0000001"),  # without the "f" format, Decimal switches to "1.00E-7"
+        (1e16, "1000000000000000000"),  # no decimal point: trailing zeros must stay
+    ],
+)
+def test_format_percent(fraction: float, expected: str) -> None:
+    assert format_percent(fraction) == expected
+
+
+def test_warn_reason_preserves_fractional_tolerance() -> None:
+    result = decide(SuccessCount(33, 50), SuccessCount(40, 50), tolerance=0.125)
+
+    assert result.verdict is Verdict.WARN
+    assert "12.5 pp tolerance" in result.reason
+
+
+def test_block_reason_preserves_fractional_confidence() -> None:
+    result = decide(SuccessCount(25, 50), SuccessCount(45, 50), confidence=0.975)
+
+    assert result.verdict is Verdict.BLOCK
+    assert "the 97.5% interval" in result.reason
 
 
 def test_main_help(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
