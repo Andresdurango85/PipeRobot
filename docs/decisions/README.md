@@ -38,6 +38,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0028](0028-so101-scene-gains-and-mount.md) | SO-101 scene: course gains, course mount, and our own success judgement | Accepted |
 | [0029](0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md) | Refused runner jobs end their worker; every job's workspace is wiped | Accepted |
 | [0030](0030-signed-certificates-of-evaluation.md) | Signed certificates of evaluation: Sigstore attestations of results and verdict on main | Accepted |
+| [0031](0031-history-schema-2-and-certify-trusted-builder.md) | History schema 2 for nightly records; one trusted builder, certify.yml, signs every series | Accepted |
 
 ## Template
 

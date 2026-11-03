@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PipeRobot gate history</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:2rem;color:#222;background:#fff}table{border-collapse:collapse}.table-wrap,pre{overflow-x:auto}td,th{padding:.5rem;border:1px solid #ccc;white-space:nowrap}ul{list-style:none;padding-left:0}svg{max-width:100%}.grid{stroke:#ddd}.baseline{fill:none;stroke:#444;stroke-dasharray:6 4}.pass{color:#164e35;fill:#164e35;stroke:#164e35}.warn{color:#98700a;fill:#98700a;stroke:#98700a}.block{color:#b91c1c;fill:#b91c1c;stroke:#b91c1c}
+</style></head><body>
+<h1>PipeRobot gate history</h1>
+<section><h2>policy / sim</h2>
+<svg viewBox="0 0 720 300" role="img" aria-label="Success rate history">
+<line x1="60" y1="260.00" x2="660" y2="260.00" class="grid" />
+<text x="5" y="260.00">0%</text>
+<line x1="60" y1="205.00" x2="660" y2="205.00" class="grid" />
+<text x="5" y="205.00">25%</text>
+<line x1="60" y1="150.00" x2="660" y2="150.00" class="grid" />
+<text x="5" y="150.00">50%</text>
+<line x1="60" y1="95.00" x2="660" y2="95.00" class="grid" />
+<text x="5" y="95.00">75%</text>
+<line x1="60" y1="40.00" x2="660" y2="40.00" class="grid" />
+<text x="5" y="40.00">100%</text>
+<polyline points="60.00,62.00 660.00,62.00" class="baseline" />
+<g class="pass"><title>2026-11-03T10:00:00Z policy / sim: 45/50 (90.0%), pass, CPU A; 95% CI, tolerance 10 pp</title>
+<line x1="60.00" x2="60.00" y1="49.56" y2="86.99" />
+<circle cx="60.00" cy="62.00" r="5" />
+</g>
+<text x="60.00" y="285" text-anchor="middle">2026-11-03</text>
+<g class="pass"><title>2026-11-03T10:00:00Z policy / sim: 45/50 (90.0%), pass, CPU A; 95% CI, tolerance 10 pp</title>
+<line x1="660.00" x2="660.00" y1="49.56" y2="86.99" />
+<circle cx="660.00" cy="62.00" r="5" />
+</g>
+<text x="660.00" y="285" text-anchor="middle">2026-11-03</text>
+</svg>
+<p>Verdicts: <span class="pass">PASS</span> / <span class="warn">WARN</span> / <span class="block">BLOCK</span>. Dashed line: baseline.</p>
+<ul>
+<li><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12.00" cy="12.00" r="5" /></svg> CPU A</li>
+</ul>
+<div class="table-wrap">
+<table><thead><tr><th>Commit date</th><th>Commit</th><th>Successes/trials</th><th>Rate</th><th>Interval</th><th>Verdict</th><th>Platform</th><th>Run</th></tr></thead><tbody>
+<tr><td>2026-11-03T10:00:00Z</td><td><a href="https://github.com/owner/repo/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">aaaaaaa</a></td><td>45/50</td><td>90.0%</td><td>78.6% to 95.7%</td><td>pass</td><td>CPU A · ubuntu24 20261025.353.1</td><td><a href="https://github.com/owner/repo/actions/runs/2">#2.1</a></td></tr>
+<tr><td>2026-11-03T10:00:00Z</td><td><a href="https://github.com/owner/repo/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">aaaaaaa</a></td><td>45/50</td><td>90.0%</td><td>78.6% to 95.7%</td><td>pass</td><td>CPU A</td><td><a href="https://github.com/owner/repo/actions/runs/1">#1.1</a></td></tr>
+</tbody></table></div>
+</section>
+<section><h2>policy / sim · nightly</h2>
+<svg viewBox="0 0 720 300" role="img" aria-label="Success rate history">
+<line x1="60" y1="260.00" x2="660" y2="260.00" class="grid" />
+<text x="5" y="260.00">0%</text>
+<line x1="60" y1="205.00" x2="660" y2="205.00" class="grid" />
+<text x="5" y="205.00">25%</text>
+<line x1="60" y1="150.00" x2="660" y2="150.00" class="grid" />
+<text x="5" y="150.00">50%</text>
+<line x1="60" y1="95.00" x2="660" y2="95.00" class="grid" />
+<text x="5" y="95.00">75%</text>
+<line x1="60" y1="40.00" x2="660" y2="40.00" class="grid" />
+<text x="5" y="40.00">100%</text>
+<polyline points="60.00,62.00 660.00,62.00" class="baseline" />
+<g class="pass"><title>2026-11-03T10:00:00Z policy / sim: 45/50 (90.0%), pass, CPU A; 95% CI, tolerance 10 pp</title>
+<line x1="60.00" x2="60.00" y1="49.56" y2="86.99" />
+<circle cx="60.00" cy="62.00" r="5" />
+</g>
+<text x="60.00" y="285" text-anchor="middle">2026-11-03</text>
+<g class="pass"><title>2026-11-03T10:00:00Z policy / sim: 45/50 (90.0%), pass, CPU A; 95% CI, tolerance 10 pp</title>
+<line x1="660.00" x2="660.00" y1="49.56" y2="86.99" />
+<circle cx="660.00" cy="62.00" r="5" />
+</g>
+<text x="660.00" y="285" text-anchor="middle">2026-11-03</text>
+</svg>
+<p>Verdicts: <span class="pass">PASS</span> / <span class="warn">WARN</span> / <span class="block">BLOCK</span>. Dashed line: baseline.</p>
+<ul>
+<li><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12.00" cy="12.00" r="5" /></svg> CPU A</li>
+</ul>
+<div class="table-wrap">
+<table><thead><tr><th>Commit date</th><th>Commit</th><th>Successes/trials</th><th>Rate</th><th>Interval</th><th>Verdict</th><th>Platform</th><th>Run</th><th>Paired</th></tr></thead><tbody>
+<tr><td>2026-11-03T10:00:00Z</td><td><a href="https://github.com/owner/repo/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">aaaaaaa</a></td><td>45/50</td><td>90.0%</td><td>78.6% to 95.7%</td><td>pass</td><td>CPU A</td><td><a href="https://github.com/owner/repo/actions/runs/4">#4.1</a></td><td>2 lost / 0 gained, p=0.25, PASS</td></tr>
+<tr><td>2026-11-03T10:00:00Z</td><td><a href="https://github.com/owner/repo/commit/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">aaaaaaa</a></td><td>45/50</td><td>90.0%</td><td>78.6% to 95.7%</td><td>pass</td><td>CPU A</td><td><a href="https://github.com/owner/repo/actions/runs/3">#3.1</a></td><td>2 lost / 0 gained, p=0.25, PASS</td></tr>
+</tbody></table></div>
+</section>
+</body></html>

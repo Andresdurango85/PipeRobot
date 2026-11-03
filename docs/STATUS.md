@@ -31,6 +31,10 @@ Project Cangrejo, the `piperobot` package).
   term is ported with a 5 N grasp threshold and a slot-depth rule; registered sensing checks pass
   ([ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)). Replays with contacts vary run to
   run (2/75 outcomes).
+- 2026-11-03: history schema 2, core part: `series` (main, nightly), a `paired` block, the CPU
+  flags digest and the runner image; v2 certificates whose series is bound to the calling workflow
+  ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md)). `certify.yml`, the
+  single signer for `history.yml` and the nightly job, follows.
 - 2026-11-03: certificates of evaluation, core part: `history record` / `append --record` and
   `python -m piperobot.reports.certificate verify` (pins signer workflow, `main`, hosted runner,
   predicate type; checks the signed record against `results.json`)
