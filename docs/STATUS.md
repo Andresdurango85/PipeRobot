@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-01 (home PC)
+Last updated: 2026-11-02 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -23,8 +23,10 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
-- 2026-11-01: the gate is the installable `piperobot` package with a `clean-install` CI job
-  ([ADR 0019](decisions/0019-core-adapters-robots-layout.md)).
+- 2026-11-02: Codex CLI writes the code and the Claude sessions (one orchestrator, several
+  workers in their own worktrees) brief it and review its diff
+  ([ADR 0023](decisions/0023-codex-writes-code-claude-reviews.md), recipe in
+  [ci.md](knowledge/ci.md)).
 - 2026-11-01: self-hosted GPU runner on the home PC and the non-required `gpu-smoke` workflow
   ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)).
 - 2026-11-01: SO-101 bring-up runbook for LeRobot 0.6.1
@@ -46,13 +48,20 @@ Project Cangrejo, the `piperobot` package).
 2. Start the crab's v0 in Onshape, in its private repo.
 3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
-4. Isaac: rendering inside the runner's service works (session 0,
-   [isaac.md](knowledge/isaac.md)). Next: port the course's tube-to-rack task to Isaac Lab 3.0
-   (plan pending Andrés's OK) and write the evaluator, re-checking reproducibility with cameras
-   and a policy in the loop ([robot-learning-tutorial.md](learning/robot-learning-tutorial.md)).
+4. Isaac: port the course's tube-to-rack task to Isaac Lab 3.0 (approved 2026-11-02), in small
+   PRs, Codex coding. In progress on branch `feat/so101-replay-gonogo`. PR 1 is the go/no-go for
+   Isaac Lab's SO-101 asset: replay the course dataset's actions without objects (the dataset has
+   no rack or tube poses), check joint tracking and where the gripper closes and opens against
+   the randomization boxes, with thresholds fixed before the run. It also settles the joint units
+   and the control rate: the dataset says 30 fps, but the course records one frame per 60 Hz
+   step. PR 2 validates success detection; then the `piperobot.adapters.isaaclab` evaluator
+   (lazy Isaac imports), with the task data in `robots/so101/envs/`, and reproducibility re-checked
+   with cameras and a policy in the loop.
 5. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 6. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
+7. Add `persist-credentials: false` to the checkout steps of the self-hosted workflows
+   (`gpu-smoke`, `isaac-render`) ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)).
 
 ## Open questions for Andrés
 
