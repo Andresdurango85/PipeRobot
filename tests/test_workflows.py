@@ -344,3 +344,22 @@ def test_history_signing_boundary() -> None:
     )
     assert "--record out/record.json" in script
     assert script.count("--attach") == 2
+
+
+# Workflows whose torch results are compared across runs (with the committed baseline). They pin
+# the hosted image: a new OS brings new system libraries (libm) that can flip near-miss episodes.
+PINNED_IMAGE = "ubuntu-24.04"
+NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml")
+
+
+@pytest.mark.parametrize("name", NUMERIC_WORKFLOWS)
+def test_numeric_workflows_pin_the_runner_image(name: str) -> None:
+    for job in _load(ROOT / ".github" / "workflows" / name)["jobs"].values():
+        assert job["runs-on"] == PINNED_IMAGE, (
+            f"{name} must run on {PINNED_IMAGE}; move images only with a baseline comparison"
+        )
+
+
+def test_history_evaluate_job_pins_the_runner_image() -> None:
+    job = _load(ROOT / ".github" / "workflows" / "history.yml")["jobs"]["evaluate"]
+    assert job["runs-on"] == PINNED_IMAGE
