@@ -434,3 +434,13 @@ def test_degraded_policy_is_demo_only() -> None:
     for path in (ROOT / "piperobot").rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
             assert name not in path.read_text(encoding="utf-8"), str(path)
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_runner_context_is_not_used_in_workflow_or_job_env(path: Path) -> None:
+    """`runner.*` exists only inside steps; at job level it makes the workflow file invalid."""
+    data = _load(path)
+    scopes = [data.get("env", {}), *(job.get("env", {}) for job in data["jobs"].values())]
+    for env in scopes:
+        for value in env.values():
+            assert "runner." not in str(value), f"{path.name}: runner context in an env block"

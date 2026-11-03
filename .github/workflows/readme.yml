@@ -19,8 +19,6 @@ jobs:
     permissions:
       contents: read
     env:
-      UV_CACHE_DIR: ${{ runner.temp }}/readme-uv
-      HF_HOME: ${{ runner.temp }}/readme-hf
       HF_HUB_DISABLE_PROGRESS_BARS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,6 +32,9 @@ jobs:
         working-directory: fresh-clone
         shell: bash
         run: |
+          # Cold caches: the reader's first install and policy download count (runner context is
+          # not available in job-level env, hence set here).
+          export UV_CACHE_DIR="$RUNNER_TEMP/readme-uv" HF_HOME="$RUNNER_TEMP/readme-hf"
           mkdir "$UV_CACHE_DIR" "$HF_HOME"
           uv run --no-project python .github/scripts/readme_commands.py run README.md --shell bash --summary "$GITHUB_STEP_SUMMARY" --budget-minutes 30
 
@@ -44,8 +45,6 @@ jobs:
     permissions:
       contents: read
     env:
-      UV_CACHE_DIR: ${{ runner.temp }}/readme-uv
-      HF_HOME: ${{ runner.temp }}/readme-hf
       HF_HUB_DISABLE_PROGRESS_BARS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,5 +58,7 @@ jobs:
         working-directory: fresh-clone
         shell: pwsh
         run: |
+          $env:UV_CACHE_DIR = Join-Path $env:RUNNER_TEMP 'readme-uv'
+          $env:HF_HOME = Join-Path $env:RUNNER_TEMP 'readme-hf'
           New-Item -ItemType Directory -Path $env:UV_CACHE_DIR, $env:HF_HOME | Out-Null
           uv run --no-project python .github/scripts/readme_commands.py run README.md --shell powershell --summary "$env:GITHUB_STEP_SUMMARY" --budget-minutes 30

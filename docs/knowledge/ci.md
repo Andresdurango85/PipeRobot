@@ -110,6 +110,11 @@
   the README or its tooling, weekly (drift from code and dependencies) and by hand. Not a
   required check. `robots/pusht/policies/demo-degraded.json` exists only for the README's BLOCK
   step; a test keeps every workflow and `piperobot/` from referencing it. _(2026-11-03)_
+- **`${{ runner.temp }}` is invalid in a workflow- or job-level `env:`**: the `runner` context
+  exists only inside steps, and GitHub rejects the whole file ("This run likely failed because
+  of a workflow file issue", zero jobs). zizmor and PyYAML do not notice; a test in
+  `tests/test_workflows.py` now does. Use `$RUNNER_TEMP` inside the step. _(verified 2026-11-03,
+  run 41597215145)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
