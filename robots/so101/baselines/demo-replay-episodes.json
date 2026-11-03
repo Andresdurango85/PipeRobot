@@ -1,0 +1,450 @@
+{
+  "policy": "course-demo-replay",
+  "evaluator": "isaaclab",
+  "episodes": [
+    {
+      "seed": 0,
+      "success": false,
+      "scene": "demo_0",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 1,
+      "success": false,
+      "scene": "demo_1",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 2,
+      "success": false,
+      "scene": "demo_2",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 3,
+      "success": false,
+      "scene": "demo_3",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 4,
+      "success": false,
+      "scene": "demo_4",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 5,
+      "success": false,
+      "scene": "demo_5",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 6,
+      "success": false,
+      "scene": "demo_6",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 7,
+      "success": false,
+      "scene": "demo_7",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 8,
+      "success": false,
+      "scene": "demo_8",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 9,
+      "success": false,
+      "scene": "demo_9",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 10,
+      "success": false,
+      "scene": "demo_10",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 11,
+      "success": false,
+      "scene": "demo_11",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 12,
+      "success": false,
+      "scene": "demo_12",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 13,
+      "success": false,
+      "scene": "demo_13",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 14,
+      "success": false,
+      "scene": "demo_14",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 15,
+      "success": false,
+      "scene": "demo_15",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 16,
+      "success": false,
+      "scene": "demo_16",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 17,
+      "success": false,
+      "scene": "demo_17",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 18,
+      "success": false,
+      "scene": "demo_18",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 19,
+      "success": false,
+      "scene": "demo_19",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 20,
+      "success": true,
+      "scene": "demo_20"
+    },
+    {
+      "seed": 21,
+      "success": false,
+      "scene": "demo_21",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 22,
+      "success": true,
+      "scene": "demo_22"
+    },
+    {
+      "seed": 23,
+      "success": false,
+      "scene": "demo_23",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 24,
+      "success": false,
+      "scene": "demo_24",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 25,
+      "success": false,
+      "scene": "demo_25",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 26,
+      "success": false,
+      "scene": "demo_26",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 27,
+      "success": false,
+      "scene": "demo_27",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 28,
+      "success": false,
+      "scene": "demo_28",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 29,
+      "success": false,
+      "scene": "demo_29",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 30,
+      "success": false,
+      "scene": "demo_30",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 31,
+      "success": true,
+      "scene": "demo_31"
+    },
+    {
+      "seed": 32,
+      "success": false,
+      "scene": "demo_32",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 33,
+      "success": false,
+      "scene": "demo_33",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 34,
+      "success": false,
+      "scene": "demo_34",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 35,
+      "success": false,
+      "scene": "demo_35",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 36,
+      "success": false,
+      "scene": "demo_36",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 37,
+      "success": false,
+      "scene": "demo_37",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 38,
+      "success": false,
+      "scene": "demo_38",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 39,
+      "success": false,
+      "scene": "demo_39",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 40,
+      "success": false,
+      "scene": "demo_40",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 41,
+      "success": false,
+      "scene": "demo_41",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 42,
+      "success": false,
+      "scene": "demo_42",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 43,
+      "success": false,
+      "scene": "demo_43",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 44,
+      "success": false,
+      "scene": "demo_44",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 45,
+      "success": false,
+      "scene": "demo_45",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 46,
+      "success": false,
+      "scene": "demo_46",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 47,
+      "success": false,
+      "scene": "demo_47",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 48,
+      "success": false,
+      "scene": "demo_48",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 49,
+      "success": true,
+      "scene": "demo_49"
+    },
+    {
+      "seed": 50,
+      "success": false,
+      "scene": "demo_50",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 51,
+      "success": false,
+      "scene": "demo_51",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 52,
+      "success": false,
+      "scene": "demo_52",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 53,
+      "success": false,
+      "scene": "demo_53",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 54,
+      "success": false,
+      "scene": "demo_54",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 55,
+      "success": false,
+      "scene": "demo_55",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 56,
+      "success": false,
+      "scene": "demo_56",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 57,
+      "success": false,
+      "scene": "demo_57",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 58,
+      "success": true,
+      "scene": "demo_58"
+    },
+    {
+      "seed": 59,
+      "success": false,
+      "scene": "demo_59",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 60,
+      "success": false,
+      "scene": "demo_60",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 61,
+      "success": true,
+      "scene": "demo_61"
+    },
+    {
+      "seed": 62,
+      "success": false,
+      "scene": "demo_62",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 63,
+      "success": false,
+      "scene": "demo_63",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 64,
+      "success": false,
+      "scene": "demo_64",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 65,
+      "success": false,
+      "scene": "demo_65",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 66,
+      "success": false,
+      "scene": "demo_66",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 67,
+      "success": false,
+      "scene": "demo_67",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 68,
+      "success": false,
+      "scene": "demo_68",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 69,
+      "success": false,
+      "scene": "demo_69",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 70,
+      "success": false,
+      "scene": "demo_70",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 71,
+      "success": false,
+      "scene": "demo_71",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 72,
+      "success": false,
+      "scene": "demo_72",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 73,
+      "success": false,
+      "scene": "demo_73",
+      "failure": "no_grasp"
+    },
+    {
+      "seed": 74,
+      "success": false,
+      "scene": "demo_74",
+      "failure": "no_grasp"
+    }
+  ]
+}
