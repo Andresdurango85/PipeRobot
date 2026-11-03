@@ -254,3 +254,46 @@ The object-free go/no-go of [ADR 0024](../decisions/0024-so101-demo-replay-go-no
   positions then went to ~1e8 m, silently (no error). Spawn it with
   `UsdFileCfg(fix_root_link=True)` and, for kinematic comparisons, no ground plane and gravity
   off. _(verified 2026-11-02, Isaac Lab 3.0)_
+
+## SO-101 tube-to-rack scene in Isaac Lab 3.0
+
+Scene, checks and decisions: [ADR 0027](../decisions/0027-so101-scene-gains-and-mount.md).
+
+- **The course's scene needs four files and no local dependencies**: `lightbox-simple.usd`,
+  `mat.usda`, `Vial_opaque.usda`, `Vial_rack_simple.usda` (~3.5 MB; the `tex/*.png` in the repo
+  are unused). Remote references stay unresolved: the light box's camera mount payload
+  `rsd455.usd` on an Isaac **5.1** Nucleus path, and MDL materials (render only). Stage load rules
+  (`Usd.StageLoadRules.NoneRule` on `LightBox/camera_mount/rsd455`) installed before spawning keep
+  Kit from fetching the payload. `fetch_course_assets.py` gets them by sha256 into
+  `%LOCALAPPDATA%\piperobot\course-assets\<commit>`. _(verified 2026-11-02, course `ce807d9`)_
+- **The course has no ground plane**: the light box's `Base` mesh is the floor, and it collides.
+  The rack (spawned at z 0.06) settles at z = 0.041 on the mat; tubes spawned lying at z 0.05
+  settle at 0.050. _(verified 2026-11-02, Isaac Lab 3.0)_
+- **Geometry**: the rack's origin is a corner, footprint [0, 0.12]² in its frame, top surface at
+  rack-local z = 0.073, four slot centres at (0.03/0.09, 0.03/0.09); a tube dropped over a slot
+  goes in and rests with its bottom at rack-local z = -0.001. The tube's origin is 1.7 cm above
+  one end (extent -0.017 to +0.0995 m along its axis), radius 1.7 cm. _(verified 2026-11-02)_
+- **The course's success test accepts tubes that are not in a slot**: a tube lying on the rack
+  top has origin z 0.089 < 0.1 (only the vertical test rejects it), and a tube standing upright on
+  the rim or leaning on it at up to ~45° passes the footprint, height and vertical tests. Our
+  tracker adds a slot-depth rule (lowest end below rim - 2 cm). _(verified 2026-11-02, checks
+  S4, S7, S7b)_
+- **Jaw contact forces (`force_matrix_w`, moving jaw filtered on the tubes, PhysX 6.2 includes
+  friction)**: open jaw approaching a tube at most 0.61 N; closing jaw pushing a tube it does not
+  hold up to 1.98 N; genuine grasps 10–19 N per-episode median. The course's 2 N threshold is at
+  the push level; we use 5 N. _(verified 2026-11-02, 75 reconstructed demos, course gains)_
+- **Reconstructed demos end to end** (tube under each demo's grasp TCP, rack with a slot under
+  its release TCP, replay at 60 Hz): 11/75 succeed with the course's gains, 1–2/75 with the
+  asset's SysID gains (21–27 episodes grasp but cannot place: sag). Most failures are `no_grasp`
+  because the dataset does not say where along the tube the operator grasped (we assume
+  mid-length). _(verified 2026-11-02)_
+- **Replays with contacts are not reproducible run to run**: two runs of the same code over the
+  75 reconstructed demos differ in 2 outcomes, in success steps by 1–4 control steps and in the
+  jaw-force summaries of 19 episodes. Not yet attributed (GPU PhysX contacts without enhanced
+  determinism, or state carried between episodes in one process). Same-seed runs without
+  contacts were bit-identical (above). _(verified 2026-11-02)_
+- **Teleporting an object relative to another one must use the other one's settled pose**, not
+  its configured initial pose: the rack drops 1.9 cm from its spawn height, which made check S7b
+  hold a tube 1.9 cm too high on its first run. _(verified 2026-11-02)_
+- **Cost**: Kit launch plus the static checks take under 1 min, and the 75 reconstructed demos
+  (no rendering) ~7.5 min, on the RTX 5060 Ti. _(verified 2026-11-02)_

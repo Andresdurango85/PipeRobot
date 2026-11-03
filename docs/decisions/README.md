@@ -34,7 +34,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0024](0024-so101-demo-replay-go-no-go-and-control-rate.md) | Object-free demo replay as the SO-101 asset go/no-go; control rate measured per dataset | Accepted |
 | [0025](0025-mypy-strict-type-checking.md) | Type-check the piperobot package with mypy --strict | Accepted |
 | [0026](0026-success-rate-history-data-branch-and-pages.md) | Success-rate history: an append-only data branch, rendered to Pages | Accepted |
-| [0027](0027-so101-scene-gains-and-mount.md) | SO-101 scene: actuator gains and mount height of the Isaac Lab 3.0 asset | Proposed |
+| [0027](0027-so101-scene-gains-and-mount.md) | SO-101 scene: course gains, course mount, and our own success judgement | Accepted |
 
 ## Template
 
