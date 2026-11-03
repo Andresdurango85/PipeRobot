@@ -1,4 +1,6 @@
 # Python
+.hypothesis/
+mutants/
 __pycache__/
 *.py[cod]
 .venv/

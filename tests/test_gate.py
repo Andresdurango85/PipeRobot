@@ -9,6 +9,7 @@ from piperobot.stats.gate import (
     SuccessCount,
     Verdict,
     decide,
+    format_result,
     main,
     newcombe_interval,
     wilson_interval,
@@ -38,7 +39,12 @@ def test_parse_success_count() -> None:
     assert str(count) == "38/50"
 
 
-@pytest.mark.parametrize("text", ["38", "a/50", "38/"])
+def test_parse_requires_separator() -> None:
+    with pytest.raises(ValueError, match="expected 'successes/trials'"):
+        SuccessCount.parse("38")
+
+
+@pytest.mark.parametrize("text", ["a/50", "38/"])
 def test_parse_rejects_malformed_text(text: str) -> None:
     with pytest.raises(ValueError):  # noqa: PT011 - message comes from int() or our own check
         SuccessCount.parse(text)
@@ -47,6 +53,12 @@ def test_parse_rejects_malformed_text(text: str) -> None:
 @pytest.mark.parametrize(("successes", "trials"), [(1, 0), (-1, 10), (11, 10)])
 def test_success_count_rejects_impossible_values(successes: int, trials: int) -> None:
     with pytest.raises(ValueError, match="must be"):
+        SuccessCount(successes, trials)
+
+
+@pytest.mark.parametrize(("successes", "trials"), [(2.5, 5), (2, 5.0), (True, 5), (0, True)])
+def test_success_count_rejects_non_integer_values(successes: object, trials: object) -> None:
+    with pytest.raises(TypeError, match="must be an int"):
         SuccessCount(successes, trials)
 
 
@@ -119,10 +131,35 @@ def test_small_non_significant_drop_warns() -> None:
 
     assert result.verdict is Verdict.WARN
     assert result.difference_interval.lower < 0 < result.difference_interval.upper
+    assert result.reason == (
+        "Success rate dropped 12.0 pp (more than the 10 pp tolerance), "
+        "but it is not significant: "
+        f"the difference interval {result.difference_interval} includes zero. "
+        "Run more episodes to tell."
+    )
+
+
+def test_warn_reason_uses_custom_tolerance() -> None:
+    # 0.55 rather than 0.15: a scale slip (x 101) would still print 15, but prints 56 here.
+    result = decide(SuccessCount(0, 3), SuccessCount(2, 3), tolerance=0.55)
+
+    assert result.verdict is Verdict.WARN
+    assert "(more than the 55 pp tolerance)" in result.reason
 
 
 def test_drop_within_tolerance_passes() -> None:
     assert decide(SuccessCount(36, 50), SuccessCount(40, 50)).verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize(("candidate", "baseline"), [(35, 40), (40, 45)])
+def test_exact_tolerance_drop_passes(candidate: int, baseline: int) -> None:
+    assert decide(SuccessCount(candidate, 50), SuccessCount(baseline, 50)).verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize("tolerance", [float("nan"), float("inf"), -float("inf")])
+def test_non_finite_tolerance_is_rejected(tolerance: float) -> None:
+    with pytest.raises(ValueError, match="tolerance must be finite"):
+        decide(SuccessCount(40, 50), SuccessCount(40, 50), tolerance=tolerance)
 
 
 def test_same_drop_blocks_with_enough_episodes() -> None:
@@ -174,6 +211,62 @@ def test_deliberately_broken_policy_is_blocked() -> None:
 
 
 # --- CLI --------------------------------------------------------------------------------------
+
+
+def test_main_help(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COLUMNS", "200")
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    assert exc_info.value.code == 0
+    output = " ".join(capsys.readouterr().out.split())
+    assert (
+        "Compare a candidate policy's success rate against the stored baseline and decide the gate."
+        in output
+    )
+    for option, help_text in (
+        ("--candidate CANDIDATE", "Counts, e.g. 38/50"),
+        ("--results RESULTS", "Evaluation results JSON"),
+        ("--baseline BASELINE", "Counts, e.g. 45/50"),
+        ("--baseline-file BASELINE_FILE", "Stored baseline JSON"),
+        (
+            "--tolerance TOLERANCE",
+            "Observed drop (as a fraction) above which a non-significant result is a WARN",
+        ),
+    ):
+        assert f"{option} {help_text} " in f"{output} "
+
+
+def test_format_result_lines() -> None:
+    result = decide(SuccessCount(34, 50), SuccessCount(40, 50))
+
+    assert format_result(result).splitlines() == [
+        "Candidate:  34/50 = 68.0%  CI [0.542, 0.792]",
+        "Baseline:   40/50 = 80.0%  CI [0.670, 0.888]",
+        "Difference: -12.0%  CI [-0.284, 0.052]",
+        "Verdict:    WARN",
+        result.reason,
+    ]
+
+
+def test_main_custom_tolerance(capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["--candidate", "34/50", "--baseline", "40/50"]
+
+    assert main(args) == 0
+    assert "Verdict:    WARN" in capsys.readouterr().out
+    assert main([*args, "--tolerance", "0.15"]) == 0
+    assert "Verdict:    PASS" in capsys.readouterr().out
+
+
+def test_main_custom_confidence(capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["--candidate", "34/50", "--baseline", "40/50"]
+
+    assert main(args) == 0
+    assert "Verdict:    WARN" in capsys.readouterr().out
+    assert main([*args, "--confidence", "0.8"]) == 1
+    output = capsys.readouterr().out
+    assert "Verdict:    BLOCK" in output
+    assert "the 80% interval of the difference [-0.229, -0.007]" in output
 
 
 def test_main_exit_code_is_1_on_block(capsys: pytest.CaptureFixture[str]) -> None:
