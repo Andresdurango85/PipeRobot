@@ -12,6 +12,9 @@ uv run python -m piperobot.reports.sticky_comment --pr 12 --body-file comment.md
 - The first line is the hidden marker `<!-- piperobot-gate -->`. `sticky_comment.py` finds the
   bot's comment with that marker and edits it on each push instead of posting a new one; it never
   edits a human's comment.
+- Posting retries GitHub 5xx and network errors (3 attempts, 2 s and 5 s apart); 4xx fails at
+  once. Each retry lists the comments again first, so a POST that timed out after GitHub created
+  the comment is edited, not duplicated. A failure after the last attempt exits 2.
 - At most 10 failed episodes are listed, sorted by seed; the rest are linked from the run.
 - Rendering exits 0 whatever the verdict (2 on invalid inputs); the merge-blocking exit code comes
   from `python -m piperobot.stats.gate`.

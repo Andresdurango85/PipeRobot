@@ -3,6 +3,10 @@
 The comment is found by the hidden marker on its first line and by its author (the Actions bot),
 so a human comment that quotes the marker is never overwritten.
 
+Transient 5xx and network errors get three attempts, waiting 2 s and 5 s. Each retry
+re-lists comments so a timed-out POST is edited instead of duplicated. GitHub's list
+endpoint can lag a just-created comment; the backoff only mitigates this delay.
+
 Usage (in a workflow, with GITHUB_TOKEN and GITHUB_REPOSITORY set):
     uv run python -m piperobot.reports.sticky_comment --pr 12 --body-file out/comment.md
 """
@@ -10,12 +14,15 @@ Usage (in a workflow, with GITHUB_TOKEN and GITHUB_REPOSITORY set):
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
 import sys
+import time
+import urllib.error
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -33,7 +40,8 @@ class Transport(Protocol):
 class GitHubTransport:
     """Minimal GitHub REST client over urllib (no extra dependencies)."""
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: str, opener: Callable[..., Any] | None = None) -> None:
+        self._opener = opener
         self._headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
@@ -46,8 +54,19 @@ class GitHubTransport:
         req = urllib.request.Request(  # noqa: S310 - fixed https://api.github.com base URL
             API_URL + path, data=data, headers=self._headers, method=method
         )
-        with urllib.request.urlopen(req, timeout=30) as response:  # noqa: S310 - same URL
+        opener = self._opener if self._opener is not None else urllib.request.urlopen
+        with opener(req, timeout=30) as response:
             return json.loads(response.read() or b"null")
+
+
+def is_transient(error: BaseException) -> bool:
+    """Classify retryable GitHub server and network failures."""
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code >= 500
+    return isinstance(
+        error,
+        (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException),
+    )
 
 
 def validate_marker(marker: str) -> str:
@@ -81,17 +100,39 @@ def upsert_sticky_comment(
     body: str,
     author: str = BOT_LOGIN,
     marker: str = COMMENT_MARKER,
+    *,
+    attempts: int = 3,
+    backoff: Sequence[float] = (2.0, 5.0),
+    sleep: Callable[[float], None] | None = None,
 ) -> str:
     """Update the existing sticky comment, or create it. Returns "updated" or "created"."""
     validate_marker(marker)
     if not body.startswith(marker):
         raise ValueError("comment body must start with the gate marker")
-    comment_id = find_sticky_comment(transport, repo, pr, author, marker)
-    if comment_id is None:
-        transport.request("POST", f"/repos/{repo}/issues/{pr}/comments", {"body": body})
-        return "created"
-    transport.request("PATCH", f"/repos/{repo}/issues/comments/{comment_id}", {"body": body})
-    return "updated"
+    if attempts < 1 or len(backoff) < attempts - 1:
+        raise ValueError("attempts must be positive and backoff must cover every retry")
+    sleep = time.sleep if sleep is None else sleep
+    for attempt in range(attempts):
+        try:
+            comment_id = find_sticky_comment(transport, repo, pr, author, marker)
+            if comment_id is None:
+                transport.request("POST", f"/repos/{repo}/issues/{pr}/comments", {"body": body})
+                return "created"
+            transport.request(
+                "PATCH", f"/repos/{repo}/issues/comments/{comment_id}", {"body": body}
+            )
+            return "updated"
+        except Exception as error:
+            if not is_transient(error) or attempt == attempts - 1:
+                raise
+            delay = backoff[attempt]
+            print(
+                f"sticky comment: attempt {attempt + 1}/{attempts} failed ({error}); "
+                f"retrying in {delay:g}s",
+                file=sys.stderr,
+            )
+            sleep(delay)
+    raise AssertionError("unreachable")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -106,7 +147,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("ERROR: GITHUB_TOKEN and GITHUB_REPOSITORY must be set", file=sys.stderr)
         return 2
     body = args.body_file.read_text(encoding="utf-8")
-    action = upsert_sticky_comment(GitHubTransport(token), repo, args.pr, body, marker=args.marker)
+    try:
+        action = upsert_sticky_comment(
+            GitHubTransport(token), repo, args.pr, body, marker=args.marker
+        )
+    except Exception as error:
+        if not isinstance(error, urllib.error.HTTPError) and not is_transient(error):
+            raise
+        print(f"ERROR: could not post the sticky comment: {error}", file=sys.stderr)
+        return 2
     print(f"Sticky comment {action} on {repo}#{args.pr}")
     return 0
 

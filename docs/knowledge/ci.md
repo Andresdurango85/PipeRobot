@@ -323,6 +323,13 @@
 
 ## Gotchas
 
+- **One GitHub 500 used to turn a correct PASS red.** Run 41736214611 (#67) evaluated a
+  PASS, then the report job's POST to `/issues/67/comments` got HTTP 500 and the job failed;
+  re-running only `report` went green. `sticky_comment.py` now retries 5xx and network errors
+  (3 attempts, 2 s and 5 s) and re-lists before each retry, so a timed-out POST is edited, not
+  posted twice. The list endpoint can lag a just-created comment; the backoff only mitigates it.
+  _(verified 2026-11-03)_
+
 - **Two sessions must not share one working directory.** A parallel session switched this
   checkout to its own branch mid-task. Each extra session works in its own worktree:
   `git worktree add ../so101-wt-<topic> <branch>`, and `git worktree remove` it afterwards.

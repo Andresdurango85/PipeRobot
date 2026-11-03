@@ -30,6 +30,8 @@ Project Cangrejo, the `piperobot` package).
   [result](../robots/so101/policies/scripted_gripper_closed_12_result.json)). The demo also
   mirrored the value in the module's DEFAULTS and a unit test, as a real PR would: unit tests
   green, only the gate caught it.
+- 2026-11-03: the gate's sticky comment retries GitHub 5xx and network errors without
+  double-posting, after a 500 turned a correct SO-101 PASS red ([ci.md](knowledge/ci.md)).
 - 2026-11-03: ready for `ubuntu-latest` → Ubuntu 26.04 (by 2026-11-19). A probe on both images
   gave the same ci results and the same mutation survivors. The pinned jobs stay on
   `ubuntu-24.04`: PushT moves 4-8 near-miss episodes with the image and CPU together
