@@ -62,6 +62,22 @@
   non-fast-forward, no bypass actors); the `github-pages` environment deploys from `main` only
   (set by enabling Pages). Re-check with `gh api repos/<owner>/<repo>/rulesets/26424151` and
   `.../environments/github-pages/deployment-branch-policies`. _(verified 2026-11-03)_
+- **Scorecard's first score: 6.3/10** (Scorecard v5.6.0 on `7779d43`). 10/10: Pinned-Dependencies,
+  Token-Permissions, Dangerous-Workflow, SAST, CI-Tests, Security-Policy,
+  Dependency-Update-Tool, Binary-Artifacts, License. Low, and why: Code-Review 0 (no approving
+  reviews, [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md)), Maintained 0 (repo
+  younger than 90 days), CII-Best-Practices 0 (no OpenSSF badge), Fuzzing 0 (Hypothesis is not
+  detected as fuzzing), Contributors 0 (one person), Branch-Protection 3, Vulnerabilities 5 (the
+  advisories accepted in [ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)).
+  Packaging and Signed-Releases do not apply (no releases). Results:
+  `curl https://api.scorecard.dev/projects/github.com/Andresdurango85/PipeRobot`.
+  _(verified 2026-11-03)_
+- **Known issue: Dependabot's `uv` update job fails** with `dependency_file_not_resolvable` on
+  `torch` and `torchvision`, before and after ADR 0027 (runs 41445044081, 41574159723); the
+  other `uv` updates still open their PR. Likely the CPU-index source for torch on Linux
+  ([ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). The 7-day cooldown works:
+  the log shows "Filtered out N versions due to cooldown", and the first SHA-pinned update was
+  setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier. _(verified 2026-11-03)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
@@ -105,8 +121,11 @@
   With a required review that meant merging through the admin bypass (`gh pr merge <n> --admin`),
   hence ADR 0018. _(GitHub behaviour, 2026-10-27)_
 - **With 0 required approvals, PRs merge with a plain `gh pr merge <n> --merge`** once the checks
-  pass, and Claude Code's auto mode allows it. "Require review from Code Owners" is still on in the
-  ruleset and does not block it. _(verified 2026-10-28, PR #17)_
+  pass, and Claude Code's auto mode allows it. ~~"Require review from Code Owners" is still on in
+  the ruleset and does not block it.~~ _(verified 2026-10-28, PR #17)_
+- **"Require review from Code Owners" blocked Dependabot's PRs** (the owner's own PRs were
+  unaffected), so Andrés turned it off in the `main` ruleset, in line with
+  [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md). _(2026-11-03, PRs #36, #37)_
 - **Claude Code's auto mode refuses admin-bypass merges** ("Merge Without Review") even when the
   owner asked in chat and even with a `Bash(gh pr merge:*)` allow rule in
   `.claude/settings.local.json`. It also refuses editing the ruleset through the API ("CI Bypass"):
@@ -144,9 +163,25 @@
   had left in `out/` (run 41573497209). The job's actions are downloaded before the hook runs.
   On this runner the hook is invoked as `powershell -command ". '<script>'"`, so Windows
   PowerShell 5.1 under the machine's execution policy runs it; an allowed job prints
-  "Allowed job: …" (run 41573361134). The fork approval setting stays the primary barrier until
-  the follow-up (end the worker process on refusal, wipe the workspace after each job) lands.
-  _(verified 2026-11-03, runner 2.338.2, throwaway PR #35)_
+  "Allowed job: …" (run 41573361134). _(verified 2026-11-03, runner 2.338.2, throwaway PR #35)_
+- **Fixed by ending the worker** ([ADR 0029](../decisions/0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md)):
+  the hook runs as a direct child of the job's `Runner.Worker.exe`
+  (`RunnerService → Runner.Listener → Runner.Worker → powershell`), and on refusal it stops that
+  process. Then no step runs, `always()` ones included, and no artifact is uploaded; the run
+  fails in about 20 s, and the Listener logs "worker encounter an unhandled exception or app
+  crash", marks the job Failed and keeps listening (runs 41580283257, 41580287237). The cost: a
+  refused job has **no log on GitHub** (log API 404, `BlobNotFound`); look in
+  `C:\actions-runner\_diag\Runner_*.log`. The Listener's `ERR BrokerServer … TaskCanceledException`
+  lines at each job end are normal: the same pattern shows on ordinary jobs.
+  _(verified 2026-11-03, runner 2.338.2)_
+- **The job-completed hook wipes the workspace** after every allowed job: "Wiped job workspace:
+  C:\actions-runner\_work\PipeRobot\PipeRobot (21 entries)" under "Complete runner", ~13 s for
+  `gpu-smoke`. A cold workspace costs no measurable time: `gpu-smoke` ran in 2 min 30 s cold
+  (install 17 s, evaluation 94 s, run 41580744632) against 2 min 25 s–2 min 43 s warm, since the
+  uv cache lives in the tool cache and the Hugging Face cache in `gh-runner`'s profile. Another
+  session's GPU study was running at the same time. _(verified 2026-11-03)_
+- **A killed (refused) job does not run the job-completed hook**, so the wipe after the previous
+  allowed job is what keeps its workspace empty. _(verified 2026-11-03)_
 - ~~`C:\actions-runner` inherits from `C:\`: "Authenticated Users" have Modify and "Users" read,
   including `.credentials_rsaparams` (the runner's key), so every local account, the Codex
   sandbox users included, could rewrite or read the runner.~~ _(verified 2026-11-02, ACL)_
@@ -221,6 +256,14 @@
 - **Repo Actions permissions before ADR 0027**: `allowed_actions: all`,
   `sha_pinning_required: false`, default workflow token read-only, fork approval
   `all_external_contributors`. _(verified 2026-11-02, API)_
+- **Repo Actions permissions since ADR 0027**: `allowed_actions: selected` with
+  `github_owned_allowed: true` (`actions/*`, `github/*`), `verified_allowed: false`,
+  `patterns_allowed: [astral-sh/setup-uv@*, ossf/scorecard-action@*]`, and
+  `sha_pinning_required: true`. A new third-party action must be added to the patterns first.
+  Applied by the orchestrator session with Andrés's explicit OK; a worker session's auto mode
+  refuses the `PUT` ("Modify Shared Resources"). Read back with
+  `gh api repos/<o>/<r>/actions/permissions` and `…/permissions/selected-actions`.
+  _(verified 2026-11-03, API)_
 - **Secret scanning's non-provider patterns and validity checks stay disabled** on this repo:
   the API returns 200 to the request but nothing changes, likely because they need GitHub Secret
   Protection, which a personal public repo does not have. Do not retry. _(verified 2026-11-02)_
