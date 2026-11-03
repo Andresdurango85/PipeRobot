@@ -109,6 +109,22 @@ testing of `piperobot/stats`.
   `rstrip(".")` → `rstrip("XX0XX")` / `rstrip("XX.XX")` (`rstrip` takes a set of characters, and
   no `X` occurs in a number). With these, the score on 2026-11-03 is 354 / 361 killed, the 7
   survivors all equivalent. _(verified 2026-11-03, mutmut 3.8.1)_
+- **Accepted equivalents are listed by exact mutmut name** in `tests/mutation_equivalents.txt`,
+  one per line with its reason, and `.github/scripts/mutation_summary.py` marks every survivor
+  "equivalent (accepted)" or "NEW — review" (a `::warning::`), and every listed name that did not
+  survive as "stale" (a `::notice::`). A name is mutmut's own (e.g.
+  `piperobot.stats.gate.x_decide__mutmut_26`); it changes only when the mutated function changes,
+  and then the old name goes stale and the new one shows as NEW: re-check the diff and update the
+  list. The 10 accepted names, mapped to the reasons above: `gate.x_format_percent__mutmut_11`
+  (`"F"`), `_18` and `_19` (`rstrip` sets), `gate.xǁSuccessCountǁparse__mutmut_3`
+  (`rpartition`), `gate.x_decide__mutmut_26` (`<= 0`), `baseline.x_load_baseline__mutmut_3`
+  (`None`) and `_5` (`"UTF-8"`), `paired.x_exact_mcnemar_p__mutmut_30` (`n + 2`), and
+  `paired.x_newcombe_paired_interval__mutmut_84` / `_89` (the ±2 clamps, provably dead: see
+  the "Score with `paired.py`" entry above). `paired.x_main__mutmut_2` / `_3` (`--help`
+  description) are killed by a test, not listed. NEW and stale do not fail the job yet; the plan
+  is to make NEW blocking after about four clean weekly runs, instead of a score threshold: a list
+  catches any new gap, whatever the score.
+  _(verified 2026-11-03, mutmut 3.8.1, run 41590237621)_
 
 ## Bugs found in `piperobot/stats` (fixed 2026-11-02)
 
