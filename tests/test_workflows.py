@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -114,6 +115,7 @@ def test_checkout_does_not_persist_credentials(path: Path) -> None:
 def test_runner_hook(
     event: str | None, workflow_ref: str | None, repository: str | None, expected: int
 ) -> None:
+    """Refusals leave the Python parent alive and print only the refusal line."""
     assert POWERSHELL is not None
     env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GITHUB_")}
     for key, value in {
@@ -134,3 +136,143 @@ def test_runner_hook(
     assert result.returncode == expected, result.stdout + result.stderr
     assert len(result.stdout.strip().splitlines()) == 1
     assert result.stdout.startswith("Allowed job:" if expected == 0 else "Refused job:")
+
+
+def _run_completed_hook(
+    workspace: Path | None, runner: Path | None
+) -> subprocess.CompletedProcess[str]:
+    assert POWERSHELL is not None
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() not in {"GITHUB_WORKSPACE", "RUNNER_WORKSPACE"}
+    }
+    for key, path in {"GITHUB_WORKSPACE": workspace, "RUNNER_WORKSPACE": runner}.items():
+        if path is not None:
+            env[key] = str(path)
+    return subprocess.run(  # noqa: S603 -- resolved PowerShell and fixed script, no shell.
+        [
+            POWERSHELL,
+            "-NoProfile",
+            "-NonInteractive",
+            "-File",
+            str(HOOK.with_name("job-completed.ps1")),
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+def test_completed_hook_wipes_workspace(tmp_path: Path) -> None:
+    runner = tmp_path / "_work" / "PipeRobot"
+    workspace = runner / "PipeRobot"
+    workspace.mkdir(parents=True)
+    for name in (
+        "nested/deeper/file.txt",
+        ".hidden",
+        "readonly.txt",
+        "out/failure.mp4",
+        "work/data",
+    ):
+        path = workspace / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("leftover", encoding="utf-8")
+    (workspace / "readonly.txt").chmod(0o444)
+    if sys.platform == "win32":  # mypy understands this guard for ctypes.windll, not os.name
+        import ctypes
+
+        assert ctypes.windll.kernel32.SetFileAttributesW(str(workspace / ".hidden"), 2)
+    keep = tmp_path / "_work" / "_tool" / "keep.txt"
+    keep.parent.mkdir()
+    keep.write_text("keep", encoding="utf-8")
+    result = _run_completed_hook(workspace, runner)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert workspace.is_dir()
+    assert list(workspace.iterdir()) == []
+    assert keep.read_text(encoding="utf-8") == "keep"
+    assert result.stdout.strip() == f"Wiped job workspace: {workspace} (5 entries)."
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows junctions require Windows")
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+def test_completed_hook_does_not_follow_junctions(tmp_path: Path) -> None:
+    runner = tmp_path / "_work" / "PipeRobot"
+    workspace = runner / "PipeRobot"
+    (workspace / "sub").mkdir(parents=True)
+    precious = tmp_path / "outside" / "precious.txt"
+    keep = tmp_path / "_work" / "_tool" / "keep.txt"
+    for sentinel in (precious, keep):
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text("keep", encoding="utf-8")
+    for link, target in (
+        (workspace / "outside-link", precious.parent),
+        (workspace / "tool-link", keep.parent),
+        (workspace / "sub" / "link", precious.parent),
+    ):
+        result = subprocess.run(  # noqa: S603 -- Windows mklink, tmp paths, no shell=True.
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)],  # noqa: S607 -- Windows builtin.
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    result = _run_completed_hook(workspace, runner)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert workspace.is_dir()
+    assert list(workspace.iterdir()) == []
+    assert precious.read_text(encoding="utf-8") == "keep"
+    assert keep.read_text(encoding="utf-8") == "keep"
+    assert result.stdout.strip() == f"Wiped job workspace: {workspace} (3 entries)."
+
+
+@pytest.mark.skipif(POWERSHELL is None, reason="PowerShell is not installed")
+@pytest.mark.parametrize(
+    "case",
+    [
+        "not-direct-child",
+        "wrong-parent",
+        "runner-tool",
+        "protected-leaf",
+        "missing-workspace",
+        "missing-runner",
+        "missing-both",
+        "nonexistent-workspace",
+        "nonexistent-runner",
+    ],
+)
+def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str) -> None:
+    runner = tmp_path / "_work" / "PipeRobot"
+    workspace = runner / "PipeRobot"
+    if case == "not-direct-child":
+        workspace = workspace / "nested"
+    elif case == "wrong-parent":
+        runner = tmp_path / "other" / "PipeRobot"
+        workspace = runner / "PipeRobot"
+    elif case == "runner-tool":
+        runner = tmp_path / "_work"
+        workspace = runner / "_tool"
+    elif case == "protected-leaf":
+        workspace = runner / "_tool"
+    workspace.mkdir(parents=True)
+    sentinel = workspace / "keep.txt"
+    sentinel.write_text("keep", encoding="utf-8")
+    workspace_env: Path | None = workspace
+    runner_env: Path | None = runner
+    if case in {"missing-workspace", "missing-both"}:
+        workspace_env = None
+    if case in {"missing-runner", "missing-both"}:
+        runner_env = None
+    if case == "nonexistent-workspace":
+        workspace_env = sentinel.parent / "absent"
+    if case == "nonexistent-runner":
+        runner_env = tmp_path / "_work" / "absent"
+    result = _run_completed_hook(workspace_env, runner_env)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert result.stdout.startswith("Refused workspace wipe:")
+    assert len(result.stdout.strip().splitlines()) == 1
+    assert sentinel.read_text(encoding="utf-8") == "keep"

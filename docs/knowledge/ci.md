@@ -43,6 +43,22 @@
   scorecard-action and harden-runner as steps. Only `push` and `schedule` are supported triggers;
   `workflow_dispatch` and `pull_request` are experimental. Not a gate.
   _(verified 2026-11-02, scorecard-action v2.5.0 README)_
+- **Scorecard's first score: 6.3/10** (Scorecard v5.6.0 on `7779d43`). 10/10: Pinned-Dependencies,
+  Token-Permissions, Dangerous-Workflow, SAST, CI-Tests, Security-Policy,
+  Dependency-Update-Tool, Binary-Artifacts, License. Low, and why: Code-Review 0 (no approving
+  reviews, [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md)), Maintained 0 (repo
+  younger than 90 days), CII-Best-Practices 0 (no OpenSSF badge), Fuzzing 0 (Hypothesis is not
+  detected as fuzzing), Contributors 0 (one person), Branch-Protection 3, Vulnerabilities 5 (the
+  advisories accepted in [ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)).
+  Packaging and Signed-Releases do not apply (no releases). Results:
+  `curl https://api.scorecard.dev/projects/github.com/Andresdurango85/PipeRobot`.
+  _(verified 2026-11-03)_
+- **Known issue: Dependabot's `uv` update job fails** with `dependency_file_not_resolvable` on
+  `torch` and `torchvision`, before and after ADR 0027 (runs 41445044081, 41574159723); the
+  other `uv` updates still open their PR. Likely the CPU-index source for torch on Linux
+  ([ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). The 7-day cooldown works:
+  the log shows "Filtered out N versions due to cooldown", and the first SHA-pinned update was
+  setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier. _(verified 2026-11-03)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
