@@ -140,6 +140,22 @@ Project Cangrejo, the `piperobot` package).
    identical to the sequential run, 0 flips), to bring 75 seeds well under the 30-minute budget
    ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)). Then videos of failed
    episodes in the SO-101 comment (a Phase 0 criterion; needs cameras in the Isaac scene).
+8. Proposal, for Andrés to decide: make the SO-101 verdict a required check. Today "blocked" means
+   a red `so101-gate` check plus the ❌ comment, not a merge refusal (ADR 0035: not required).
+   Snags and the design to solve them:
+   - Job names are generic (`evaluate`, `report`). Add one uniquely named final job,
+     `so101-gate-verdict`, and require only that.
+   - The push `paths` filter means most PRs never produce the check, which would leave them
+     pending forever. Drop the filter. A hosted `changes` job diffs the push against `main` with
+     the same path list, and `evaluate` and `report` run only when it matches.
+     `so101-gate-verdict` runs `if: always()` on a hosted runner. It passes when nothing
+     relevant changed, and otherwise mirrors `report`'s result (a skipped or cancelled
+     `evaluate` fails).
+   - The runner is a PC that can be off. A required check would then leave relevant PRs pending,
+     so Andrés needs a ruleset bypass for himself.
+   - Fork PRs never get the check, because the workflow is push-only. A collaborator pushes
+     their commits to a branch here, as today.
+   Changing the ruleset is Andrés's call, in the GitHub UI. Write an ADR if he says yes.
 
 ## Open questions for Andrés
 
