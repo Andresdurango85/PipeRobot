@@ -1,0 +1,127 @@
+name: history
+
+# Evaluate main, append success-rate evidence to the history branch, and publish Pages (ADR 0026).
+on:
+  push:
+    branches: [main]
+    paths: ['piperobot/**', 'robots/pusht/**', 'uv.lock', '.github/workflows/history.yml',
+            '.github/scripts/append_history.sh']
+  workflow_dispatch:
+permissions: {}
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      POLICY: robots/pusht/policies/vqbet.json
+      BASELINE: robots/pusht/baselines/vqbet.json
+      WORK_DIR: work/lerobot
+      RESULTS: out/results.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - name: Install dependencies (from uv.lock, CPU-only torch)
+        run: uv sync --locked --extra lerobot --group sim-pusht
+      - name: Record platform and evaluation time
+        run: |
+          mkdir -p out
+          uv run python -m piperobot.platform_info | tee out/platform.txt
+          echo "Runner: $(cat out/platform.txt)" >> "$GITHUB_STEP_SUMMARY"
+          date -u +%Y-%m-%dT%H:%M:%SZ > out/evaluated_at.txt
+      - name: Cache the prepared policy
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.WORK_DIR }}/policies
+          key: policy-${{ hashFiles('robots/pusht/policies/vqbet.json', 'uv.lock', 'piperobot/adapters/lerobot/policy.py') }}
+      - name: Evaluate policy (PushT, 50 fixed-seed episodes on CPU)
+        run: |
+          uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" --work-dir "$WORK_DIR" \
+            --output "$RESULTS"
+      - name: Upload evaluation
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: history-evaluation
+          path: |
+            out/results.json
+            out/platform.txt
+            out/evaluated_at.txt
+          retention-days: 7
+
+  append:
+    needs: evaluate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    # No concurrency group: it would cancel a pending run and drop a point; the script retries.
+    env:
+      BASELINE: robots/pusht/baselines/vqbet.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv sync --locked --no-dev
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: history-evaluation
+          path: out/
+      - name: Append evaluation to history
+        env:
+          HISTORY_REMOTE: https://github.com/${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          commit_date=$(TZ=UTC git show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd "$GITHUB_SHA")
+          bash .github/scripts/append_history.sh \
+            --results out/results.json --baseline-file "$BASELINE" \
+            --commit "$GITHUB_SHA" --commit-date "$commit_date" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --platform "$(cat out/platform.txt)" --evaluated-at "$(cat out/evaluated_at.txt)"
+
+  deploy:
+    needs: append
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # As GitHub's Pages template: cancelling a deploy midway can break it.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: history
+          path: history-data
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv sync --locked --no-dev
+      - name: Render history page and publish raw data
+        run: |
+          uv run --no-dev python -m piperobot.reports.history render \
+            --history history-data/history.json --output site/index.html
+          cp history-data/history.json site/history.json
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        id: deployment

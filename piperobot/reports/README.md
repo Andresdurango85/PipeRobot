@@ -23,7 +23,7 @@ uv run python -m piperobot.reports.sticky_comment --pr 12 --body-file comment.md
 
 `history.py` keeps schema 1 evaluation records and renders a standalone HTML page with
 success-rate charts, confidence bars, platform markers and run links. It uses only the standard
-library. Workflows can call these commands; no workflow invokes them yet.
+library.
 
 ```
 python -m piperobot.reports.history append --history history.json --results results.json \
@@ -36,3 +36,7 @@ python -m piperobot.reports.history render --history history.json --output histo
 identical run/attempt duplicates are idempotent, conflicting duplicates fail, and saving requires
 the previous history as an exact prefix. Writes replace the file atomically. Invalid inputs exit
 2 with an `ERROR:` line. Platform labels default to `python -m piperobot.platform_info`.
+
+The `history.yml` workflow evaluates main, appends each result to the `history` data branch
+with fetch/append/push retries, and renders that branch to GitHub Pages. CI never uses `--new`;
+the data branch must be created and seeded first (ADR 0026).

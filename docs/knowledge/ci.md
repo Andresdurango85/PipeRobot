@@ -43,6 +43,17 @@
   scorecard-action and harden-runner as steps. Only `push` and `schedule` are supported triggers;
   `workflow_dispatch` and `pull_request` are experimental. Not a gate.
   _(verified 2026-11-02, scorecard-action v2.5.0 README)_
+- **`mutation.yml`**: mutmut on `piperobot/stats` on `ubuntu-latest`, weekly, by hand, and on
+  PRs that touch the stats code or its tests; score and survivors in the job summary and log. Not
+  a gate ([testing.md](testing.md)). _(verified 2026-11-02, mutmut 3.8.1)_
+- **`history.yml`**: on push to `main` touching `piperobot/`, `robots/pusht/`, `uv.lock` or itself,
+  and by hand: evaluates PushT (`contents: read`), appends one record to `history.json` on the
+  append-only `history` branch through `.github/scripts/append_history.sh` (the only job with
+  `contents: write`; fetch–append–push with retries, explicit `refs/heads/history` refspec), and
+  deploys the rendered page to Pages (`pages: write`, `id-token: write`, `github-pages`
+  environment). `append` and `deploy` run only on `refs/heads/main`
+  ([ADR 0026](../decisions/0026-success-rate-history-data-branch-and-pages.md)). Needs Pages from
+  GitHub Actions, the `history` branch and its ruleset first. _(written 2026-11-03; not yet run)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
