@@ -19,6 +19,9 @@ reach the home PC.
 
 ### Gate policy and power
 
+> Superseded by [0036](0036-so101-gate-scripted-policy-on-100-fixed-seeds.md): the gate now
+> evaluates the scripted policy on 100 fixed seeds.
+
 - The gate evaluates `robots/so101/policies/demo_replay.json` for now: open-loop replay of the
   course's 75 demos on the reconstructed layout, one Isaac process per seed (0033). It is a
   pipeline test, not a policy with power. Its reference rate is 6/75 (8%): the dataset has no
@@ -38,6 +41,9 @@ reach the home PC.
   own baseline measured by the workflow's baseline mode, and supersedes this section.
 
 ### Baseline
+
+> Superseded by [0036](0036-so101-gate-scripted-policy-on-100-fixed-seeds.md): the gate now
+> evaluates the scripted policy on 100 fixed seeds.
 
 - Measured by the workflow's baseline mode on the runner, as `gh-runner`, with the tool-cache
   Isaac venv and `prepare_caches.py`-verified inputs: the exact conditions of a gate run. It is

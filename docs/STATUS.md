@@ -126,9 +126,12 @@ Project Cangrejo, the `piperobot` package).
    nightlies, decide on a paired mode for pr-gate.
 3. Isaac (with Berta's gate workflow,
    [ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)): switch the gate's policy
-   to the scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)),
-   measure its 500-seed baseline (100000-100499) with the workflow's baseline mode, and register a
-   deliberately worse scripted parameter for the BLOCK demo. Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
+   to the scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md))
+   on 100 fixed seeds (100000-100099), baseline measured on the swap branch
+   ([ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)); the
+   evaluator's two workers passed their registered repeatability test (#62). Then register a
+   deliberately worse scripted parameter (dev seeds only) for the BLOCK demo.
+   Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
    for failed-episode videos.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).

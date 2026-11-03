@@ -105,9 +105,12 @@
   anything under `piperobot/`, `pyproject.toml`, `uv.lock` or itself (and by hand, with
   `mode: gate | baseline`; a baseline run is never cancelled). Job `evaluate` on the self-hosted GPU runner (`contents: read`):
   reuses `isaac-render`'s tool-cache Isaac Lab, verifies inputs with `prepare_caches.py` into
-  `$RUNNER_TOOL_CACHE\piperobot-cache`, fails fast below 3584 MiB of free VRAM, evaluates seeds
-  0–74 and uploads the `so101-gate` artifact. Job `report` on `ubuntu-24.04` (the only job with
-  `pull-requests: write`): paired verdict against `robots/so101/baselines/demo-replay-episodes.json`,
+  `$RUNNER_TOOL_CACHE\piperobot-cache`, picks 2 Isaac workers when the free VRAM allows
+  (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds), evaluates the scripted
+  policy on seeds 100000-100099 ([ADR 0036](../decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md))
+  and uploads the `so101-gate` artifact. Job `report` on `ubuntu-24.04` (the only job with
+  `pull-requests: write`): paired verdict against `$BASELINE-episodes.json`
+  (`robots/so101/baselines/scripted-pick-place`),
   sticky comment `<!-- piperobot-gate:so101 -->` on the open PRs whose head is the commit,
   failure on BLOCK; with no baseline on the branch it only writes a summary while `main` has none
   either, and fails once `main` has one. Not a required
@@ -116,7 +119,16 @@
   (run 41664424596, b = c = 0); demo PR #60 with the registered weak grip BLOCK (run
   41669493827: 0/75, b = 6, c = 0, p = 1/64). Each run is ~26 min, and a merge that touches the
   watched paths also queues a gate run on main, so a follow-up PR can wait ~25 min for the
-  runner. _(2026-11-03)_
+  runner. Those results are the replay era (demo_replay, seeds 0-74). **A baseline measured on
+  a branch** (dispatch `mode=baseline` with `--ref` the branch) is valid only if the branch is
+  up to date with main at dispatch time: the platform guard does not see code drift, so a
+  gate-relevant merge on main before the branch merges means update and measure again.
+  Scripted-era timing (baseline run 41707984345, 78/100, one worker): 52 min of evaluation; a
+  failed seed costs ~2x a success (full 600-step horizon), so a regressing PR runs longer, up to
+  ~95 min on one worker if every seed fails. Two workers take ~27 min at the baseline rate. The
+  evaluate step times out at 120 min and the job at 130 so a timeout never replaces a verdict; a
+  failed `evaluate` skips `report` (red check, no verdict). _(verified 2026-11-03)_
+  _(2026-11-03)_
 - **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
   policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced

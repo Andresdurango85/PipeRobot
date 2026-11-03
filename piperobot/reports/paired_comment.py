@@ -29,9 +29,12 @@ def render_paired_comment(
     run_url: str | None,
     commit: str | None,
     failed_seeds: Sequence[int],
+    note: str | None = None,
 ) -> str:
     """Build a comment; the exact test decides, the interval only reports scale."""
     validate_marker(marker)
+    if note is not None and ("\n" in note or "\r" in note):
+        raise ValueError("note must not contain a newline")
     emoji = {Verdict.PASS: "✅", Verdict.WARN: "⚠️", Verdict.BLOCK: "❌"}[result.verdict]
     counts = result.counts
     interval = result.difference_interval
@@ -75,6 +78,8 @@ def render_paired_comment(
         "",
         "</details>",
     ]
+    if note is not None:
+        lines[3:3] = [f"*{_escape(note)}*", ""]
     footer = []
     if commit:
         footer.append(f"commit {_escape(commit)}")
@@ -98,6 +103,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--title", required=True)
     parser.add_argument("--run-url")
     parser.add_argument("--commit")
+    parser.add_argument("--note")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
@@ -109,6 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             title=args.title,
             run_url=args.run_url,
             commit=args.commit,
+            note=args.note,
             failed_seeds=[episode.seed for episode in candidate.episodes if not episode.success],
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)

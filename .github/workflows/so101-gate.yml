@@ -22,7 +22,8 @@ on:
 
 permissions: {}
 env:
-  SEEDS: "0-74"
+  SEEDS: "100000-100099"
+  BASELINE: robots/so101/baselines/scripted-pick-place
 concurrency:
   group: so101-gate-${{ github.ref }}-${{ inputs.mode || 'gate' }}
   cancel-in-progress: ${{ inputs.mode != 'baseline' }}
@@ -33,7 +34,7 @@ jobs:
     runs-on: [self-hosted, Windows, gpu]
     permissions:
       contents: read
-    timeout-minutes: ${{ inputs.mode == 'baseline' && 240 || 40 }}
+    timeout-minutes: 130
     defaults:
       run:
         shell: powershell
@@ -43,9 +44,11 @@ jobs:
       # Never create EULA_ACCEPTED by hand.
       OMNI_KIT_ACCEPT_EULA: "YES"
       PYTHONUNBUFFERED: "1"
-      TASK: robots/so101/envs/vials_to_rack_task.json
-      POLICY: robots/so101/policies/demo_replay.json
-      MIN_FREE_VRAM_MB: "3584"
+      TASK: robots/so101/envs/vials_to_rack_task_randomized.json
+      POLICY: robots/so101/policies/scripted_pick_place.json
+      MAX_WORKERS: "2"
+      # Peak VRAM of one scripted-policy Isaac worker (3379 MiB over idle) + 25%, rounded to 256.
+      VRAM_PER_WORKER_MB: "4352"
     steps:
       - name: Start the clock
         run: |
@@ -130,18 +133,31 @@ jobs:
           @('GPU free/total MiB:', $memory, 'Compute processes:', $apps) |
             Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           $free = [int](($memory[0] -split ',')[0].Trim())
-          if ($free -lt [int]$env:MIN_FREE_VRAM_MB) {
-            Write-Host "::error::another process holds the GPU; the gate needs $env:MIN_FREE_VRAM_MB MiB free"
+          $workers = 0
+          for ($n = [int]$env:MAX_WORKERS; $n -ge 1; $n--) {
+            if ($free -ge ($n * [int]$env:VRAM_PER_WORKER_MB)) {
+              $workers = $n
+              break
+            }
+          }
+          if ($workers -eq 0) {
+            Write-Host "::error::another process holds the GPU; the gate needs $env:VRAM_PER_WORKER_MB MiB free per worker"
             exit 1
           }
-      - name: Evaluate (75 seeds, one Isaac process per seed)
-        # Baseline can use the job's 240-minute budget; the job timeout remains the upper bound.
-        timeout-minutes: ${{ inputs.mode == 'baseline' && 240 || 32 }}
+          if ($workers -lt [int]$env:MAX_WORKERS) {
+            Write-Host "::warning::running $workers worker(s): not enough free VRAM for $env:MAX_WORKERS; 1 worker (not enough free VRAM): ~50 min at the baseline rate, longer if episodes fail"
+          }
+          "WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "Workers: $workers" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+      - name: Evaluate (scripted policy, 100 seeds, one Isaac process per seed)
+        # Sized for 100 failed seeds on 1 worker (~95 min: a failure runs the full horizon, ~2x a
+        # success, plus retries), so a timeout never stands in for a BLOCK (ADR 0036).
+        timeout-minutes: 120
         run: |
           $ErrorActionPreference = 'Continue'
           $watch = [Diagnostics.Stopwatch]::StartNew()
           uv run --no-sync python -m piperobot.adapters.isaaclab.evaluate `
-            --task $env:TASK --policy $env:POLICY --seeds $env:SEEDS `
+            --task $env:TASK --policy $env:POLICY --seeds $env:SEEDS --workers $env:WORKERS `
             --isaac-python $env:ISAAC_PY --workdir $env:WORK `
             --output "$env:OUT\results.json" --device cuda:0
           $code = $LASTEXITCODE
@@ -163,7 +179,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi failed' }
           @("Runner: $env:RUNNER_NAME", "GPU name, driver, total VRAM: $gpu",
             "Isaac Lab: $env:ISAACLAB_COMMIT", "Mode: $env:MODE", "Seeds: $env:SEEDS",
-            "Commit: $env:GITHUB_SHA") | Out-File -Encoding utf8 "$env:OUT\runner.txt"
+            "Workers: $env:WORKERS", "Commit: $env:GITHUB_SHA") | Out-File -Encoding utf8 "$env:OUT\runner.txt"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: so101-gate
@@ -200,23 +216,24 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
+          NOTE: "Privileged-state scripted policy: measures the simulated pipeline and regressions, not a deployable policy (ADR 0034)."
         run: |
           if [[ "$MODE" == baseline ]]; then
             mkdir -p out/baseline
-            cp out/results.json out/baseline/demo-replay-episodes.json
+            cp out/results.json "out/baseline/$(basename "$BASELINE")-episodes.json"
             uv run --no-sync python -m piperobot.adapters.isaaclab.baseline record \
               --results out/results.json --metadata out/run_metadata.json \
-              --seeds "$SEEDS" --run-url "$RUN_URL" --output out/baseline/demo-replay.json
-            for file in out/baseline/demo-replay-episodes.json out/baseline/demo-replay.json; do
+              --seeds "$SEEDS" --run-url "$RUN_URL" --output "out/baseline/$(basename "$BASELINE").json"
+            for file in "out/baseline/$(basename "$BASELINE")-episodes.json" "out/baseline/$(basename "$BASELINE").json"; do
               echo "$file" >> "$GITHUB_STEP_SUMMARY"
               head -n 12 "$file" >> "$GITHUB_STEP_SUMMARY"
             done
             exit 0
           fi
-          if [[ ! -f robots/so101/baselines/demo-replay-episodes.json || ! -f robots/so101/baselines/demo-replay.json ]]; then
+          if [[ ! -f "$BASELINE-episodes.json" || ! -f "$BASELINE.json" ]]; then
             main_has_baseline=false
-            for file in demo-replay.json demo-replay-episodes.json; do
-              if gh api "repos/$GITHUB_REPOSITORY/contents/robots/so101/baselines/$file?ref=main" --silent 2> out/baseline-api-error.txt; then
+            for file in "$BASELINE.json" "$BASELINE-episodes.json"; do
+              if gh api "repos/$GITHUB_REPOSITORY/contents/$file?ref=main" --silent 2> out/baseline-api-error.txt; then
                 main_has_baseline=true
               elif ! grep -Eq 'HTTP 404([^0-9]|$)' out/baseline-api-error.txt; then
                 cat out/baseline-api-error.txt >&2
@@ -234,7 +251,7 @@ jobs:
           fi
           platform_code=0
           uv run --no-sync python -m piperobot.adapters.isaaclab.baseline check \
-            --baseline robots/so101/baselines/demo-replay.json \
+            --baseline "$BASELINE.json" \
             --metadata out/run_metadata.json 2> out/platform-check.txt || platform_code=$?
           if [[ "$platform_code" -eq 3 ]]; then
             cat out/platform-check.txt >> "$GITHUB_STEP_SUMMARY"
@@ -247,9 +264,9 @@ jobs:
           fi
           code=0
           uv run python -m piperobot.reports.paired_comment \
-            --reference robots/so101/baselines/demo-replay-episodes.json \
+            --reference "$BASELINE-episodes.json" \
             --candidate out/results.json --marker '<!-- piperobot-gate:so101 -->' \
-            --title 'SO-101 gate (tube to rack, Isaac Lab)' \
+            --title 'SO-101 gate (tube to rack, Isaac Lab)' --note "$NOTE" \
             --run-url "$RUN_URL" --commit "$GITHUB_SHA" --output out/comment.md || code=$?
           if [[ "$code" -gt 1 ]]; then exit "$code"; fi
           cat out/comment.md >> "$GITHUB_STEP_SUMMARY"

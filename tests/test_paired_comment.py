@@ -11,6 +11,10 @@ from piperobot.stats.paired import PairedCounts, decide_paired
 
 GOLDEN = Path(__file__).parent / "golden"
 MARKER = "<!-- piperobot-gate:test -->"
+NOTE = (
+    "Privileged-state scripted policy: measures the simulated pipeline and regressions, "
+    "not a deployable policy (ADR 0034)."
+)
 
 
 @pytest.mark.parametrize(
@@ -18,6 +22,7 @@ MARKER = "<!-- piperobot-gate:test -->"
     [
         ("pass", PairedCounts(40, 0, 0, 10)),
         ("block", PairedCounts(30, 10, 0, 10)),
+        ("note", PairedCounts(40, 0, 0, 10)),
     ],
 )
 def test_golden(name: str, counts: PairedCounts) -> None:
@@ -28,6 +33,7 @@ def test_golden(name: str, counts: PairedCounts) -> None:
         run_url="https://example.com/run/1",
         commit="abcdef123",
         failed_seeds=list(range(40)),
+        note=NOTE if name == "note" else None,
     )
     assert rendered == (GOLDEN / f"paired_comment_{name}.md").read_text(encoding="utf-8")
 
@@ -44,7 +50,9 @@ def test_escaping() -> None:
         run_url="https://example.com/)[evil](x)",
         commit="<img>`*",
         failed_seeds=[],
+        note="<b>*unsafe* | [link](x) &",
     )
+    assert "*&lt;b&gt;\\*unsafe\\* \\| \\[link\\]\\(x\\) &amp;*" in text
     assert "<script>" not in text
     assert "&lt;script&gt;" in text
     assert r"\*unsafe\* \| \[link\]\(x\)" in text
@@ -67,11 +75,14 @@ def test_cli(tmp_path: Path, lost: int, expected: int) -> None:
         MARKER,
         "--title",
         "Gate",
+        "--note",
+        NOTE,
         "--output",
         str(output),
     ]
     assert main(args) == expected
     assert output.read_text(encoding="utf-8").startswith(MARKER + "\n")
+    assert "*Privileged\\-state scripted policy:" in output.read_text(encoding="utf-8")
     (tmp_path / "cand.json").write_text("{}", encoding="utf-8")
     assert main(args) == 2
 
@@ -113,3 +124,17 @@ def test_cli_rejects_different_seed_sets(tmp_path: Path) -> None:
         == 2
     )
     assert not output.exists()
+
+
+@pytest.mark.parametrize("note", ["first\nsecond", "first\rsecond", "first\r\nsecond"])
+def test_note_rejects_newline(note: str) -> None:
+    with pytest.raises(ValueError, match=r"note.*newline"):
+        render_paired_comment(
+            decide_paired(PairedCounts(1, 0, 0, 1)),
+            marker=MARKER,
+            title="Gate",
+            run_url=None,
+            commit=None,
+            failed_seeds=[],
+            note=note,
+        )
