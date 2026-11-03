@@ -20,12 +20,12 @@ REF = f"{REPOSITORY}/.github/workflows/"
 POWERSHELL = shutil.which("pwsh") or shutil.which("powershell")
 
 
-def _load(path: Path) -> dict[str, Any]:
-    data: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
+def _load(path: Path) -> dict[str | bool, Any]:
+    data: dict[str | bool, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
     return data
 
 
-def _self_hosted_jobs(data: dict[str, Any]) -> list[dict[str, Any]]:
+def _self_hosted_jobs(data: dict[str | bool, Any]) -> list[dict[str, Any]]:
     return [job for job in data["jobs"].values() if "self-hosted" in _labels(job)]
 
 
@@ -39,6 +39,7 @@ def test_self_hosted_events(path: Path) -> None:
     """Check our workflows for regressions; only the runner hook stops fork additions (ADR 0026)."""
     data = _load(path)
     if _self_hosted_jobs(data):
+        # PyYAML follows YAML 1.1, where the bare key `on` loads as the boolean True.
         triggers = data.get("on", data.get(True))
         assert isinstance(triggers, (str, list, dict)), "missing or invalid workflow triggers"
         events = {triggers} if isinstance(triggers, str) else set(triggers)
@@ -61,7 +62,7 @@ def test_runner_allowlist_matches_workflows() -> None:
     assert allowed == {path.name for path in WORKFLOWS if _self_hosted_jobs(_load(path))}
 
 
-def _uses(data: dict[str, Any]) -> list[str]:
+def _uses(data: dict[str | bool, Any]) -> list[str]:
     uses: list[str] = []
     for job in data["jobs"].values():
         if "uses" in job:
