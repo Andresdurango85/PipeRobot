@@ -37,3 +37,4 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `vials_to_rack_randomization.py`: pure seeded tube/rack poses in meters and radians.
 - `../policies/demo_replay.py`: replay policy; six actions in dataset joint order.
 - `../policies/demo_replay.json`: pinned input hash and offline preparation instructions.
+- `evaluator_acceptance.json`: the evaluator's registered acceptance test and expected study fingerprints.
