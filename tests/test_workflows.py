@@ -646,9 +646,9 @@ def test_so101_scripted_gate_configuration() -> None:
     assert env["MAX_WORKERS"] == "2"
     assert env["VRAM_PER_WORKER_MB"] == "4352"
     assert "MIN_FREE_VRAM_MB" not in env
-    assert evaluate["timeout-minutes"] == 70
+    assert evaluate["timeout-minutes"] == 130
     step = next(s for s in evaluate["steps"] if s.get("name", "").startswith("Evaluate ("))
-    assert step["timeout-minutes"] == 60
+    assert step["timeout-minutes"] == 120
     assert "--workers $env:WORKERS" in step["run"]
     preflight = next(s["run"] for s in evaluate["steps"] if s.get("name") == "GPU preflight")
     assert '"WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV' in preflight
@@ -656,6 +656,9 @@ def test_so101_scripted_gate_configuration() -> None:
         s for s in data["jobs"]["report"]["steps"] if s.get("name") == "Verdict and PR comments"
     )
     script = report["run"]
+    # A failed or timed-out evaluate skips the report: a red check, never a verdict.
+    assert data["jobs"]["report"]["needs"] == "evaluate"
+    assert "if" not in data["jobs"]["report"]
     assert '--baseline "$BASELINE.json"' in script
     assert '--reference "$BASELINE-episodes.json"' in script
     assert 'for file in "$BASELINE.json" "$BASELINE-episodes.json";' in script

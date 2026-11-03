@@ -29,8 +29,8 @@ This supersedes 0035's "Gate policy and power" section and its baseline file nam
   Pairing stays strict (identical seed sets); there is no subset pairing.
 - **Why 100 and not 0034's 500**: while every PR runs the same fixed seeds, the other 400 seeds
   of a 500-seed baseline are never read by the paired test. They would cost 1.8-3.5 h of runner
-  time, subset pairing, and shards merged across dispatches, for no power. 100 seeds take ~25
-  minutes with two workers.
+  time, subset pairing, and shards merged across dispatches, for no power. 100 seeds take ~27
+  minutes of evaluation with two workers at the baseline rate.
 - The comment states what the policy is: "Privileged-state scripted policy: measures the
   simulated pipeline and regressions, not a deployable policy (ADR 0034)" (0034, Consequences).
 - The replay, its specs and its baseline stay in the repository as the evaluator's acceptance
@@ -41,15 +41,20 @@ This supersedes 0035's "Gate policy and power" section and its baseline file nam
 - The evaluate job runs up to two concurrent Isaac workers. The GPU preflight picks the largest
   count that fits the free VRAM (`VRAM_PER_WORKER_MB` each); when only one fits, it runs one,
   with a warning.
-- **The seeds never depend on the worker count**: the fallback runs the same 100 seeds in ~46
-  minutes, over the 30-minute Phase 0 budget, so the power is fixed. The 30-minute criterion is
-  met on the two-worker path with a free GPU; a desktop session holding ~11 of the 16 GB forces
-  the fallback.
+- **The seeds never depend on the worker count**: the fallback runs the same 100 seeds, over the
+  30-minute Phase 0 budget, so the power is fixed. The 30-minute criterion is met only on the
+  two-worker path, which needs ~8.7 GB of free GPU memory; a desktop session holding ~11 of the
+  16 GB forces the fallback (the baseline run fell back to one worker).
 - `workers` is recorded in `run_metadata.json` but is not a guarded platform key: the registered
   repeatability test (sequential vs two workers, 0 flips, identical fingerprints) is what allows
   a fallback run to be paired with a two-worker baseline. If that test ever fails, this rule is
   void.
-- The evaluate step times out at 60 minutes and the job at 70, in both modes.
+- **A failed episode costs about twice a successful one**: it runs the full 600-step horizon
+  (baseline run 41707984345: median 25 s per success, 43-57 s per failure). Wall time therefore
+  grows with the regression a PR introduces. The evaluate step times out at 120 minutes and the
+  job at 130, in both modes: sized for 100 failed seeds on one worker (~95 min, plus retries),
+  because a timeout must never stand in for a verdict. A timed-out or failed `evaluate` skips
+  `report`, so the check is red with no verdict, never a PASS.
 
 ### Baseline measured on the swap branch
 
@@ -81,6 +86,14 @@ number of lost episodes `b` that blocks, given `c` gained episodes.
 - The comment shows `b`, `c`, the exact p and the difference with its interval, so a reader sees
   how close a PASS was.
 
+### Baseline result
+
+- Run 41707984345 (commit eed0025, one worker, 0 retries, no platform difference): **78/100**.
+- All 22 failures are `not_placed`, and 16 of them hit the wrist_flex joint limit: the scripted
+  policy's known failure mode (0034), a property of the policy, not a gate defect.
+- The rate is below 0034's 43/50 on other seeds, but the two overlap: 95% Wilson intervals
+  0.69-0.85 and 0.74-0.93.
+
 ## Alternatives considered
 
 - **500-seed baseline with PR seeds as a subset (0034's proposal)**: no consumer for the extra
@@ -99,7 +112,12 @@ number of lost episodes `b` that blocks, given `c` gained episodes.
 
 ## Consequences
 
-- A PR touching the gate's paths costs ~25 minutes of the home PC with two workers, ~46 with one.
+- Phase 0's 30-minute budget holds only with two workers: ~27 minutes of evaluation at the
+  baseline rate. With one worker a run takes 52 minutes at 78% (the baseline run) and up to
+  ~95 minutes if every seed fails. Whether the desktop leaves ~8.7 GB free during gate runs is
+  the owner's open decision.
+- A possible later lever, not part of this decision: ending an episode early once the tube is
+  irrecoverable. It changes what an episode is, so it needs its own ADR and a new baseline.
 - A change to the task, the randomization, the success tracker or the evaluator needs the
   baseline measured again (and voids 0034's go/no-go).
 - The gate still measures a privileged-state policy in simulation; ACT replaces it through the

@@ -1,0 +1,26 @@
+{
+  "policy": "scripted-pick-place",
+  "evaluator": "isaaclab",
+  "successes": 78,
+  "trials": 100,
+  "seeds": "100000-100099",
+  "commit": "eed0025581d9432c566729516a7a5c90c0031224",
+  "platform": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "cuda_version": "13.0",
+    "driver_version": "610.88",
+    "torch_version": "2.11.0+cu130",
+    "isaac_lab_version": "28.0.1",
+    "device": "cuda:0",
+    "options": {
+      "actuators": "course",
+      "assets_dir": null,
+      "action_space": "tcp",
+      "horizon_steps": 600,
+      "ik_gain": 0.2,
+      "ik_max_lead_rad": 0.25
+    }
+  },
+  "updated": "2026-11-03",
+  "how": "Recorded from Isaac Lab evaluation: https://github.com/Andresdurango85/PipeRobot/actions/runs/41707984345"
+}

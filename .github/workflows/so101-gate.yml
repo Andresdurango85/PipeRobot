@@ -34,7 +34,7 @@ jobs:
     runs-on: [self-hosted, Windows, gpu]
     permissions:
       contents: read
-    timeout-minutes: 70
+    timeout-minutes: 130
     defaults:
       run:
         shell: powershell
@@ -145,13 +145,14 @@ jobs:
             exit 1
           }
           if ($workers -lt [int]$env:MAX_WORKERS) {
-            Write-Host "::warning::running $workers worker(s): not enough free VRAM for $env:MAX_WORKERS; expect ~46 min for 100 seeds, over the 30-min budget"
+            Write-Host "::warning::running $workers worker(s): not enough free VRAM for $env:MAX_WORKERS; 1 worker (not enough free VRAM): ~50 min at the baseline rate, longer if episodes fail"
           }
           "WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           "Workers: $workers" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
       - name: Evaluate (scripted policy, 100 seeds, one Isaac process per seed)
-        # 60 minutes covers the 1-worker fallback, ~46 min for 100 seeds.
-        timeout-minutes: 60
+        # Sized for 100 failed seeds on 1 worker (~95 min: a failure runs the full horizon, ~2x a
+        # success, plus retries), so a timeout never stands in for a BLOCK (ADR 0036).
+        timeout-minutes: 120
         run: |
           $ErrorActionPreference = 'Continue'
           $watch = [Diagnostics.Stopwatch]::StartNew()

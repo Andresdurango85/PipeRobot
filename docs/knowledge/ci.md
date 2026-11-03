@@ -106,7 +106,7 @@
   `mode: gate | baseline`; a baseline run is never cancelled). Job `evaluate` on the self-hosted GPU runner (`contents: read`):
   reuses `isaac-render`'s tool-cache Isaac Lab, verifies inputs with `prepare_caches.py` into
   `$RUNNER_TOOL_CACHE\piperobot-cache`, picks 2 Isaac workers when the free VRAM allows
-  (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds, ~46 min), evaluates the scripted
+  (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds), evaluates the scripted
   policy on seeds 100000-100099 ([ADR 0036](../decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md))
   and uploads the `so101-gate` artifact. Job `report` on `ubuntu-24.04` (the only job with
   `pull-requests: write`): paired verdict against `$BASELINE-episodes.json`
@@ -123,6 +123,11 @@
   a branch** (dispatch `mode=baseline` with `--ref` the branch) is valid only if the branch is
   up to date with main at dispatch time: the platform guard does not see code drift, so a
   gate-relevant merge on main before the branch merges means update and measure again.
+  Scripted-era timing (baseline run 41707984345, 78/100, one worker): 52 min of evaluation; a
+  failed seed costs ~2x a success (full 600-step horizon), so a regressing PR runs longer, up to
+  ~95 min on one worker if every seed fails. Two workers take ~27 min at the baseline rate. The
+  evaluate step times out at 120 min and the job at 130 so a timeout never replaces a verdict; a
+  failed `evaluate` skips `report` (red check, no verdict). _(verified 2026-11-03)_
   _(2026-11-03)_
 - **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first

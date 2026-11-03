@@ -1,0 +1,528 @@
+{
+  "policy": "scripted-pick-place",
+  "evaluator": "isaaclab",
+  "episodes": [
+    {
+      "seed": 100000,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100001,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100002,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100003,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100004,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100005,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100006,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100007,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100008,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100009,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100010,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100011,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100012,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100013,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100014,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100015,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100016,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100017,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100018,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100019,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100020,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100021,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100022,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100023,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100024,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100025,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100026,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100027,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100028,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100029,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100030,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100031,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100032,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100033,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100034,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100035,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100036,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100037,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100038,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100039,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100040,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100041,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100042,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100043,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100044,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100045,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100046,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100047,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100048,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100049,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100050,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100051,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100052,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100053,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100054,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100055,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100056,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100057,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100058,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100059,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100060,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100061,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100062,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100063,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100064,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100065,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100066,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100067,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100068,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100069,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100070,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100071,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100072,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100073,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100074,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100075,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100076,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100077,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100078,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100079,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100080,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100081,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100082,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100083,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100084,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100085,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100086,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100087,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100088,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100089,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100090,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100091,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100092,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100093,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100094,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100095,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100096,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100097,
+      "success": false,
+      "scene": "randomized",
+      "failure": "not_placed"
+    },
+    {
+      "seed": 100098,
+      "success": true,
+      "scene": "randomized"
+    },
+    {
+      "seed": 100099,
+      "success": true,
+      "scene": "randomized"
+    }
+  ]
+}
