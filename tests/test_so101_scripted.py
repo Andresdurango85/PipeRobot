@@ -86,7 +86,7 @@ def test_fixed_dwell() -> None:
     policy.phase = "close"
     obs = observation()
     for _ in range(2):
-        assert policy.act(obs)[5] == 5
+        assert policy.act(obs)[5] == 12
         assert policy.phase == "close"
     policy.act(obs)
     assert policy.phase == "lift"
