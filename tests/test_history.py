@@ -416,3 +416,70 @@ def test_cli_defaults_are_idempotent(tmp_path: Path) -> None:
 def test_non_object_record(value: Any) -> None:  # noqa: ANN401
     with pytest.raises(HistoryError, match="fields"):
         HistoryRecord.from_dict(value)
+
+
+def test_record_cli_roundtrip(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from piperobot.reports.history import GATE_VERDICT_PREDICATE_TYPE
+
+    results, baseline, output, history = (
+        tmp_path / name for name in ("results.json", "baseline.json", "record.json", "history.json")
+    )
+    save_results(EvalResults("p", "e", (EpisodeResult(7, True),)), results)
+    baseline.write_text('{"successes": 1, "trials": 1}', encoding="utf-8")
+    building = [
+        "--results",
+        str(results),
+        "--baseline-file",
+        str(baseline),
+        "--commit",
+        "a" * 40,
+        "--commit-date",
+        "2026-11-03T10:00:00Z",
+        "--run-url",
+        "https://example.org/run",
+        "--evaluated-at",
+        "2026-11-03T10:01:00Z",
+        "--platform",
+        "CPU",
+    ]
+    identity = ["--run-id", "1", "--run-attempt", "2"]
+    assert main(["record", "--output", str(output), *building, *identity]) == 0
+    record = HistoryRecord.from_dict(json.loads(output.read_text(encoding="utf-8")))
+    assert output.read_bytes().endswith(b"\n")
+    assert b"\r\n" not in output.read_bytes()
+    assert main(["append", "--history", str(history), "--new", *building, *identity]) == 0
+    assert load_history(history) == [record]
+    history.unlink()
+    args = ["append", "--history", str(history), "--record", str(output), "--new"]
+    assert main([*args, *identity]) == 0
+    assert load_history(history) == [record]
+    for run_id, attempt in ((9, 2), (1, 9)):
+        assert main([*args, "--run-id", str(run_id), "--run-attempt", str(attempt)]) == 2
+        assert f"record is for run 1.2, this is run {run_id}.{attempt}" in capsys.readouterr().err
+    for option, value in [
+        ("results", str(results)),
+        ("baseline-file", str(baseline)),
+        ("commit", "a"),
+        ("commit-date", "date"),
+        ("run-url", "url"),
+        ("platform", "CPU"),
+        ("evaluated-at", "date"),
+        ("confidence", "0.95"),
+        ("tolerance", "0.1"),
+    ]:
+        with pytest.raises(SystemExit) as error:
+            main([*args, *identity, f"--{option}", value])
+        assert error.value.code == 2
+    for missing in ("--run-id", "--run-attempt"):
+        incomplete = identity.copy()
+        index = incomplete.index(missing)
+        del incomplete[index : index + 2]
+        with pytest.raises(SystemExit) as error:
+            main([*args, *incomplete])
+        assert error.value.code == 2
+    for invalid in ("{", "{}", "null"):
+        output.write_text(invalid, encoding="utf-8")
+        assert main([*args, *identity]) == 2
+    capsys.readouterr()
+    assert main(["predicate-type"]) == 0
+    assert capsys.readouterr().out == GATE_VERDICT_PREDICATE_TYPE + "\n"

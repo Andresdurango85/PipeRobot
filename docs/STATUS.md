@@ -28,6 +28,11 @@ Project Cangrejo, the `piperobot` package).
   term is ported with a 5 N grasp threshold and a slot-depth rule; registered sensing checks pass
   ([ADR 0028](decisions/0028-so101-scene-gains-and-mount.md)). Replays with contacts vary run to
   run (2/75 outcomes).
+- 2026-11-03: certificates of evaluation, core part: `history record` / `append --record` and
+  `python -m piperobot.reports.certificate verify` (pins signer workflow, `main`, hosted runner,
+  predicate type; checks the signed record against `results.json`)
+  ([ADR 0030](decisions/0030-signed-certificates-of-evaluation.md)). The signing job in
+  `history.yml` follows.
 - 2026-11-03: success-rate history, core part: `piperobot/reports/history.py` appends one record
   per evaluation to an append-only `history.json` and renders a static page (inline SVG, no JS);
   `piperobot/platform_info.py` labels the CPU like `pr-gate`

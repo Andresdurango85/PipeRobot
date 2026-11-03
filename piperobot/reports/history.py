@@ -43,6 +43,11 @@ from piperobot.stats.gate import (
     format_percent,
 )
 
+# Every certificate ever issued carries this exact string; never change it, make a v2 instead.
+GATE_VERDICT_PREDICATE_TYPE = (
+    "https://github.com/Andresdurango85/PipeRobot/blob/main/docs/attestations/gate-verdict-v1.md"
+)
+
 
 class HistoryError(ValueError):
     """History is invalid or an append would rewrite existing records."""
@@ -232,6 +237,10 @@ def save_history(
     if list(history[: len(previous)]) != list(previous):
         raise HistoryError("previous history must be an exact prefix")
     payload = json.dumps([r.to_dict() for r in history], indent=2) + "\n"
+    _save_json(payload, path)
+
+
+def _save_json(payload: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary: str | None = None
     try:
@@ -394,20 +403,68 @@ def render_html(history: Sequence[HistoryRecord], *, title: str = "PipeRobot gat
     return "\n".join([*lines, "</body></html>", ""])
 
 
+def _build_record(args: argparse.Namespace, previous: Sequence[HistoryRecord]) -> HistoryRecord:
+    results = load_results(args.results)
+    result = decide(
+        SuccessCount(results.successes, results.trials),
+        load_baseline(args.baseline_file),
+        args.confidence,
+        args.tolerance,
+    )
+    # Preserve the first timestamp when retrying this exact workflow attempt.
+    existing = next(
+        (r for r in previous if (r.run_id, r.run_attempt) == (args.run_id, args.run_attempt)),
+        None,
+    )
+    evaluated_at = args.evaluated_at or (
+        existing.evaluated_at
+        if existing is not None
+        else datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    )
+    record = record_from_gate(
+        results,
+        result,
+        commit=args.commit,
+        commit_date=args.commit_date,
+        evaluated_at=evaluated_at,
+        run_url=args.run_url,
+        run_id=args.run_id,
+        run_attempt=args.run_attempt,
+        platform=args.platform if args.platform is not None else describe_platform(),
+    )
+    return record
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
     add = commands.add_parser("append")
-    for name in ("history", "results", "baseline-file"):
-        add.add_argument(f"--{name}", type=Path, required=True)
-    for name in ("commit", "commit-date", "run-url"):
-        add.add_argument(f"--{name}", required=True)
-    for name in ("run-id", "run-attempt"):
-        add.add_argument(f"--{name}", type=int, required=True)
-    add.add_argument("--platform")
-    add.add_argument("--evaluated-at")
-    add.add_argument("--confidence", type=float, default=DEFAULT_CONFIDENCE)
-    add.add_argument("--tolerance", type=float, default=DEFAULT_TOLERANCE)
+    record_parser = commands.add_parser("record")
+    commands.add_parser("predicate-type")
+    add.add_argument("--history", type=Path, required=True)
+    add.add_argument("--record", type=Path)
+    record_parser.add_argument("--output", type=Path, required=True)
+    building = (
+        "results",
+        "baseline-file",
+        "commit",
+        "commit-date",
+        "run-url",
+        "platform",
+        "evaluated-at",
+        "confidence",
+        "tolerance",
+    )
+    for command in (add, record_parser):
+        for name in building:
+            kind = (
+                Path
+                if name in ("results", "baseline-file")
+                else (float if name in ("confidence", "tolerance") else str)
+            )
+            command.add_argument(f"--{name}", type=kind, default=argparse.SUPPRESS)
+        for name in ("run-id", "run-attempt"):
+            command.add_argument(f"--{name}", type=int, required=True)
     add.add_argument(
         "--new", action="store_true", help="Allow a missing history for bootstrap or local use only"
     )
@@ -415,45 +472,51 @@ def main(argv: Sequence[str] | None = None) -> int:
     render.add_argument("--history", type=Path, required=True)
     render.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.command == "predicate-type":
+        print(GATE_VERDICT_PREDICATE_TYPE)
+        return 0
+    if args.command in ("append", "record"):
+        if getattr(args, "record", None) is not None:
+            forbidden = [f"--{name}" for name in building if hasattr(args, name.replace("-", "_"))]
+            if forbidden:
+                parser.error("--record cannot be combined with " + ", ".join(forbidden))
+        else:
+            for name in building[:5]:
+                if not hasattr(args, name.replace("-", "_")):
+                    parser.error(f"--{name} is required when building a record")
+        for name, default in (
+            ("platform", None),
+            ("evaluated_at", None),
+            ("confidence", DEFAULT_CONFIDENCE),
+            ("tolerance", DEFAULT_TOLERANCE),
+        ):
+            if not hasattr(args, name):
+                setattr(args, name, default)
     try:
         if args.command == "render":
             page = render_html(load_history(args.history))
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(page, encoding="utf-8", newline="\n")
         else:
-            previous = load_history(args.history, allow_missing=args.new)
-            results = load_results(args.results)
-            result = decide(
-                SuccessCount(results.successes, results.trials),
-                load_baseline(args.baseline_file),
-                args.confidence,
-                args.tolerance,
+            previous = (
+                load_history(args.history, allow_missing=args.new)
+                if args.command == "append"
+                else []
             )
-            # Preserve the first timestamp when retrying this exact workflow attempt.
-            existing = next(
-                (
-                    r
-                    for r in previous
-                    if (r.run_id, r.run_attempt) == (args.run_id, args.run_attempt)
-                ),
-                None,
-            )
-            evaluated_at = args.evaluated_at or (
-                existing.evaluated_at
-                if existing is not None
-                else datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
-            )
-            record = record_from_gate(
-                results,
-                result,
-                commit=args.commit,
-                commit_date=args.commit_date,
-                evaluated_at=evaluated_at,
-                run_url=args.run_url,
-                run_id=args.run_id,
-                run_attempt=args.run_attempt,
-                platform=args.platform if args.platform is not None else describe_platform(),
-            )
+            if getattr(args, "record", None) is not None:
+                record = HistoryRecord.from_dict(
+                    json.loads(args.record.read_text(encoding="utf-8"))
+                )
+                if (record.run_id, record.run_attempt) != (args.run_id, args.run_attempt):
+                    raise HistoryError(
+                        f"record is for run {record.run_id}.{record.run_attempt}, "
+                        f"this is run {args.run_id}.{args.run_attempt}"
+                    )
+            else:
+                record = _build_record(args, previous)
+            if args.command == "record":
+                _save_json(json.dumps(record.to_dict(), indent=2) + "\n", args.output)
+                return 0
             updated = append(previous, record)
             save_history(updated, args.history, previous=previous)
             print("already present" if updated == previous else "appended")

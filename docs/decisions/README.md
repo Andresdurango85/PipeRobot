@@ -37,6 +37,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0027](0027-self-hosted-runner-push-only-and-pinned-actions.md) | Self-hosted jobs run on push only, behind a runner-side hook; actions pinned by SHA | Accepted |
 | [0028](0028-so101-scene-gains-and-mount.md) | SO-101 scene: course gains, course mount, and our own success judgement | Accepted |
 | [0029](0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md) | Refused runner jobs end their worker; every job's workspace is wiped | Accepted |
+| [0030](0030-signed-certificates-of-evaluation.md) | Signed certificates of evaluation: Sigstore attestations of results and verdict on main | Accepted |
 
 ## Template
 
