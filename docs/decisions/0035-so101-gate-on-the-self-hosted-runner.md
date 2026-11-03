@@ -76,7 +76,7 @@ reach the home PC.
   Isaac Lab install that `isaac-render.yml` keeps in the runner's tool cache (built as
   `gh-runner` at the pinned commit; `OMNI_KIT_ACCEPT_EULA` records the owner's acceptance of
   the Omniverse EULA, [0021](0021-isaac-lab-3-on-windows-without-arena.md), confirmed for the
-  runner's install by the owner on DATE), verifies the course assets and
+  runner's install by the owner on 2026-11-03), verifies the course assets and
   episodes by sha256 into a tool-cache `PIPEROBOT_CACHE`, fails fast when less than 3.5 GB of
   GPU memory is free (a desktop session used ~10 GB of the 16 GB when measured on 2026-11-03),
   runs the evaluator, and uploads the
