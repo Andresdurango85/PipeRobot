@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.request
 from collections.abc import Sequence
@@ -49,14 +50,24 @@ class GitHubTransport:
             return json.loads(response.read() or b"null")
 
 
-def find_sticky_comment(transport: Transport, repo: str, pr: int, author: str) -> int | None:
+def validate_marker(marker: str) -> str:
+    """Accept only the gate marker or a named gate marker."""
+    if re.fullmatch(r"<!-- piperobot-gate(?::[A-Za-z0-9_-]+)? -->", marker) is None:
+        raise ValueError("invalid gate marker")
+    return marker
+
+
+def find_sticky_comment(
+    transport: Transport, repo: str, pr: int, author: str, marker: str = COMMENT_MARKER
+) -> int | None:
+    validate_marker(marker)
     page = 1
     while True:
         comments = transport.request(
             "GET", f"/repos/{repo}/issues/{pr}/comments?per_page={PAGE_SIZE}&page={page}"
         )
         for comment in comments:
-            if comment["user"]["login"] == author and comment["body"].startswith(COMMENT_MARKER):
+            if comment["user"]["login"] == author and comment["body"].startswith(marker):
                 return int(comment["id"])
         if len(comments) < PAGE_SIZE:
             return None
@@ -64,12 +75,18 @@ def find_sticky_comment(transport: Transport, repo: str, pr: int, author: str) -
 
 
 def upsert_sticky_comment(
-    transport: Transport, repo: str, pr: int, body: str, author: str = BOT_LOGIN
+    transport: Transport,
+    repo: str,
+    pr: int,
+    body: str,
+    author: str = BOT_LOGIN,
+    marker: str = COMMENT_MARKER,
 ) -> str:
     """Update the existing sticky comment, or create it. Returns "updated" or "created"."""
-    if not body.startswith(COMMENT_MARKER):
+    validate_marker(marker)
+    if not body.startswith(marker):
         raise ValueError("comment body must start with the gate marker")
-    comment_id = find_sticky_comment(transport, repo, pr, author)
+    comment_id = find_sticky_comment(transport, repo, pr, author, marker)
     if comment_id is None:
         transport.request("POST", f"/repos/{repo}/issues/{pr}/comments", {"body": body})
         return "created"
@@ -81,6 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--pr", type=int, required=True, help="Pull request number")
     parser.add_argument("--body-file", type=Path, required=True, help="Rendered comment")
+    parser.add_argument("--marker", type=validate_marker, default=COMMENT_MARKER)
     args = parser.parse_args(argv)
 
     token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_REPOSITORY")
@@ -88,7 +106,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("ERROR: GITHUB_TOKEN and GITHUB_REPOSITORY must be set", file=sys.stderr)
         return 2
     body = args.body_file.read_text(encoding="utf-8")
-    action = upsert_sticky_comment(GitHubTransport(token), repo, args.pr, body)
+    action = upsert_sticky_comment(GitHubTransport(token), repo, args.pr, body, marker=args.marker)
     print(f"Sticky comment {action} on {repo}#{args.pr}")
     return 0
 

@@ -444,3 +444,54 @@ def test_runner_context_is_not_used_in_workflow_or_job_env(path: Path) -> None:
     for env in scopes:
         for value in env.values():
             assert "runner." not in str(value), f"{path.name}: runner context in an env block"
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_write_permissions_never_on_self_hosted(path: Path) -> None:
+    data = _load(path)
+    for job in data["jobs"].values():
+        permissions = job.get("permissions", data.get("permissions", {}))
+        writes = permissions == "write-all" or (
+            isinstance(permissions, dict) and "write" in permissions.values()
+        )
+        if writes:
+            assert "self-hosted" not in _labels(job)
+
+
+def test_so101_gate_trust_boundary() -> None:
+    """The report write token is safe only while this workflow stays push/dispatch-only."""
+    data = _load(ROOT / ".github/workflows/so101-gate.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    assert set(triggers) == {"push", "workflow_dispatch"}
+    assert not {"pull_request", "pull_request_target", "workflow_run", "issue_comment"} & set(
+        triggers
+    )
+    assert data["permissions"] == {}
+    jobs = data["jobs"]
+    assert jobs["evaluate"]["permissions"] == {"contents": "read"}
+    assert jobs["report"]["permissions"] == {"contents": "read", "pull-requests": "write"}
+    assert jobs["report"]["runs-on"] == "ubuntu-24.04"
+    assert jobs["report"]["needs"] == "evaluate"
+    uploads = [
+        s["with"]["name"]
+        for s in jobs["evaluate"]["steps"]
+        if s.get("uses", "").startswith("actions/upload-artifact@")
+    ]
+    downloads = [
+        s["with"]["name"]
+        for s in jobs["report"]["steps"]
+        if s.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert uploads == downloads == ["so101-gate"]
+    for job in jobs.values():
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+
+
+def test_gpu_smoke_excludes_isaaclab() -> None:
+    data = _load(ROOT / ".github/workflows/gpu-smoke.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    paths = triggers["push"]["paths"]
+    assert paths.index("!piperobot/adapters/isaaclab/**") > paths.index("piperobot/**")

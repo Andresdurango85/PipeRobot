@@ -1,0 +1,228 @@
+name: so101-gate
+
+# Push-only trust boundary: the hosted report job alone holds a write token.
+on:
+  push:
+    branches-ignore: ["dependabot/**"]
+    paths:
+      - "robots/so101/policies/**"
+      - "robots/so101/envs/**"
+      - "robots/so101/baselines/**"
+      - "robots/so101/tools/prepare_caches.py"
+      - "piperobot/adapters/isaaclab/**"
+      - "piperobot/stats/paired.py"
+      - "piperobot/reports/paired_comment.py"
+      - ".github/workflows/so101-gate.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [gate, baseline]
+        default: gate
+
+permissions: {}
+concurrency:
+  group: so101-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    if: github.repository == 'Andresdurango85/PipeRobot' && github.actor != 'dependabot[bot]'
+    runs-on: [self-hosted, Windows, gpu]
+    permissions:
+      contents: read
+    timeout-minutes: ${{ inputs.mode == 'baseline' && 240 || 40 }}
+    defaults:
+      run:
+        shell: powershell
+    env:
+      ISAACLAB_COMMIT: 44044b0963001962abe5701133427e37b003fffe
+      # Records the owner's Omniverse EULA acceptance (ADR 0021).
+      # Never create EULA_ACCEPTED by hand.
+      OMNI_KIT_ACCEPT_EULA: "YES"
+      PYTHONUNBUFFERED: "1"
+      TASK: robots/so101/envs/vials_to_rack_task.json
+      POLICY: robots/so101/policies/demo_replay.json
+      SEEDS: "0-74"
+      MIN_FREE_VRAM_MB: "3584"
+    steps:
+      - name: Start the clock
+        run: |
+          $ErrorActionPreference = 'Continue'
+          "JOB_START=$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())" |
+            Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+          cache-local-path: ${{ runner.tool_cache }}/uv-cache
+      - name: Paths
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'isaaclab-3.0'
+          $paths = [ordered]@{
+            ISAAC_ROOT = $root
+            ISAAC_SRC = "$root\IsaacLab"
+            ISAAC_VENV = "$root\venv"
+            ISAAC_PY = "$root\venv\Scripts\python.exe"
+            PIPEROBOT_CACHE = "$env:RUNNER_TOOL_CACHE\piperobot-cache"
+            WORK = "$env:RUNNER_TEMP\so101"
+            OUT = "$env:GITHUB_WORKSPACE\out"
+          }
+          foreach ($entry in $paths.GetEnumerator()) {
+            "$($entry.Key)=$($entry.Value)" |
+              Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          }
+          New-Item -ItemType Directory -Force -Path $paths.OUT, $paths.WORK -ErrorAction Stop | Out-Null
+      - name: Isaac Lab at the pinned commit
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $head = ''
+          if (Test-Path "$env:ISAAC_SRC\.git") {
+            $head = git -C $env:ISAAC_SRC rev-parse HEAD
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot read Isaac Lab HEAD' }
+          }
+          $reuse = (Test-Path $env:ISAAC_PY) -and $head -eq $env:ISAACLAB_COMMIT
+          if ($head -ne $env:ISAACLAB_COMMIT) {
+            # Remove only the fixed source directory inside the runner-owned tool cache.
+            $expected = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TOOL_CACHE 'isaaclab-3.0\IsaacLab'))
+            if ([IO.Path]::GetFullPath($env:ISAAC_SRC) -ne $expected) { throw 'Unsafe source path' }
+            if (Test-Path $expected) { Remove-Item -LiteralPath $expected -Recurse -Force -ErrorAction Stop }
+            New-Item -ItemType Directory -Force -Path $expected -ErrorAction Stop | Out-Null
+            git -C $env:ISAAC_SRC init
+            if ($LASTEXITCODE -ne 0) { throw 'git init failed' }
+            git -C $env:ISAAC_SRC remote add origin https://github.com/isaac-sim/IsaacLab.git
+            if ($LASTEXITCODE -ne 0) { throw 'git remote failed' }
+            git -C $env:ISAAC_SRC fetch --depth 1 origin $env:ISAACLAB_COMMIT
+            if ($LASTEXITCODE -ne 0) { throw 'git fetch failed' }
+            git -C $env:ISAAC_SRC checkout --detach FETCH_HEAD
+            if ($LASTEXITCODE -ne 0) { throw 'git checkout failed' }
+          }
+          $head = git -C $env:ISAAC_SRC rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:ISAACLAB_COMMIT) { throw 'Wrong Isaac Lab commit' }
+
+          if ($reuse) {
+            Write-Host 'reusing Isaac Lab at the pinned commit'
+          } else {
+            Set-Location $env:ISAAC_SRC -ErrorAction Stop
+            $env:UV_PROJECT_ENVIRONMENT = $env:ISAAC_VENV
+            uv sync --locked --extra isaacsim
+            if ($LASTEXITCODE -ne 0) { throw 'uv sync failed' }
+          }
+      - name: Course assets and datasets
+        run: |
+          $ErrorActionPreference = 'Continue'
+          uv sync --locked --group so101-data
+          if ($LASTEXITCODE -ne 0) { throw 'Course dependencies failed' }
+          uv run --no-sync python robots/so101/tools/prepare_caches.py
+          if ($LASTEXITCODE -ne 0) { throw 'Course cache preparation failed' }
+      - name: GPU preflight
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $memory = @(nvidia-smi --query-gpu=memory.free,memory.total --format=csv,noheader,nounits)
+          if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi memory query failed' }
+          $apps = nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
+          if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi process query failed' }
+          @('GPU free/total MiB:', $memory, 'Compute processes:', $apps) |
+            Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          $free = [int](($memory[0] -split ',')[0].Trim())
+          if ($free -lt [int]$env:MIN_FREE_VRAM_MB) {
+            Write-Host "::error::another process holds the GPU; the gate needs $env:MIN_FREE_VRAM_MB MiB free"
+            exit 1
+          }
+      - name: Evaluate (75 seeds, one Isaac process per seed)
+        # Baseline can use the job's 240-minute budget; the job timeout remains the upper bound.
+        timeout-minutes: ${{ inputs.mode == 'baseline' && 240 || 32 }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          uv run --no-sync python -m piperobot.adapters.isaaclab.evaluate `
+            --task $env:TASK --policy $env:POLICY --seeds $env:SEEDS `
+            --isaac-python $env:ISAAC_PY --workdir $env:WORK `
+            --output "$env:OUT\results.json" --device cuda:0
+          $code = $LASTEXITCODE
+          $watch.Stop()
+          "Evaluation seconds: $($watch.Elapsed.TotalSeconds)" |
+            Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          $total = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [int64]$env:JOB_START
+          "Phase 0 elapsed seconds: $total; budget exceeded: $($total -gt 1800)" |
+            Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          if ($total -gt 1800) { Write-Host '::warning::30-min Phase 0 budget exceeded' }
+          if ($code -eq 2) { Write-Host '::error::evaluator error (not a policy failure)' }
+          if ($code -ne 0) { exit $code }
+      - name: Run information
+        env:
+          MODE: ${{ inputs.mode || 'gate' }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $gpu = nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+          if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi failed' }
+          @("Runner: $env:RUNNER_NAME", "GPU name, driver, total VRAM: $gpu",
+            "Isaac Lab: $env:ISAACLAB_COMMIT", "Mode: $env:MODE", "Seeds: $env:SEEDS",
+            "Commit: $env:GITHUB_SHA") | Out-File -Encoding utf8 "$env:OUT\runner.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: so101-gate
+          path: |
+            out/results.json
+            out/run_metadata.json
+            out/episodes_detail.json
+            out/runner.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  report:
+    needs: evaluate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: so101-gate
+          path: out/
+      - name: Verdict and PR comments
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'gate' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$MODE" == baseline ]]; then
+            uv run --no-sync python -c 'from pathlib import Path; from piperobot.results import load_results; r = load_results(Path("out/results.json")); print(f"Baseline: {r.successes}/{r.trials} ({r.successes/r.trials:.1%})")' >> "$GITHUB_STEP_SUMMARY"
+            echo 'commit out/results.json as robots/so101/baselines/demo-replay-episodes.json, with counts in demo-replay.json, by PR' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ ! -f robots/so101/baselines/demo-replay-episodes.json ]]; then
+            echo 'no baseline committed yet; nothing to compare' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          code=0
+          uv run python -m piperobot.reports.paired_comment \
+            --reference robots/so101/baselines/demo-replay-episodes.json \
+            --candidate out/results.json --marker '<!-- piperobot-gate:so101 -->' \
+            --title 'SO-101 gate (tube to rack, Isaac Lab)' \
+            --run-url "$RUN_URL" --commit "$GITHUB_SHA" --output out/comment.md || code=$?
+          if [[ "$code" -gt 1 ]]; then exit "$code"; fi
+          cat out/comment.md >> "$GITHUB_STEP_SUMMARY"
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[] | select(.state == "open") | .number')
+          for pr in $prs; do
+            uv run python -m piperobot.reports.sticky_comment --pr "$pr" \
+              --body-file out/comment.md --marker '<!-- piperobot-gate:so101 -->'
+          done
+          if [[ "$code" -eq 1 ]]; then
+            echo '::error::SO-101 paired gate: BLOCK'
+            exit 1
+          fi

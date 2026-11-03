@@ -80,3 +80,30 @@ def test_main_requires_token_and_repo(tmp_path: Path, monkeypatch: pytest.Monkey
     body.write_text(BODY, encoding="utf-8")
 
     assert main(["--pr", "7", "--body-file", str(body)]) == 2
+
+
+def test_named_gates_have_independent_comments() -> None:
+    github = FakeGitHub()
+    markers = [COMMENT_MARKER, "<!-- piperobot-gate:so101 -->"]
+    for marker in markers:
+        assert upsert_sticky_comment(github, REPO, 7, marker + "\nold", marker=marker) == "created"
+        # Fake transport assigns a fixed ID; give each comment a unique one like GitHub does.
+        github.comments[-1]["id"] = len(github.comments)
+    for marker in markers:
+        assert upsert_sticky_comment(github, REPO, 7, marker + "\nnew", marker=marker) == "updated"
+    assert [c["body"] for c in github.comments] == [m + "\nnew" for m in markers]
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "",
+        "<!-- piperobot-gate: -->",
+        "<!-- other -->",
+        "<!-- piperobot-gate:x -->\n",
+        "<!-- piperobot-gate:<b> -->",
+    ],
+)
+def test_invalid_markers(marker: str) -> None:
+    with pytest.raises(ValueError, match="marker"):
+        upsert_sticky_comment(FakeGitHub(), REPO, 7, marker, marker=marker)
