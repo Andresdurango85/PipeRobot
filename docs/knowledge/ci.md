@@ -128,6 +128,10 @@
   ~95 min on one worker if every seed fails. Two workers take ~27 min at the baseline rate. The
   evaluate step times out at 120 min and the job at 130 so a timeout never replaces a verdict; a
   failed `evaluate` skips `report` (red check, no verdict). _(verified 2026-11-03)_
+  Scripted-era live results: swap PR #63 PASS (run 41721012732, 78/100 vs 78/100, b = c = 0);
+  registered demo PR #65 with gripper_closed 12 BLOCK (run 41728156209: 20/100, b = 59, c = 1,
+  p = 5.3e-17), two workers, 36 min of evaluation although 80 seeds ran the full horizon.
+  _(verified 2026-11-03)_
   _(2026-11-03)_
 - **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first

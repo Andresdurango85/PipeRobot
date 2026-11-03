@@ -1,0 +1,41 @@
+{
+  "registration": "robots/so101/policies/scripted_gripper_closed_12_expectation.json (commit d065273, pushed alone; GitHub created run 41726292756 for it at 2026-11-03T21:56:22Z, and that run was cancelled while queued without running)",
+  "verdict": "BLOCK, as predicted",
+  "summary": "Weakening the scripted policy's grip (gripper_closed 5 -> 12) was blocked on the gate's 100 fixed seeds: 20/100 against the 78/100 baseline, 59 lost and 1 gained, exact McNemar p = 5.3e-17. The binding prediction held and every reported range held too.",
+  "run": {
+    "pr": "#65 (DEMO, DO NOT MERGE; closed unmerged)",
+    "workflow_run": "41728156209 (so101-gate, push of e29d0ab)",
+    "commit": "e29d0ab17be1aa693035303437f7ea573c5d049b",
+    "runner": "home-pc-gpu, RTX 5060 Ti 16 GB, driver 610.88",
+    "workers": 2,
+    "evaluation": "2026-11-03 22:24:15-22:59:48 UTC, 2133 s (21.3 s/seed); evaluate job 22:23:57-22:59:56",
+    "comment": "sticky comment on #65: BLOCK, reference 78/100, candidate 20/100, lost/gained 59/1, -58.0 pp (95% paired CI -66.6 to -46.7 pp); the report job's red check is the expected exit 1 on BLOCK",
+    "artifact_sha256": {
+      "results.json": "8c2671361a8ee268b8fed1c36ca33ce354ed56f01d365f5b56efa213960cfd09",
+      "episodes_detail.json": "ea3a71e07739e83e8bb702860420bd89244c45efbbacbe150292eadd8bada926",
+      "run_metadata.json": "62e188809345d9a0aad7bd6c44121ae8ed4daa51c021b946dce5b72d3f4cd195"
+    }
+  },
+  "validity": {
+    "all 100 seeds evaluated": "met: 100000-100099, the baseline's seed set",
+    "platform_differences empty": "met: run_metadata.platform_differences = []",
+    "retries within budget, no infrastructure error counted as a failure": "met: 0 retries; every seed ran one attempt with exit code 0 and no error",
+    "candidate diff against main is exactly gripper_closed 5 -> 12": "met under the pre-run clarification (deviations): a80deff..e29d0ab is the registration commit plus three lines, gripper_closed 5 -> 12 in scripted_pick_place.json, in the module's DEFAULTS and in test_fixed_dwell; run_metadata records gripper_closed 12"
+  },
+  "predictions": {
+    "verdict (binding)": "BLOCK: held",
+    "b, reported 46-61": "59: held",
+    "c, reported 0-13": "1 (seed 100055): held",
+    "candidate successes, reported 17-45 (point estimate 29)": "20: held, below the point estimate"
+  },
+  "failures": "All 80 failures are not_placed. 36 of them hit the wrist_flex joint limit, including 20 of the 59 lost seeds; in the baseline, 16 of the 22 failures hit that limit.",
+  "mechanism": "The mechanism is consistent with the data, but not directly measured: all failures are not_placed, and 39 of the 59 lost seeds fail without reaching the wrist_flex limit.",
+  "deviations": [
+    {
+      "what": "Validity condition 4 says the diff is exactly gripper_closed 5 -> 12 in scripted_pick_place.json; the demo commit also mirrors that value in the module's DEFAULTS and in test_fixed_dwell.",
+      "cause": "The pre-push tests require it: test_policy_spec_defaults requires the JSON to equal DEFAULTS, and test_fixed_dwell pins the default close command at 5. Bypassing the hooks is not allowed.",
+      "why_behaviour_free": "The policy's parameters are DEFAULTS | params, and the JSON sets every key, so DEFAULTS never reaches a run; the gate does not execute unit tests.",
+      "when": "Approved by piperobot-e5 and written in #65's body (opened 2026-11-03T22:06:11Z) before the demo commit was pushed (22:08:39Z) and before the run started (22:23:57Z). The registration file stays as committed."
+    }
+  ]
+}

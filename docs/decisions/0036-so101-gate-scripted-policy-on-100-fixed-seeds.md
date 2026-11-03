@@ -77,7 +77,7 @@ number of lost episodes `b` that blocks, given `c` gained episodes.
 | Lost `b` needed | 6 | 8 | 10 | 12 | 13 | 15 | 17 |
 
 - A change that only removes successes (c = 0) blocks once it loses 6 of the 100 seeds, a 6 pp
-  drop on a reference near 86%.
+  drop on the measured 78% reference.
 - A general parameter change moves trajectories on every seed (0033: any perturbation changes
   fingerprints), so it can rescue some seeds while it breaks others; c > 0 is the normal case for
   a policy edit, and the threshold climbs about 2 lost episodes per gained one. The registered
@@ -93,6 +93,14 @@ number of lost episodes `b` that blocks, given `c` gained episodes.
   policy's known failure mode (0034), a property of the policy, not a gate defect.
 - The rate is below 0034's 43/50 on other seeds, but the two overlap: 95% Wilson intervals
   0.69-0.85 and 0.74-0.93.
+
+### BLOCK demo result
+
+- The registered regression, gripper_closed 5 -> 12 tuned on development seeds only, was blocked
+  as predicted (#65, closed unmerged; run 41728156209, two workers, 36 min of evaluation): 20/100,
+  b = 59, c = 1, p = 5.3e-17. Every reported range held
+  ([registration](../../robots/so101/policies/scripted_gripper_closed_12_expectation.json),
+  [result](../../robots/so101/policies/scripted_gripper_closed_12_result.json)).
 
 ## Alternatives considered
 

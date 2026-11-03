@@ -145,7 +145,7 @@ jobs:
             exit 1
           }
           if ($workers -lt [int]$env:MAX_WORKERS) {
-            Write-Host "::warning::running $workers worker(s): not enough free VRAM for $env:MAX_WORKERS; 1 worker (not enough free VRAM): ~50 min at the baseline rate, longer if episodes fail"
+            Write-Host "::warning::running $workers worker(s), not enough free VRAM for $env:MAX_WORKERS: ~50 min at the baseline rate, longer if episodes fail"
           }
           "WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           "Workers: $workers" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
