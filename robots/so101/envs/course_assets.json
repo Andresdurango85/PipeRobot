@@ -1,0 +1,46 @@
+{
+  "source": {
+    "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+    "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+    "base_path": "source/sim_to_real_so101/assets/usd",
+    "license": "Apache-2.0",
+    "url_template": "https://media.githubusercontent.com/media/isaac-sim/Sim-to-Real-SO-101-Workshop/{commit}/{base_path}/{name}"
+  },
+  "note": "SHA256 values come from the Git LFS pointers at that commit; reference assets are only fetched with --include-reference.",
+  "assets": [
+    {
+      "name": "lightbox-simple.usd",
+      "sha256": "d58c3a5e9d56e2267037e174037adf0c1ed872100d84e0d907d2d2c044fa5e2b",
+      "size": 50027,
+      "use": "scene"
+    },
+    {
+      "name": "mat.usda",
+      "sha256": "864088793455d7735cbd34b9427f8045fc77afc16e7e5ed27f185a9007872137",
+      "size": 15070,
+      "use": "scene"
+    },
+    {
+      "name": "Vial_opaque.usda",
+      "sha256": "2403816a43d15afc07cb4b03cafca4ef3d2258edc42d8d56fb7ddfed55b81e2b",
+      "size": 1931469,
+      "use": "scene"
+    },
+    {
+      "name": "Vial_rack_simple.usda",
+      "sha256": "a5cd4af58fd8bb89e86bffae1429587eadfcd672a3da0a05f031ea24faba5d99",
+      "size": 1459606,
+      "use": "scene"
+    },
+    {
+      "name": "SO-ARM101-USD.usd",
+      "sha256": "11f5f0bb5f2fae3eefebbcd07dfafc6b14602f6c4e5dae8f21a4a46892991006",
+      "size": 23484011,
+      "use": "reference"
+    }
+  ],
+  "unresolved_remote_references": [
+    "lightbox-simple.usd payload rsd455.usd on an Isaac 5.1 Nucleus path (camera mount; not fetched until cameras are needed)",
+    "MDL materials on omniverse-content-production S3 (render only)"
+  ]
+}

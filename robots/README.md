@@ -40,3 +40,13 @@ The object-free asset check uses `so101/tools/demo_extract.py` (pinned parquet e
 videos), `so101/tools/isaac_demo_replay.py` (Isaac Lab 3.0, substeps 2 and 4) and
 `so101/tools/demo_replay_report.py` (bare-Python GO / BASE_OFFSET / NO_GO report). Scene data,
 unit mapping and fixed analysis rules live in `so101/envs/`.
+
+- `so101/envs/course_assets.json`: pinned course asset manifest and provenance.
+- `so101/tools/fetch_course_assets.py`: verified external-cache fetch and offline check.
+- `so101/envs/vials_to_rack_success.py`: pure per-episode placement and success tracker.
+
+- `so101/envs/vials_to_rack_scene.py`: nominal Isaac Lab scene without cameras or randomization.
+- `so101/envs/vials_to_rack_layout.py`: pure deterministic reconstructed-demo layouts.
+- `so101/tools/isaac_mount_compare.py`: verified course/native asset mount comparison.
+- `so101/tools/isaac_success_check.py`: registered static sensing checks and demo diagnostics.
+- `so101/tools/success_variants.py`: replays dumped tracker inputs under 2/5 N x slot-depth on/off (diagnostic).
