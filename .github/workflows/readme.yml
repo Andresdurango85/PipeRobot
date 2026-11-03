@@ -6,9 +6,6 @@ on:
     - cron: "41 4 * * 3"
   pull_request:
     paths: [README.md, .github/scripts/readme_commands.py, .github/workflows/readme.yml]
-  # TEMPORARY: measurement run before merge, remove
-  push:
-    branches: [docs/readme-30-minutes]
 
 permissions: {}
 
