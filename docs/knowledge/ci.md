@@ -289,8 +289,20 @@
 - **Secret scanning's non-provider patterns and validity checks stay disabled** on this repo:
   the API returns 200 to the request but nothing changes, likely because they need GitHub Secret
   Protection, which a personal public repo does not have. Do not retry. _(verified 2026-11-02)_
-- **`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19.** No impact today because uv pins Python
-  3.12 itself. _(verified 2026-10-26, run annotations)_
+- ~~`ubuntu-latest` moves to Ubuntu 26 from 2026-10-19. No impact today because uv pins Python
+  3.12 itself.~~ _(2026-10-26; wrong about the impact, see below)_
+- **`ubuntu-latest` becomes Ubuntu 26.04.1 (kernel 7.0) in a rollout from 2026-10-19 to
+  2026-11-19** (actions/runner-images#14748). uv pins Python, but torch's CPU wheels still load
+  the OS's glibc/libm, which can flip near-miss PushT episodes like a CPU change does. So the jobs
+  whose results are compared across runs pin `ubuntu-24.04`: `pr-gate`, `baseline.yml`
+  and `history.yml`'s `evaluate` job (`tests/test_workflows.py` checks it). The
+  others (`ci`, `zizmor`, `scorecard`, `mutation`, `dependency-review`) stay on `ubuntu-latest`.
+  Until then every run of ours had landed on 24.04.5 (image versions 20261012, 20261025).
+  _(verified 2026-11-03)_
+- **Moving the pinned jobs to a new image is a deliberate step**: dispatch `baseline.yml` on the
+  new image and compare it episode by episode with `robots/pusht/baselines/vqbet-episodes.json`
+  (`python -m piperobot.stats.paired`). Identical: switch every pinned label in one PR. Not
+  identical: refresh the baseline in the same PR as the switch. _(2026-11-03)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`
   ([ADR 0007](../decisions/0007-lf-line-endings.md)). _(verified 2026-10-26)_
 - **Editing the sticky PR comment needs `pull-requests: write`** in the workflow permissions
