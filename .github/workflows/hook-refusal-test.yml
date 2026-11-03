@@ -1,0 +1,14 @@
+name: hook-refusal-test
+
+# THROWAWAY, never merge (ADR 0027 verification): the runner's job-started hook must refuse
+# both runs, the push (file not allowlisted) and the pull_request (event not allowed).
+on: [push, pull_request]
+
+permissions: {}
+
+jobs:
+  must-be-refused:
+    runs-on: [self-hosted, Windows, gpu]
+    timeout-minutes: 5
+    steps:
+      - run: echo "THIS STEP MUST NOT RUN"
