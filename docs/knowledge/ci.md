@@ -111,6 +111,13 @@
   line, runner image). A second job, without torch, runs `piperobot.stats.paired` and the unpaired gate for the
   summary and fails on a paired BLOCK. `workflow_dispatch` only works once a workflow is on the
   default branch, so the pre-merge measurement used a temporary `push` trigger on the PR branch.
+- **First nightly measurement** (run 41592248166, seeds 253000–253499, `ubuntu-24.04`, AMD EPYC
+  9V45): evaluate job 22 min (reference 620 s, candidate 681 s for 500 episodes each), verdict
+  job 7 s. Paired: 309/500 both, 0 discordant, PASS. Unpaired: 309/500 = 61.8% on fresh seeds
+  against the committed 265/500 = 53.0% on 1000–1499, +8.8 pp with the interval [0.027, 0.148]
+  above zero: the gate's fixed seeds may be harder than average. One night only; the series will
+  tell.
+  _(verified 2026-11-03)_
 - **Triage of a nightly BLOCK**: an alert, never a merge block. Do not rerun the same seeds: CPU
   PushT is deterministic within a runner, so a rerun only reproduces it. Look at the discordant
   seeds in the two results files, then wait for the next nights' fresh seeds or dispatch more

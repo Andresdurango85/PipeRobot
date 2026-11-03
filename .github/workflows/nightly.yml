@@ -16,9 +16,6 @@ on:
       first_seed:
         description: First seed (empty uses today's rotating range)
         default: ""
-  # TEMPORARY: measurement run before merge, remove
-  push:
-    branches: [feat/nightly-paired]
 
 permissions: {}
 concurrency:

@@ -81,7 +81,10 @@ both logged "AMD EPYC 9V74" disagreed on 10 episodes; [lerobot.md](../knowledge/
   `runner_image.txt`: `ubuntu-latest` becomes Ubuntu 26.04 by 2026-11-19, and a new OS can move
   near-miss episodes. Both arms share the job, so the paired verdict would survive an image
   change; the unpaired comparison with the committed counts would not.
-- About 50 minutes of hosted runner time per night (two arms of ~22 min, two installs).
+- About 25 minutes of hosted runner time per night: the pre-merge measurement (run 41592248166,
+  500 episodes per arm) took 620 s for the reference and 681 s for the candidate, 22 min for the
+  whole evaluate job. Both arms gave 309/500 with no discordant episode (PASS, p = 1), as an
+  unchanged `main` should.
 - The reference commit's evaluator CLI (`piperobot.adapters.lerobot.evaluate`) must keep
   working for as long as that commit is the reference; a baseline refresh moves it forward.
 - GitHub disables scheduled workflows after 60 days without repository activity.
