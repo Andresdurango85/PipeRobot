@@ -30,6 +30,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from fractions import Fraction
 from statistics import NormalDist
 
 DEFAULT_CONFIDENCE = 0.95
@@ -42,6 +43,10 @@ class SuccessCount:
     trials: int
 
     def __post_init__(self) -> None:
+        for name in ("successes", "trials"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise TypeError(f"{name} must be an int, got {value!r}")
         if self.trials <= 0:
             raise ValueError(f"trials must be positive, got {self.trials}")
         if not 0 <= self.successes <= self.trials:
@@ -132,9 +137,16 @@ def decide(
     tolerance: float = DEFAULT_TOLERANCE,
 ) -> GateResult:
     """Apply the gate rule (see module docstring) to a candidate vs. baseline evaluation."""
+    if not math.isfinite(tolerance):
+        raise ValueError(f"tolerance must be finite, got {tolerance}")
     if tolerance < 0:
         raise ValueError(f"tolerance must be >= 0, got {tolerance}")
     difference = candidate.rate - baseline.rate
+    # WARN compares exact counts with the tolerance as typed (0.1 is 1/10): with floats, a drop
+    # of exactly the tolerance can round above it (0.7 - 0.8 == -0.10000000000000009).
+    exact_drop = Fraction(baseline.successes, baseline.trials) - Fraction(
+        candidate.successes, candidate.trials
+    )
     diff_interval = newcombe_interval(candidate, baseline, confidence)
 
     if diff_interval.upper < 0:
@@ -143,7 +155,7 @@ def decide(
             f"Regression: success rate dropped {-difference * 100:.1f} pp and the {confidence:.0%} "
             f"interval of the difference {diff_interval} is entirely below zero."
         )
-    elif -difference > tolerance:
+    elif exact_drop > Fraction(str(tolerance)):
         verdict = Verdict.WARN
         reason = (
             f"Success rate dropped {-difference * 100:.1f} pp "

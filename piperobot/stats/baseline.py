@@ -21,6 +21,6 @@ class BaselineError(ValueError):
 def load_baseline(path: Path) -> SuccessCount:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        return SuccessCount(int(data["successes"]), int(data["trials"]))
+        return SuccessCount(data["successes"], data["trials"])
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise BaselineError(f"invalid baseline {path}: {exc}") from exc
