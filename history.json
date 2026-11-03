@@ -178,5 +178,35 @@
     "verdict": "pass",
     "seeds": "1000-1049",
     "platform": "AMD EPYC 7763 64-Core Processor, 4 CPUs"
+  },
+  {
+    "schema": 1,
+    "commit": "ffb6d93cfc14a68c9b598a50594f4c04c339683e",
+    "commit_date": "2026-11-03T06:56:30Z",
+    "evaluated_at": "2026-11-03T06:56:46Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/41593052190",
+    "run_id": 41593052190,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 27,
+    "trials": 50,
+    "confidence": 0.95,
+    "interval": [
+      0.4039887139915749,
+      0.6703034780777565
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.1327531482311236,
+      0.147470944853511
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "1000-1049",
+    "platform": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz, 4 CPUs"
   }
 ]
