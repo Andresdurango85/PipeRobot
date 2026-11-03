@@ -1,0 +1,18 @@
+{
+  "name": "course-demo-replay-weak-grip",
+  "module": "demo_replay.py",
+  "factory": "DemoReplayPolicy",
+  "repo_id": "sreetz-nv/so101_teleop_vials_rack_left",
+  "revision": "69802873f4a26bffb716fca1f4fb1bb0e3d2a07a",
+  "options": {
+    "episodes_json": "${PIPEROBOT_CACHE}/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json",
+    "gripper_floor": 25.0
+  },
+  "files": [
+    {
+      "path": "${PIPEROBOT_CACHE}/datasets/sreetz-nv--so101_teleop_vials_rack_left/69802873f4a26bffb716fca1f4fb1bb0e3d2a07a/episodes.json",
+      "sha256": "273e182343a8d2a477a7cf9d562162a632e4197cc0a6bde41ae5f2c5823c2d52"
+    }
+  ],
+  "prepare": "uv run --no-sync python robots/so101/tools/prepare_caches.py"
+}

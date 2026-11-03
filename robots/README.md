@@ -67,3 +67,6 @@ unit mapping and fixed analysis rules live in `so101/envs/`.
 - `so101/policies/scripted_pick_place.py`: privileged waypoint policy scaffold.
 - `so101/policies/scripted_pick_place.json`: default scripted policy parameters.
 - `so101/tools/isaac_scripted_spike.py`: single-process randomized tuning and step diagnostics.
+- `so101/tools/prepare_caches.py`: idempotent verified asset and episode cache preparation.
+- `so101/policies/demo_replay_weak_grip.json`: replay with a 25-unit gripper floor.
+- `so101/policies/weak_grip_expectation.json`: pre-registered weak-grip BLOCK prediction.

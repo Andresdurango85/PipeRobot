@@ -139,6 +139,7 @@ def test_driver(
     capsys: pytest.CaptureFixture[str],
     mode: str,
 ) -> None:
+    monkeypatch.setenv("PIPEROBOT_CACHE", str(tmp_path / "cache with spaces"))
     monkeypatch.setattr(evaluate, "git_commit", lambda repo: "test-commit")
     monkeypatch.setattr(evaluate, "PACKAGE_PARENT", tmp_path / "repo")
     task, policy = specs
@@ -230,6 +231,7 @@ def test_driver(
         assert len({c[0][c[0].index("--out") + 1] for c in calls}) == len(calls)
         assert kwargs["cwd"] == (tmp_path / "work").resolve()
         assert kwargs["timeout"] == 300
+        assert kwargs["env"]["PIPEROBOT_CACHE"] == str(tmp_path / "cache with spaces")
         assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
         assert kwargs["env"]["PYTHONPATH"].split(os.pathsep)[0] == str(tmp_path / "repo")
     assert metadata["git_commit"] == "test-commit"

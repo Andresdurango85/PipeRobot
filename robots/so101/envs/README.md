@@ -43,3 +43,6 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `../policies/scripted_pick_place.py`: privileged waypoint policy scaffold.
 - `../policies/scripted_pick_place.json`: default scripted policy parameters.
 - `../tools/isaac_scripted_spike.py`: single-process randomized tuning and step diagnostics.
+- `../tools/prepare_caches.py`: idempotent verified asset and episode cache preparation.
+- `../policies/demo_replay_weak_grip.json`: replay with a 25-unit gripper floor.
+- `../policies/weak_grip_expectation.json`: pre-registered weak-grip BLOCK prediction.
