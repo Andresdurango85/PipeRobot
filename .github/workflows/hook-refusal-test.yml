@@ -1,7 +1,8 @@
 name: hook-refusal-test
 
-# THROWAWAY, never merge (ADR 0027 verification): the runner's job-started hook must refuse
-# both runs, the push (file not allowlisted) and the pull_request (event not allowed).
+# THROWAWAY, never merge (ADR 0027 follow-up verification): the runner's job-started hook must
+# refuse both runs, the push (file not allowlisted) and the pull_request (event not allowed), and
+# end the job before any step runs, including the if: always() steps below.
 on: [push, pull_request]
 
 permissions: {}
@@ -12,3 +13,19 @@ jobs:
     timeout-minutes: 5
     steps:
       - run: echo "THIS STEP MUST NOT RUN"
+
+      - name: Always step must not run either
+        if: always()
+        shell: powershell
+        run: |
+          $marker = "C:\actions-runner\_diag\always-marker-$env:GITHUB_RUN_ID-$env:GITHUB_EVENT_NAME.txt"
+          "ALWAYS STEP RAN: $env:GITHUB_EVENT_NAME $env:GITHUB_RUN_ID" | Out-File -Encoding utf8 $marker
+          Write-Output "ALWAYS STEP RAN, marker $marker"
+
+      - name: Always upload must not run either
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: must-not-exist-${{ github.run_id }}
+          path: .
+          include-hidden-files: true
