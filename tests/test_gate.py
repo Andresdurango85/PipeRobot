@@ -50,6 +50,12 @@ def test_success_count_rejects_impossible_values(successes: int, trials: int) ->
         SuccessCount(successes, trials)
 
 
+@pytest.mark.parametrize(("successes", "trials"), [(2.5, 5), (2, 5.0), (True, 5), (0, True)])
+def test_success_count_rejects_non_integer_values(successes: object, trials: object) -> None:
+    with pytest.raises(TypeError, match="must be an int"):
+        SuccessCount(successes, trials)
+
+
 # --- Intervals: published reference values (Newcombe 1998) -------------------------------------
 
 
@@ -123,6 +129,17 @@ def test_small_non_significant_drop_warns() -> None:
 
 def test_drop_within_tolerance_passes() -> None:
     assert decide(SuccessCount(36, 50), SuccessCount(40, 50)).verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize(("candidate", "baseline"), [(35, 40), (40, 45)])
+def test_exact_tolerance_drop_passes(candidate: int, baseline: int) -> None:
+    assert decide(SuccessCount(candidate, 50), SuccessCount(baseline, 50)).verdict is Verdict.PASS
+
+
+@pytest.mark.parametrize("tolerance", [float("nan"), float("inf"), -float("inf")])
+def test_non_finite_tolerance_is_rejected(tolerance: float) -> None:
+    with pytest.raises(ValueError, match="tolerance must be finite"):
+        decide(SuccessCount(40, 50), SuccessCount(40, 50), tolerance=tolerance)
 
 
 def test_same_drop_blocks_with_enough_episodes() -> None:

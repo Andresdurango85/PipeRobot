@@ -52,6 +52,17 @@ def test_invalid_baseline_is_rejected(tmp_path: Path, content: str) -> None:
         load_baseline(path)
 
 
+@pytest.mark.parametrize("field", ["successes", "trials"])
+@pytest.mark.parametrize("value", [40.7, 40.0, "40", True, None, [], {}])
+def test_baseline_requires_json_integers(tmp_path: Path, field: str, value: object) -> None:
+    data = {"successes": 40, "trials": 50, field: value}
+    path = tmp_path / "baseline.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(BaselineError, match="must be an int"):
+        load_baseline(path)
+
+
 @pytest.mark.parametrize(("successes", "exit_code"), [(43, 0), (25, 1)])
 def test_gate_cli_with_files(tmp_path: Path, successes: int, exit_code: int) -> None:
     results = _results_file(tmp_path, successes)

@@ -26,11 +26,14 @@ sim-pusht = ["lerobot[dataset,evaluation,pusht]>=0.6.1,<0.7"]
 # Real SO-101 arm: Feetech motors, keyboard/serial, Rerun, ACT training. Not published (ADR 0022).
 so101 = ["lerobot[feetech,hardware,viz,training]>=0.6.1,<0.7"]
 dev = [
+    "hypothesis>=6.170.14",
     "mypy>=2.4.1",
     "prek>=0.5",
     "pytest>=8.4",
     "ruff>=0.14",
 ]
+# Mutation testing of piperobot/stats. mutmut 3 needs fork(): Linux only, run by mutation.yml.
+mutation = ["mutmut>=3.8.1"]
 
 [tool.uv]
 # Security: LeRobot 0.6.1 caps Pillow<13, but 13.0.0 fixes 41 advisories (5 critical). See ADR 0012.
@@ -77,6 +80,18 @@ strict = true
 # absent from lint-and-test. The hub tests exercise the real API (ADR 0025).
 module = ["lerobot", "lerobot.*", "huggingface_hub", "huggingface_hub.*"]
 ignore_missing_imports = true
+
+# Linux mutation reporting: .github/workflows/mutation.yml.
+[tool.mutmut]
+source_paths = ["piperobot"]
+only_mutate = ["piperobot/stats/*"]
+also_copy = ["robots"]
+pytest_add_cli_args_test_selection = [
+    "tests/test_gate.py",
+    "tests/test_gate_inputs.py",
+    "tests/test_stats_properties.py",
+    "tests/test_pr_comment.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

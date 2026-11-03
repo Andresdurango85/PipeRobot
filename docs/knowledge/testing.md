@@ -1,7 +1,7 @@
 # Testing the gate's own code
 
-How we check that the gate itself is correct: type checking, and (next) property-based and
-mutation tests for `piperobot/stats`.
+How we check that the gate itself is correct: type checking, property-based tests and mutation
+testing of `piperobot/stats`.
 
 ## Type checking (mypy)
 
@@ -24,3 +24,44 @@ mutation tests for `piperobot/stats`.
 - **The PyPI `pyright` package is a wrapper**: without Node on `PATH` it downloads Node with
   `nodeenv` and then the pyright npm package with `npm`, at runtime, outside `uv.lock`.
   _(verified 2026-11-02, pyright 1.1.414 PyPI readme)_
+
+## Property-based tests (Hypothesis)
+
+- **`tests/test_stats_properties.py`** states the gate's laws for any counts: Wilson bounds in
+  [0, 1] around p̂, monotone in successes, narrower with more trials at the same p̂, nested in
+  confidence, symmetric; Newcombe contains the difference, antisymmetric; the verdict rule in
+  exact arithmetic; an exact-tolerance drop never WARNs; improvements PASS; one more candidate
+  success never worsens the verdict; invalid inputs raise. _(verified 2026-11-02, Hypothesis
+  6.170.14)_
+- **Deterministic by default**: `tests/conftest.py` loads a profile with `derandomize=True` and
+  no example database, so local runs, hooks and CI see the same examples (~4 s).
+  `HYPOTHESIS_PROFILE=explore` runs 5000 random examples per test (~60 s) for an occasional hunt.
+  _(verified 2026-11-02, Hypothesis 6.170.14)_
+- **`database=None` is not enough to keep `.hypothesis/` away**: Hypothesis also caches other
+  data there, so `conftest.py` points `HYPOTHESIS_STORAGE_DIRECTORY` at a temp dir. In Codex's
+  sandbox a `.hypothesis/` folder belongs to the sandbox user; delete it from inside the
+  sandbox ([ci.md](ci.md)). _(verified 2026-11-02, Hypothesis 6.170.14, Codex CLI 0.166)_
+- **A property can pass for the wrong reason: break the code and watch it fail.** The first
+  boundary property drew up to 10,000 trials, where an exact-tolerance drop is almost always
+  significant (BLOCK), so it never reached the WARN branch and passed with the float bug back
+  in. Capped at 200 trials (PR-sized), it fails on the bug. _(verified 2026-11-02)_
+
+## Bugs found in `piperobot/stats` (fixed 2026-11-02)
+
+- **A drop of exactly the tolerance could WARN**, through float rounding: `0.7 - 0.8` is
+  `-0.10000000000000009`, so 35/50 vs 40/50 warned while 40/50 vs 45/50 passed. With equal trials
+  n ∈ {10, 20, 50, 100} and the default 10 pp, 33 such pairs warned. ADR 0004 already says only a
+  drop that *exceeds* the tolerance warns, so this is a bug fix: `decide()` now compares exact
+  counts (`Fraction`) with the tolerance as typed (`Fraction(str(tolerance))`, so 0.1 is 1/10).
+  Over 633,625 (candidate, baseline, tolerance) combinations, the only verdicts that changed are
+  461 WARN → PASS, all exact-tolerance drops. Against the committed baselines at the default
+  tolerance, only 43/100 vs PushT's 265/500 changes; no 50-episode PR verdict changes.
+  _(verified 2026-11-02)_
+- **NaN tolerance silently disabled WARN** (`x > nan` is always false); a non-finite tolerance
+  now raises `ValueError`. _(verified 2026-11-02)_
+- **`SuccessCount` accepted floats and bools** (`SuccessCount(2.5, 5)`, `SuccessCount(True, 5)`:
+  `bool` is a subclass of `int`); both now raise `TypeError`. _(verified 2026-11-02)_
+- **`load_baseline` truncated**: `int(40.7)` is 40. Baselines must now hold JSON integers;
+  `40.7`, `40.0`, `"40"` and `true` raise `BaselineError`. `40.0` is rejected on purpose: our own
+  writers emit integers, so a float means a hand edit or a foreign writer (ADR 0009). The
+  committed baselines still load. _(verified 2026-11-02)_

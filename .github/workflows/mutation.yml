@@ -1,0 +1,91 @@
+name: mutation
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 1'
+  pull_request:
+    paths:
+      - 'piperobot/stats/**'
+      - 'tests/test_gate.py'
+      - 'tests/test_gate_inputs.py'
+      - 'tests/test_stats_properties.py'
+      - 'tests/test_pr_comment.py'
+      - 'tests/conftest.py'
+      - '.github/workflows/mutation.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --group mutation
+
+      - name: Run mutation tests
+        run: uv run mutmut run
+
+      - name: List survivors
+        if: always()
+        run: uv run mutmut results
+
+      - name: Export statistics
+        if: always()
+        run: uv run mutmut export-cicd-stats
+
+      - name: Summarize score and survivors
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          stats_path = Path("mutants/mutmut-cicd-stats.json")
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
+              summary.write("## Mutation testing\n\n")
+              if stats_path.exists():
+                  stats = json.loads(stats_path.read_text())
+                  killed, total = stats["killed"], stats["total"]
+                  score = f"{killed / total:.1%}" if total else "N/A"
+                  summary.write(f"Killed / total: **{killed} / {total} ({score})**\n\n")
+              else:
+                  summary.write("Statistics unavailable; inspect the mutation run logs.\n\n")
+              result = subprocess.run(
+                  ["uv", "run", "mutmut", "results"], capture_output=True, text=True, check=False
+              )
+              if result.returncode:
+                  summary.write("Could not list survivors; inspect the results step.\n")
+              survivors = re.findall(r"^\s*(\S+): survived\s*$", result.stdout, re.MULTILINE)
+              for name in survivors:
+                  diff = subprocess.run(
+                      ["uv", "run", "mutmut", "show", name],
+                      capture_output=True, text=True, check=False,
+                  )
+                  summary.write(f"### {name}\n\n```diff\n{diff.stdout}{diff.stderr}\n```\n\n")
+          PY
+
+      - name: Upload mutation statistics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-statistics
+          path: mutants/mutmut-cicd-stats.json
+          retention-days: 14

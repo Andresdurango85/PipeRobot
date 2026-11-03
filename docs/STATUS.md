@@ -23,11 +23,13 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-02: Hypothesis property tests and weekly mutation testing (`mutation.yml`, Linux) for
+  `piperobot/stats`. They found that a drop of exactly the tolerance could WARN through float
+  rounding (fixed with exact arithmetic) and three inputs that were accepted silently
+  ([testing.md](knowledge/testing.md)).
 - 2026-11-02: mypy --strict checks the `piperobot` package on push and in CI (`type-check`
   job); it found no errors in our own code
   ([ADR 0025](decisions/0025-mypy-strict-type-checking.md), [testing.md](knowledge/testing.md)).
-  Next: Hypothesis property tests and mutation testing for `piperobot/stats`, and a fix for a
-  drop of exactly the tolerance that can WARN through float rounding.
 - 2026-11-02: the Isaac Lab 3.0 SO-101 asset passed the object-free go/no-go on the course's
   75 demos (all grasps and releases in the course's tube and rack regions, no limit hits), and
   the course dataset's real rate is 60 Hz despite its 30-fps label, measured by replaying it with
