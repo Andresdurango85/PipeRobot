@@ -79,6 +79,12 @@ testing of `piperobot/stats`.
   4 equivalent mutants. Tests now kill the first two groups: **336 / 340 killed (98.8%)**; the
   4 survivors are the equivalent mutants below (run 41567441367). _(verified 2026-11-02,
   mutmut 3.8.1)_
+- **A test file missing from `[tool.mutmut]`'s selection makes its module untested, silently.**
+  mutmut runs only the files in `pytest_add_cli_args_test_selection`; when `paired.py` landed,
+  all 334 of its mutants were "no tests" and the job stayed green. Now every test file that
+  imports `piperobot.stats` must be in that list and in `mutation.yml`'s `pull_request.paths`
+  (`tests/test_mutation_config.py`), and the summary step fails on any "no tests" mutant.
+  _(verified 2026-11-03, PR #47, mutmut 3.8.1)_
 - **Accepted equivalent mutants** (4):
   - `text.partition("/")` → `rpartition` in `SuccessCount.parse`: they differ only with two or
     more `/`, and then both leave a `/` in a part that `int()` rejects.
