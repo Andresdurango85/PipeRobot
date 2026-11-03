@@ -34,8 +34,8 @@ Project Cangrejo, the `piperobot` package).
 - 2026-11-03: certificates of evaluation, core part: `history record` / `append --record` and
   `python -m piperobot.reports.certificate verify` (pins signer workflow, `main`, hosted runner,
   predicate type; checks the signed record against `results.json`)
-  ([ADR 0030](decisions/0030-signed-certificates-of-evaluation.md)). The signing job in
-  `history.yml` follows.
+  ([ADR 0030](decisions/0030-signed-certificates-of-evaluation.md)). `history.yml` now signs each
+  point (`attest` job) and publishes its results and bundle; points before that are "not signed".
 - 2026-11-03: success-rate history, core part: `piperobot/reports/history.py` appends one record
   per evaluation to an append-only `history.json` and renders a static page (inline SVG, no JS);
   `piperobot/platform_info.py` labels the CPU like `pr-gate`

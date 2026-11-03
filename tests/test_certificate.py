@@ -356,14 +356,58 @@ def test_malformed_bundle_cli(
     ("stderr", "error"),
     [
         ("\nError: no attestations found\n", CertificateNotFound),
+        (
+            "Error: HTTP 404: Not Found "
+            "(https://api.github.com/repos/Andresdurango85/PipeRobot/attestations/"
+            "sha256:{digest}?per_page=30&predicate_type="
+            "https://github.com/Andresdurango85/PipeRobot/blob/main/"
+            "docs/attestations/gate-verdict-v1.md)",
+            CertificateNotFound,
+        ),
+        (
+            "Error: HTTP 404: Not Found "
+            f"(https://api.github.com/repos/{REPO}/attestations/sha256:{'b' * 64})",
+            CertificateError,
+        ),
+        (
+            "Error: HTTP 404: Not Found "
+            f"(https://api.github.com/repos/{REPO}/contents/sha256:{{digest}})",
+            CertificateError,
+        ),
         ('\nError: verifying with issuer "sigstore.dev"\n', CertificateError),
     ],
 )
-def test_api_errors(tmp_path: Path, stderr: str, error: type[CertificateError]) -> None:
+def test_api_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    stderr: str,
+    error: type[CertificateError],
+) -> None:
     path = tmp_path / "results.json"
     evidence(path)
+    stderr = stderr.format(digest=hashlib.sha256(path.read_bytes()).hexdigest())
     with pytest.raises(error) as exc:
         verify(path, run=fake({}, code=1, stderr=stderr))
     assert type(exc.value) is error
     if error is CertificateError:
         assert str(exc.value) == stderr.strip()
+
+    def injected(path: Path, *, bundle: Path | None = None, repo: str = REPO) -> module.Certificate:
+        return verify(path, bundle=bundle, repo=repo, run=fake({}, code=1, stderr=stderr))
+
+    monkeypatch.setattr(module, "verify", injected)
+    assert module.main(["verify", str(path)]) == 1
+    prefix = "NOT CERTIFIED:" if error is CertificateNotFound else "NOT VERIFIED:"
+    assert capsys.readouterr().err.startswith(prefix)
+
+
+@pytest.mark.parametrize("pretty", [False, True])
+def test_single_json_bundle(tmp_path: Path, pretty: bool) -> None:
+    path = tmp_path / "results.json"
+    payload = evidence(path)
+    bundle = tmp_path / "bundle.jsonl"
+    write_bundle(bundle, [payload[0]["verificationResult"]["statement"]])
+    document = json.loads(bundle.read_text(encoding="utf-8"))
+    bundle.write_text(json.dumps(document, indent=2 if pretty else None), encoding="utf-8")
+    assert verify(path, bundle=bundle, run=fake(payload)).record.successes == 30

@@ -55,7 +55,12 @@ def _bundle_digests(bundle: Path) -> set[str]:
     """Read untrusted subjects; gh must still verify the bundle cryptographically."""
     digests: set[str] = set()
     try:
-        lines = bundle.read_text(encoding="utf-8").splitlines()
+        contents = bundle.read_text(encoding="utf-8")
+        try:
+            document = json.loads(contents)
+        except ValueError:
+            document = None
+        lines = [contents] if isinstance(document, dict) else contents.splitlines()
         if not lines:
             raise ValueError("empty bundle")
         for line in lines:
@@ -94,19 +99,11 @@ class Certificate:
         )
 
 
-def verify(
-    results_path: Path,
-    *,
-    repo: str = "Andresdurango85/PipeRobot",
-    bundle: Path | None = None,
-    gh: str = "gh",
-    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
-) -> Certificate:
-    try:
-        digest = hashlib.sha256(results_path.read_bytes()).hexdigest()
-    except OSError as exc:
-        raise CertificateInputError(str(exc)) from exc
-    command = [
+def verification_command(
+    results_path: Path, *, repo: str = "Andresdurango85/PipeRobot", gh: str = "gh"
+) -> list[str]:
+    """Build the pinned verification policy shared by the verifier and history page."""
+    return [
         gh,
         "attestation",
         "verify",
@@ -123,6 +120,21 @@ def verify(
         "--format",
         "json",
     ]
+
+
+def verify(
+    results_path: Path,
+    *,
+    repo: str = "Andresdurango85/PipeRobot",
+    bundle: Path | None = None,
+    gh: str = "gh",
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> Certificate:
+    try:
+        digest = hashlib.sha256(results_path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise CertificateInputError(str(exc)) from exc
+    command = verification_command(results_path, repo=repo, gh=gh)
     if bundle is not None:
         if digest not in _bundle_digests(bundle):
             raise CertificateNotFound(digest)
@@ -132,7 +144,10 @@ def verify(
     except FileNotFoundError as exc:
         raise CertificateInputError(f"cannot find {gh}: {exc}") from exc
     if output.returncode:
-        if bundle is None and "no attestations found" in output.stderr:
+        if bundle is None and (
+            "no attestations found" in output.stderr
+            or ("HTTP 404" in output.stderr and f"/attestations/sha256:{digest}" in output.stderr)
+        ):
             raise CertificateNotFound(digest)
         raise CertificateError(output.stderr.strip())
     try:

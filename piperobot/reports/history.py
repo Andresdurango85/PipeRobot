@@ -23,7 +23,7 @@ import os
 import re
 import sys
 import tempfile
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -291,7 +291,9 @@ def _marker(x: float, y: float, shape: int) -> str:
     return f'<polygon points="{points}" />'
 
 
-def _series(records: Sequence[HistoryRecord]) -> list[str]:
+def _series(
+    records: Sequence[HistoryRecord], evidence: Callable[[HistoryRecord], bool] | None = None
+) -> list[str]:
     platforms = list(dict.fromkeys(r.platform for r in records))
     lines = ['<svg viewBox="0 0 720 300" role="img" aria-label="Success rate history">']
     for percent in (0, 25, 50, 75, 100):
@@ -352,7 +354,9 @@ def _series(records: Sequence[HistoryRecord]) -> list[str]:
         '<div class="table-wrap">',
         "<table><thead><tr><th>Commit date</th><th>Commit</th>"
         "<th>Successes/trials</th><th>Rate</th><th>Interval</th><th>Verdict</th>"
-        "<th>Platform</th><th>Run</th></tr></thead><tbody>",
+        "<th>Platform</th><th>Run</th>"
+        + ("<th>Certificate</th>" if evidence is not None else "")
+        + "</tr></thead><tbody>",
     ]
     for record in reversed(records):
         cells = [
@@ -365,11 +369,24 @@ def _series(records: Sequence[HistoryRecord]) -> list[str]:
             _escape(record.platform),
             _link(record.run_url, f"#{record.run_id}.{record.run_attempt}"),
         ]
+        if evidence is not None:
+            identity = f"{record.run_id}.{record.run_attempt}"
+            cells.append(
+                f'<a href="results/{identity}.json">results</a> '
+                f'<a href="bundles/{identity}.jsonl">bundle</a>'
+                if evidence(record)
+                else "not signed"
+            )
         lines.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in cells) + "</tr>")
     return [*lines, "</tbody></table></div>"]
 
 
-def render_html(history: Sequence[HistoryRecord], *, title: str = "PipeRobot gate history") -> str:
+def render_html(
+    history: Sequence[HistoryRecord],
+    *,
+    title: str = "PipeRobot gate history",
+    evidence: Callable[[HistoryRecord], bool] | None = None,
+) -> str:
     lines = [
         "<!DOCTYPE html>",
         '<html lang="en">',
@@ -379,7 +396,7 @@ def render_html(history: Sequence[HistoryRecord], *, title: str = "PipeRobot gat
         "<style>",
         "body{font-family:system-ui,sans-serif;margin:2rem;color:#222;background:#fff}"
         "table{border-collapse:collapse}"
-        ".table-wrap{overflow-x:auto}"
+        ".table-wrap,pre{overflow-x:auto}"
         "td,th{padding:.5rem;border:1px solid #ccc;white-space:nowrap}"
         "ul{list-style:none;padding-left:0}"
         "svg{max-width:100%}.grid{stroke:#ddd}.baseline{fill:none;stroke:#444;stroke-dasharray:6 4}"
@@ -397,7 +414,20 @@ def render_html(history: Sequence[HistoryRecord], *, title: str = "PipeRobot gat
     for (policy, evaluator), records in groups.items():
         lines += [
             f"<section><h2>{_escape(policy)} / {_escape(evaluator)}</h2>",
-            *_series(records),
+            *_series(records, evidence),
+            "</section>",
+        ]
+    if evidence is not None and any(evidence(record) for record in history):
+        from piperobot.reports.certificate import verification_command
+
+        command = " ".join(verification_command(Path("results.json"))) + " --bundle bundle.jsonl"
+        lines += [
+            "<section><h2>Verify a point</h2>",
+            "<p>Download both results and bundle, "
+            "saving them as results.json and bundle.jsonl.</p>",
+            "<pre>python -m piperobot.reports.certificate verify "
+            "results.json --bundle bundle.jsonl</pre>",
+            f"<p>Equivalent GitHub CLI verification:</p><pre>{_escape(command)}</pre>",
             "</section>",
         ]
     return "\n".join([*lines, "</body></html>", ""])
@@ -471,6 +501,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     render = commands.add_parser("render")
     render.add_argument("--history", type=Path, required=True)
     render.add_argument("--output", type=Path, required=True)
+    render.add_argument("--evidence-dir", type=Path)
     args = parser.parse_args(argv)
     if args.command == "predicate-type":
         print(GATE_VERDICT_PREDICATE_TYPE)
@@ -494,7 +525,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 setattr(args, name, default)
     try:
         if args.command == "render":
-            page = render_html(load_history(args.history))
+            evidence = None
+            if args.evidence_dir is not None:
+
+                def evidence(record: HistoryRecord) -> bool:
+                    identity = f"{record.run_id}.{record.run_attempt}"
+                    return all(
+                        (args.evidence_dir / directory / f"{identity}.{suffix}").is_file()
+                        for directory, suffix in (("results", "json"), ("bundles", "jsonl"))
+                    )
+
+            page = render_html(load_history(args.history), evidence=evidence)
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(page, encoding="utf-8", newline="\n")
         else:

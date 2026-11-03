@@ -69,7 +69,7 @@ def local_repo(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 
 
 def _append(
-    env: dict[str, str], results: Path, run_id: int = 1
+    env: dict[str, str], results: Path, run_id: int = 1, *extra: str
 ) -> subprocess.CompletedProcess[str]:
     assert BASH is not None
     return _run(
@@ -94,6 +94,7 @@ def _append(
             "Test CPU, 2 CPUs",
             "--evaluated-at",
             "2026-11-03T10:01:00Z",
+            *extra,
         ],
         env,
         check=False,
@@ -113,9 +114,7 @@ def test_append_and_duplicate(local_repo: tuple[Path, dict[str, str], Path]) -> 
     assert len(records) == 1
     assert records[0]["run_id"] == 1
     head = _git(remote, env, "rev-parse", "history")
-    assert _git(remote, env, "log", "-1", "--format=%s", "history") == (
-        f"History: {'a' * 40} (run 1.1)"
-    )
+    assert _git(remote, env, "log", "-1", "--format=%s", "history") == ("History: run 1.1")
     second = _append(env, results)
     assert second.returncode == 0, second.stdout + second.stderr
     assert "already present" in second.stdout
@@ -169,3 +168,104 @@ def test_bad_results_stops_without_push(local_repo: tuple[Path, dict[str, str], 
     assert result.returncode == 2, result.stdout + result.stderr
     assert _git(remote, env, "rev-parse", "history") == head
     assert not (remote / "push-attempted").exists()
+
+
+def test_attachments(local_repo: tuple[Path, dict[str, str], Path], tmp_path: Path) -> None:
+    remote, env, results = local_repo
+    env["GITHUB_SHA"] = "b" * 40
+    bundle = tmp_path / "bundle.jsonl"
+    bundle.write_text("bundle bytes", encoding="utf-8")
+    args = (
+        "--attach",
+        f"{results.as_posix()}=results/1.1.json",
+        "--attach",
+        f"{bundle.as_posix()}=bundles/1.1.jsonl",
+    )
+    result = _append(env, results, 1, *args)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _git(remote, env, "show", "history:results/1.1.json") == results.read_text().strip()
+    assert _git(remote, env, "show", "history:bundles/1.1.jsonl") == "bundle bytes"
+    assert _git(remote, env, "log", "-1", "--format=%s", "history") == (
+        f"History: run 1.1 ({'b' * 40})"
+    )
+    head = _git(remote, env, "rev-parse", "history")
+    result = _append(env, results, 1, *args)
+    assert result.returncode == 0
+    assert "already present" in result.stdout
+    assert _git(remote, env, "rev-parse", "history") == head
+    bundle.write_text("different bytes", encoding="utf-8")
+    hook = remote / "hooks/pre-receive"
+    hook.write_text("#!/bin/sh\ntouch push-attempted\nexit 1\n", encoding="utf-8", newline="\n")
+    hook.chmod(0o755)
+    result = _append(env, results, 1, *args)
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert (
+        "evidence for this run already exists and differs; history is append-only" in result.stderr
+    )
+    assert _git(remote, env, "rev-parse", "history") == head
+    assert not (remote / "push-attempted").exists()
+
+
+@pytest.mark.parametrize("destination", ["../x", "results/evil.sh"])
+def test_bad_attachment(local_repo: tuple[Path, dict[str, str], Path], destination: str) -> None:
+    remote, env, results = local_repo
+    head = _git(remote, env, "rev-parse", "history")
+    result = _append(env, results, 1, "--attach", f"{results.as_posix()}={destination}")
+    assert result.returncode == 2
+    assert _git(remote, env, "rev-parse", "history") == head
+
+
+def test_attach_with_certified_record(
+    local_repo: tuple[Path, dict[str, str], Path], tmp_path: Path
+) -> None:
+    from piperobot.reports.history import main
+
+    remote, env, results = local_repo
+    record = tmp_path / "record.json"
+    assert (
+        main(
+            [
+                "record",
+                "--results",
+                str(results),
+                "--baseline-file",
+                "robots/mock/baseline.json",
+                "--commit",
+                "a" * 40,
+                "--commit-date",
+                "2026-11-03T10:00:00Z",
+                "--run-url",
+                "https://example.org/run/1",
+                "--run-id",
+                "1",
+                "--run-attempt",
+                "1",
+                "--output",
+                str(record),
+            ]
+        )
+        == 0
+    )
+    assert BASH is not None
+    result = _run(
+        [
+            BASH,
+            (ROOT / ".github/scripts/append_history.sh").as_posix(),
+            "--record",
+            record.as_posix(),
+            "--run-id",
+            "1",
+            "--run-attempt",
+            "1",
+            "--attach",
+            f"{results.as_posix()}=results/1.1.json",
+        ],
+        env,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(_git(remote, env, "show", "history:history.json")) == [
+        json.loads(record.read_text(encoding="utf-8"))
+    ]
+    assert _git(remote, env, "log", "-1", "--format=%s", "history") == "History: run 1.1"
+    assert _git(remote, env, "show", "history:results/1.1.json") == results.read_text().strip()
