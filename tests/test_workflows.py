@@ -346,10 +346,51 @@ def test_history_signing_boundary() -> None:
     assert script.count("--attach") == 2
 
 
+def test_nightly_hosted_read_only_jobs() -> None:
+    path = ROOT / ".github/workflows/nightly.yml"
+    assert path.is_file()
+    data = _load(path)
+    assert data["permissions"] == {}
+    assert set(data["jobs"]) == {"evaluate", "verdict"}
+    for job in data["jobs"].values():
+        assert job["runs-on"] == "ubuntu-24.04"
+        assert job["permissions"] == {"contents": "read"}
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+
+
+def test_nightly_artifact_contract() -> None:
+    jobs = _load(ROOT / ".github/workflows/nightly.yml")["jobs"]
+    uploads = [
+        step["with"]
+        for step in jobs["evaluate"]["steps"]
+        if step.get("uses", "").startswith("actions/upload-artifact@")
+    ]
+    assert len(uploads) == 1
+    assert uploads[0]["name"] == "nightly-evaluation"
+    assert uploads[0]["retention-days"] == 30
+    assert uploads[0]["path"].splitlines() == [
+        "out/reference.json",
+        "out/candidate.json",
+        "out/reference_commit.txt",
+        "out/candidate_commit.txt",
+        "out/platform.txt",
+        "out/evaluated_at.txt",
+        "out/cpu_flags.txt",
+        "out/runner_image.txt",
+    ]
+    downloads = [
+        step["with"]
+        for step in jobs["verdict"]["steps"]
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    ]
+    assert downloads == [{"name": "nightly-evaluation", "path": "out/"}]
+
+
 # Workflows whose torch results are compared across runs (with the committed baseline). They pin
 # the hosted image: a new OS brings new system libraries (libm) that can flip near-miss episodes.
 PINNED_IMAGE = "ubuntu-24.04"
-NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml")
+NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 
 
 @pytest.mark.parametrize("name", NUMERIC_WORKFLOWS)

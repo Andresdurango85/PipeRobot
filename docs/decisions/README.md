@@ -39,6 +39,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0029](0029-refused-jobs-end-their-worker-and-workspaces-are-wiped.md) | Refused runner jobs end their worker; every job's workspace is wiped | Accepted |
 | [0030](0030-signed-certificates-of-evaluation.md) | Signed certificates of evaluation: Sigstore attestations of results and verdict on main | Accepted |
 | [0031](0031-history-schema-2-and-certify-trusted-builder.md) | History schema 2 for nightly records; one trusted builder, certify.yml, signs every series | Accepted |
+| [0032](0032-nightly-paired-run-on-rotating-seeds.md) | A nightly paired run on rotating seeds, decided by an exact McNemar test | Accepted |
 
 ## Template
 
