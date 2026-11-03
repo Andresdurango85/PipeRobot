@@ -13,7 +13,7 @@ dependencies = []
 lerobot = ["lerobot[dataset]>=0.6.1,<0.7", "torch>=2.11,<2.12", "torchvision>=0.26,<0.27"]
 
 [build-system]
-requires = ["uv_build>=0.10.8,<0.11"]
+requires = ["uv_build>=0.10.8,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
