@@ -61,6 +61,10 @@ reach the home PC.
   bit-identical).
 - The PR's seeds must be a subset of the baseline's; disjoint seeds rule out pairing.
 - Unpaired comparison stays available for policies whose baseline uses disjoint seeds.
+- Valid only while the run's platform matches the baseline's (GPU, CUDA, driver, Isaac Lab,
+  torch, physics device, task options): the report job compares `run_metadata.json` with the
+  baseline's `platform` and refuses a verdict otherwise ("baseline platform mismatch:
+  re-measure the baseline"), as it does when the platform changed between workers of one run.
 
 ### Workflow: evidence on the runner, verdict and comment from a hosted job
 
@@ -70,10 +74,12 @@ reach the home PC.
   `mode: gate | baseline`). Never by `pull_request`, `pull_request_target` or `workflow_run`.
 - Job `evaluate` runs on `[self-hosted, Windows, gpu]` with `contents: read` only. It reuses the
   Isaac Lab install that `isaac-render.yml` keeps in the runner's tool cache (built as
-  `gh-runner` at the pinned commit; the owner's EULA acceptance is recorded in the workflow,
-  [0021](0021-isaac-lab-3-on-windows-without-arena.md)), verifies the course assets and
+  `gh-runner` at the pinned commit; `OMNI_KIT_ACCEPT_EULA` records the owner's acceptance of
+  the Omniverse EULA, [0021](0021-isaac-lab-3-on-windows-without-arena.md), confirmed for the
+  runner's install by the owner on DATE), verifies the course assets and
   episodes by sha256 into a tool-cache `PIPEROBOT_CACHE`, fails fast when less than 3.5 GB of
-  GPU memory is free (the owner's desktop uses ~10 GB of 16), runs the evaluator, and uploads the
+  GPU memory is free (a desktop session used ~10 GB of the 16 GB when measured on 2026-11-03),
+  runs the evaluator, and uploads the
   evidence as the `so101-gate` artifact. It fails only on an evaluator error (exit 2), never on
   a verdict.
 - Job `report` runs on `ubuntu-24.04` and is the only job with a write permission

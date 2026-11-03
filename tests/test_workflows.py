@@ -495,3 +495,19 @@ def test_gpu_smoke_excludes_isaaclab() -> None:
     assert isinstance(triggers, dict)
     paths = triggers["push"]["paths"]
     assert paths.index("!piperobot/adapters/isaaclab/**") > paths.index("piperobot/**")
+
+
+def test_so101_platform_guard_and_baseline_artifact() -> None:
+    report = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]["report"]
+    script = next(
+        step["run"] for step in report["steps"] if step.get("name") == "Verdict and PR comments"
+    )
+    assert script.index("piperobot.adapters.isaaclab.baseline check") < script.index(
+        "piperobot.reports.paired_comment"
+    )
+    upload = next(
+        step for step in report["steps"] if step.get("with", {}).get("name") == "so101-baseline"
+    )
+    assert upload["uses"].startswith("actions/upload-artifact@")
+    assert upload["with"]["retention-days"] == 30
+    assert "inputs.mode == 'baseline'" in upload["if"]
