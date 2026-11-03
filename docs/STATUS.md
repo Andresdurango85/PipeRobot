@@ -15,7 +15,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
 | Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
-| README reproducible in 30 min | Not started |
+| README reproducible in 30 min | **Done, tested by CI**: `readme.yml` runs the README's commands on a fresh checkout with cold caches; 4 min 14 s on `ubuntu-24.04`, 4 min 59 s on `windows-2025`, PASS (27/50) and the demo BLOCK (4–5/50) on both (run 41597539505) |
 
 ## Done recently
 
@@ -29,6 +29,8 @@ Project Cangrejo, the `piperobot` package).
   crashes are retried once and never count as trials. Acceptance (registered): first attempt
   failed on a Kit shutdown hang; after the fix, 2 × 75 seeds bit-identical, 6/75 replay
   successes, ~20 s per seed ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)).
+- 2026-11-03: the README reproduces the PushT gate in about 5 minutes, PASS and a demo BLOCK,
+  and CI runs it as written on Linux and Windows (`readme.yml`, [ci.md](knowledge/ci.md)).
 - 2026-11-03: `nightly.yml` runs the reference and `main` on the same 500 fresh seeds every
   night and alerts on a paired regression (exact McNemar,
   [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md), [ci.md](knowledge/ci.md)).
