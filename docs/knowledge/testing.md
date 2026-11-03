@@ -69,8 +69,8 @@ testing of `piperobot/stats`.
   `type=float`, or passing the tolerance as the confidence, went unnoticed; `decide()` could
   ignore `confidence` for its intervals; the WARN reason text and `format_result()` layout were
   unchecked; the CLI's input groups could stop being required), 27 changes to `--help` text, and
-  4 equivalent mutants. Tests now kill the first two groups: **336 / 340 killed (98.8%)**, the 4 survivors being the
-  equivalent mutants below (run 41567441367). _(verified 2026-11-02,
+  4 equivalent mutants. Tests now kill the first two groups: **336 / 340 killed (98.8%)**; the
+  4 survivors are the equivalent mutants below (run 41567441367). _(verified 2026-11-02,
   mutmut 3.8.1)_
 - **Accepted equivalent mutants** (4):
   - `text.partition("/")` → `rpartition` in `SuccessCount.parse`: they differ only with two or
