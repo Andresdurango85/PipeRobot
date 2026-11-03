@@ -100,7 +100,7 @@
 - **The 7-day cooldown works**: the log shows "Filtered out N versions due to cooldown", and the
   first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
   _(verified 2026-11-03)_
-- **`so101-gate.yml`** ([ADR 0034](../decisions/0034-so101-gate-on-the-self-hosted-runner.md)):
+- **`so101-gate.yml`** ([ADR 0035](../decisions/0035-so101-gate-on-the-self-hosted-runner.md)):
   the SO-101 gate. On pushes touching the SO-101 policy, scene, baselines or cache script, the
   Isaac adapter, the paired statistics or comment code, or itself (and by hand, with
   `mode: gate | baseline`). Job `evaluate` on the self-hosted GPU runner (`contents: read`):

@@ -1,4 +1,4 @@
-# 0034. The SO-101 gate on the self-hosted runner: paired on a same-runner baseline, reported by a hosted job
+# 0035. The SO-101 gate on the self-hosted runner: paired on a same-runner baseline, reported by a hosted job
 
 - Status: Accepted
 - Date: 2026-11-03
@@ -32,10 +32,10 @@ reach the home PC.
 - The registered demo regression is the weak-grip spec (`demo_replay_weak_grip.json`, gripper
   command floored at 25). Expected 0/75 → BLOCK, registered in `weak_grip_expectation.json`
   before any run (PR #56).
-- The gate's target policy is a scripted privileged-state pick-and-place on the seeded
-  randomized layout (separate spike, registered go/no-go ≥ 30/50 on seeds 210000–210049, tuned
-  only on 200000–200099). If it passes, it replaces the replay in the gate and this section is
-  superseded.
+- The gate's target policy is the scripted privileged-state pick-and-place on the seeded
+  randomized layout, which passed its registered go/no-go with 43/50
+  ([0034](0034-so101-scripted-privileged-state-policy.md)). A follow-up PR swaps it in, with its
+  own baseline measured by the workflow's baseline mode, and supersedes this section.
 
 ### Baseline
 
