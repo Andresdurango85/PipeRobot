@@ -84,6 +84,11 @@ def extract(entry: Mapping[str, Any], max_episodes: int | None) -> dict[str, Any
     }
 
 
+def serialize(data: object) -> bytes:
+    """Serialize identical UTF-8 bytes on every platform, including the final LF."""
+    return (json.dumps(data, allow_nan=False) + "\n").encode("utf-8")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--datasets", type=Path, required=True)
@@ -96,9 +101,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len(matches) != 1:
         parser.error("Expected exactly one pinned dataset entry")
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(
-        json.dumps(extract(matches[0], args.max_episodes), allow_nan=False) + "\n", encoding="utf-8"
-    )
+    args.out.write_bytes(serialize(extract(matches[0], args.max_episodes)))
     return 0
 
 

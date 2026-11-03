@@ -1,0 +1,9 @@
+{
+  "registered": "2026-11-03, before any run of the weak-grip spec; changing it needs a new ADR.",
+  "spec": "robots/so101/policies/demo_replay_weak_grip.json",
+  "seeds": "0-74",
+  "config": "one Isaac process per seed (ADR 0033), task vials_to_rack_task.json, cuda:0",
+  "reference": "demo_replay on the same seeds: 6/75 (seeds 20, 22, 31, 49, 58, 61), ADR 0033",
+  "expectation": "0/75 successes: a gripper command floored at 25 cannot squeeze a tube that stops the jaw at 17-19, so the 5 N grasp threshold is never reached; the paired gate sees 6 reference-only successes and 0 candidate-only, exact McNemar p = 1/64 < 0.025: BLOCK.",
+  "failure_of_expectation": "Any success, or a verdict other than BLOCK, is reported as a failed prediction."
+}

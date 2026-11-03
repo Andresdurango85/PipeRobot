@@ -9,7 +9,8 @@ from typing import cast
 
 
 class DemoReplayPolicy:
-    def __init__(self, episodes_json: str | Path) -> None:
+    def __init__(self, episodes_json: str | Path, gripper_floor: float | None = None) -> None:
+        self.gripper_floor = gripper_floor
         data = json.loads(Path(episodes_json).read_text(encoding="utf-8"))
         self.joint_names: list[str] = data["joint_names"]
         self.episodes: dict[int, dict[str, object]] = {
@@ -32,4 +33,7 @@ class DemoReplayPolicy:
         actions = cast(list[list[float]], self.episode["action"])
         if type(step) is not int or not 0 <= step < len(actions):
             raise ValueError("Observation step out of range")
-        return actions[step].copy()
+        action = actions[step].copy()
+        if self.gripper_floor is not None:
+            action[-1] = max(action[-1], self.gripper_floor)
+        return action

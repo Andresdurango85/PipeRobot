@@ -3,7 +3,6 @@
 import argparse
 import hashlib
 import json
-import os
 import sys
 import urllib.request
 from collections.abc import Callable, Sequence
@@ -42,12 +41,11 @@ def download(url: str) -> bytes:
 
 
 def default_cache_dir(commit: str) -> Path:
-    base = (
-        Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-        if os.name == "nt"
-        else Path.home() / ".cache"
-    )
-    return base / "piperobot" / "course-assets" / commit
+    # Script execution also works without installing the repository package.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from piperobot.cache import cache_root
+
+    return cache_root() / "course-assets" / commit
 
 
 def validate_cache_dir(cache_dir: Path) -> Path:
