@@ -94,9 +94,20 @@ def test_verdict_exact_rule(
     drop = Fraction(baseline.successes, baseline.trials) - Fraction(
         candidate.successes, candidate.trials
     )
-    block = result.difference_interval.upper < 0
+    block = newcombe_interval(candidate, baseline, confidence).upper < 0
     assert (result.verdict is Verdict.BLOCK) == block
     assert (result.verdict is Verdict.WARN) == (not block and drop > Fraction(str(tolerance)))
+
+
+@given(counts(), counts(), CONFIDENCES)
+def test_decide_intervals_use_confidence(
+    candidate: SuccessCount, baseline: SuccessCount, confidence: float
+) -> None:
+    result = decide(candidate, baseline, confidence)
+
+    assert result.candidate_interval == wilson_interval(candidate, confidence)
+    assert result.baseline_interval == wilson_interval(baseline, confidence)
+    assert result.difference_interval == newcombe_interval(candidate, baseline, confidence)
 
 
 @st.composite

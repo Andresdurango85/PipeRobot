@@ -46,6 +46,41 @@ testing of `piperobot/stats`.
   significant (BLOCK), so it never reached the WARN branch and passed with the float bug back
   in. Capped at 200 trials (PR-sized), it fails on the bug. _(verified 2026-11-02)_
 
+## Mutation testing (mutmut)
+
+- **mutmut 3 needs `fork()`**: on Windows it only runs inside WSL. We run it in
+  `.github/workflows/mutation.yml` on `ubuntu-latest`: weekly, by hand (`workflow_dispatch`),
+  and on PRs that touch `piperobot/stats/**` or its tests. It reports the score and each
+  survivor's diff (job summary and log) and is not a required check. _(verified 2026-11-02,
+  mutmut 3.8.1 docs and source)_
+- **Run it locally** on Linux or WSL: `uv sync --group mutation`, then `uv run mutmut run`,
+  `uv run mutmut results` (survivors), `uv run mutmut show <name>` (diff), `uv run mutmut browse`
+  (interactive). Config is `[tool.mutmut]` in `pyproject.toml`. _(verified 2026-11-02,
+  mutmut 3.8.1)_
+- **Mutate one subpackage with `source_paths` plus `only_mutate`**: mutmut copies only
+  `source_paths` into `mutants/` and removes the checkout from `sys.path`, so
+  `source_paths = ["piperobot/stats"]` would hide `piperobot.results`, which the tests import.
+  We use `source_paths = ["piperobot"]` with `only_mutate = ["piperobot/stats/*"]`, and
+  `also_copy = ["robots"]` for the committed baselines. `do_not_mutate_patterns` and
+  `# pragma: no mutate` skip whole statements, so on an `add_argument(...)` line they would also
+  hide the `type=` mutants. _(verified 2026-11-02, mutmut 3.8.1 source)_
+- **Score on `piperobot/stats`**: first run 286 / 340 killed (84.1%). The 54 survivors were
+  23 real gaps (no test used a non-default `--confidence` or `--tolerance`, so dropping their
+  `type=float`, or passing the tolerance as the confidence, went unnoticed; `decide()` could
+  ignore `confidence` for its intervals; the WARN reason text and `format_result()` layout were
+  unchecked; the CLI's input groups could stop being required), 27 changes to `--help` text, and
+  4 equivalent mutants. Tests now kill the first two groups. SCORE_LINE _(verified 2026-11-02,
+  mutmut 3.8.1)_
+- **Accepted equivalent mutants** (4):
+  - `text.partition("/")` → `rpartition` in `SuccessCount.parse`: they differ only with two or
+    more `/`, and then both leave a `/` in a part that `int()` rejects.
+  - `encoding="utf-8"` → `"UTF-8"` in `load_baseline`: the same codec.
+  - `encoding="utf-8"` → `None` in `load_baseline`: the locale encoding, UTF-8 on the Linux
+    runner. On Windows it is not equivalent, but mutmut only runs on Linux.
+  - `diff_interval.upper < 0` → `<= 0` in `decide()`: they differ only when the Newcombe upper
+    bound is exactly 0.0. A search of every pair with n ≤ 200 at 95% confidence, checking the
+    two candidate counts at each BLOCK crossing, found no exact 0.0 and nothing within 1e-12.
+
 ## Bugs found in `piperobot/stats` (fixed 2026-11-02)
 
 - **A drop of exactly the tolerance could WARN**, through float rounding: `0.7 - 0.8` is

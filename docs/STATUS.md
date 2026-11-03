@@ -24,8 +24,10 @@ security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no re
 Project Cangrejo, the `piperobot` package).
 
 - 2026-11-02: Hypothesis property tests and weekly mutation testing (`mutation.yml`, Linux) for
-  `piperobot/stats`. They found that a drop of exactly the tolerance could WARN through float
-  rounding (fixed with exact arithmetic) and three inputs that were accepted silently
+  `piperobot/stats`. **Gate verdicts change**: a drop of exactly the tolerance (e.g. 35/50 vs
+  40/50) could WARN through float rounding; it now PASSes, as ADR 0004 says (only WARN → PASS
+  at the exact boundary; no 50-episode verdict against a committed baseline changes). Also
+  fixed: a NaN tolerance, float or bool counts, and non-integer baselines were accepted silently
   ([testing.md](knowledge/testing.md)).
 - 2026-11-02: mypy --strict checks the `piperobot` package on push and in CI (`type-check`
   job); it found no errors in our own code

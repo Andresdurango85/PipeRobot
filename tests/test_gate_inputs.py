@@ -87,3 +87,11 @@ def test_gate_cli_returns_2_on_bad_baseline(
 def test_candidate_and_results_are_mutually_exclusive(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         main(["--candidate", "40/50", "--results", "r.json", "--baseline", "40/50"])
+
+
+@pytest.mark.parametrize("provided", ["--baseline", "--candidate"])
+def test_gate_cli_requires_both_inputs(provided: str) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main([provided, "40/50"])
+
+    assert exc_info.value.code == 2
