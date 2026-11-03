@@ -19,3 +19,6 @@ writes diagnostics, and publishes no results. Policy failures are never retried.
 The output directory also receives `run_metadata.json` and `episodes_detail.json`.
 Run evaluations in separate output directories to retain earlier reports.
 Both command-line modules support `--help` without Isaac installed.
+
+`PIPEROBOT_CACHE` is the single root for evaluator inputs; CI sets it explicitly.
+Defaults: `%LOCALAPPDATA%/piperobot` on Windows, `$XDG_CACHE_HOME/piperobot` or `~/.cache/piperobot` elsewhere.

@@ -1188,6 +1188,10 @@ sim-pusht = [
 so101 = [
     { name = "lerobot", extra = ["feetech", "hardware", "training", "viz"] },
 ]
+so101-data = [
+    { name = "huggingface-hub" },
+    { name = "pyarrow" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1213,6 +1217,10 @@ dev = [
 mutation = [{ name = "mutmut", specifier = ">=3.8.1" }]
 sim-pusht = [{ name = "lerobot", extras = ["dataset", "evaluation", "pusht"], specifier = ">=0.6.1,<0.7" }]
 so101 = [{ name = "lerobot", extras = ["feetech", "hardware", "viz", "training"], specifier = ">=0.6.1,<0.7" }]
+so101-data = [
+    { name = "huggingface-hub", specifier = ">=1.33,<2" },
+    { name = "pyarrow", specifier = ">=26,<27" },
+]
 
 [[package]]
 name = "platformdirs"
