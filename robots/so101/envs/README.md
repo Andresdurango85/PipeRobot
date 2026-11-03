@@ -38,3 +38,8 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `../policies/demo_replay.py`: replay policy; six actions in dataset joint order.
 - `../policies/demo_replay.json`: pinned input hash and offline preparation instructions.
 - `evaluator_acceptance.json`: the evaluator's registered acceptance test and expected study fingerprints.
+
+- `tcp_ik.py`: pure TCP action splitting, Jacobian shift and clamping.
+- `../policies/scripted_pick_place.py`: privileged waypoint policy scaffold.
+- `../policies/scripted_pick_place.json`: default scripted policy parameters.
+- `../tools/isaac_scripted_spike.py`: single-process randomized tuning and step diagnostics.

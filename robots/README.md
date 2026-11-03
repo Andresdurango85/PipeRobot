@@ -62,3 +62,8 @@ unit mapping and fixed analysis rules live in `so101/envs/`.
 - `so101/envs/vials_to_rack_randomization.py`: independent seeded scene layouts.
 - `so101/policies/demo_replay.py`: open-loop replay policy indexed by demo seed.
 - `so101/policies/demo_replay.json`: pinned offline policy inputs and preparation command.
+
+- `so101/envs/tcp_ik.py`: pure TCP action splitting, Jacobian shift and clamping.
+- `so101/policies/scripted_pick_place.py`: privileged waypoint policy scaffold.
+- `so101/policies/scripted_pick_place.json`: default scripted policy parameters.
+- `so101/tools/isaac_scripted_spike.py`: single-process randomized tuning and step diagnostics.

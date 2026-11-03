@@ -51,6 +51,10 @@ class ReconstructedEpisodes:
         self.tracker = SUCCESS.SuccessTracker()
 
         self.dump_steps: list[dict[str, object]] = []
+        self.seed = 0
+        self.action_space = "joint"
+        self.uses_object_state = False
+        self.policy: object = None
 
     def tensor(self, values: object) -> object:
         return torch.tensor(values, device=self.sim.device, dtype=torch.float32)
@@ -170,7 +174,6 @@ class ReconstructedEpisodes:
         episode: dict,
         record_steps: bool,
         action_source: Callable[[int, Mapping[str, object]], Sequence[float]] | None = None,
-        layout_source: Callable[[], None] | None = None,
     ) -> dict:
         started = time.perf_counter()
         self.dump_steps = []
@@ -178,11 +181,7 @@ class ReconstructedEpisodes:
             if self.full_reset:
                 # Before the TCP probe too, so nothing from the previous episode reaches it.
                 self._full_reset()
-            events = (
-                self.grasp_release_tcps(episode)
-                if layout_source is None
-                else (0, 0, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
-            )
+            events = self.grasp_release_tcps(episode)
             result_dict = {
                 "index": episode["index"],
                 "success": False,
@@ -194,26 +193,21 @@ class ReconstructedEpisodes:
             }
             if events is not None:
                 grasp, release, grasp_tcp, release_tcp = events
-                placement = None
-                if layout_source is None:
-                    placement = LAYOUT.rack_pose_for_release(release_tcp[:2], self.data)
-                    self.reset_layout()
-                    self.teleport(
-                        self.rack,
-                        (
-                            *placement.origin_xyz,
-                            *CORE.yaw_to_quat_xyzw(math.degrees(placement.yaw)),
-                        ),
-                    )
-                    poses = [
-                        LAYOUT.tube_pose_for_grasp(grasp_tcp, self.data),
-                        *LAYOUT.park_poses(self.data),
-                    ]
-                    for tube, pose in zip(self.tubes, poses, strict=True):
-                        self.teleport(tube, pose)
-                else:
-                    self.reset_layout(nominal=True)
-                    layout_source()
+                placement = LAYOUT.rack_pose_for_release(release_tcp[:2], self.data)
+                self.reset_layout()
+                self.teleport(
+                    self.rack,
+                    (
+                        *placement.origin_xyz,
+                        *CORE.yaw_to_quat_xyzw(math.degrees(placement.yaw)),
+                    ),
+                )
+                poses = [
+                    LAYOUT.tube_pose_for_grasp(grasp_tcp, self.data),
+                    *LAYOUT.park_poses(self.data),
+                ]
+                for tube, pose in zip(self.tubes, poses, strict=True):
+                    self.teleport(tube, pose)
                 self.set_joints(self.converted(episode["state"][0]))
                 self.tracker.reset()
                 self.sensor.reset()
@@ -256,7 +250,7 @@ class ReconstructedEpisodes:
                     success_step=result.success_step,
                     failure_reason=self.tracker.failure_reason(),
                     release_frame=release,
-                    rack_pose=asdict(placement) if placement is not None else None,
+                    rack_pose=asdict(placement),
                     forces={key: distribution(values) for key, values in windows.items()},
                 )
         canonical = json.dumps(
@@ -267,3 +261,171 @@ class ReconstructedEpisodes:
         if record_steps:
             result_dict["steps"] = self.dump_steps
         return result_dict
+
+    def object_state(self) -> dict[str, object]:
+        def pose(obj: object) -> dict[str, list[float]]:
+            return {
+                "pos": obj.data.root_pos_w.torch[0].cpu().tolist(),
+                "quat_xyzw": obj.data.root_quat_w.torch[0].cpu().tolist(),
+            }
+
+        rack = pose(self.rack)
+        body = self.robot.body_names.index(self.data["tcp"]["body"])
+        position = self.robot.data.body_pos_w.torch[0, body].cpu().tolist()
+        quaternion = self.robot.data.body_quat_w.torch[0, body].cpu().tolist()
+        return {
+            "tubes": [pose(tube) for tube in self.tubes],
+            "rack": rack,
+            "slots_w": [
+                list(CORE.tcp_point(rack["pos"], rack["quat_xyzw"], slot))
+                for slot in self.data["rack"]["slots_m"]
+            ],
+            "tcp": {
+                "pos": list(CORE.tcp_point(position, quaternion, self.data["tcp"]["offset_m"])),
+                "quat_xyzw": quaternion,
+            },
+        }
+
+    def apply_policy_action(self, action: Sequence[float]) -> None:
+        if self.action_space == "joint":
+            values = self.converted(action)
+        else:
+            from isaaclab.controllers import DifferentialIKController, DifferentialIKControllerCfg
+
+            helper = load_module("task_tcp_ik", ENV / "tcp_ik.py")
+            target, flex, roll, grip = helper.split_action(action)
+            if self.ik is None:
+                # Isaac Lab 3.0 cfg defaults: ik_params={"lambda_val": 0.01} for DLS.
+                self.ik = DifferentialIKController(
+                    DifferentialIKControllerCfg(
+                        command_type="position", use_relative_mode=False, ik_method="dls"
+                    ),
+                    num_envs=1,
+                    device=self.sim.device,
+                )
+            arm = [
+                self.robot.joint_names.index(n)
+                for n in ("shoulder_pan", "shoulder_lift", "elbow_flex")
+            ]
+            body = self.robot.body_names.index(self.data["tcp"]["body"])
+            objects = self.object_state()
+            tcp = objects["tcp"]["pos"]
+            position = self.robot.data.body_pos_w.torch[0, body].cpu().tolist()
+            quaternion = self.robot.data.body_quat_w.torch[:, body]
+            jacobian = self.robot.data.body_link_jacobian_w.torch[0, body - 1][:, arm]
+            shifted = helper.shift_jacobian(
+                jacobian.cpu().tolist(), [a - b for a, b in zip(tcp, position, strict=True)]
+            )
+            self.ik.set_command(self.tensor([target]), ee_quat=quaternion)
+            solved = (
+                self.ik.compute(
+                    self.tensor([tcp]),
+                    quaternion,
+                    self.tensor([shifted]),
+                    self.robot.data.joint_pos.torch[:, arm],
+                )[0]
+                .cpu()
+                .tolist()
+            )
+            raw = {name: 0.0 for name in self.names}
+            raw["gripper"] = grip
+            values = UNITS.to_radians(raw, self.table)
+            values.update(zip(("shoulder_pan", "shoulder_lift", "elbow_flex"), solved, strict=True))
+            values.update(wrist_flex=flex, wrist_roll=roll)
+            limits = self.robot.data.joint_pos_limits.torch[0]
+            values = {
+                name: helper.clamp(
+                    value, *limits[self.robot.joint_names.index(name)].cpu().tolist()
+                )
+                for name, value in values.items()
+            }
+        ids = [self.robot.joint_names.index(name) for name in self.names]
+        self.robot.set_joint_position_target_index(
+            target=self.tensor([[values[name] for name in self.names]]), joint_ids=ids
+        )
+
+    def run_policy_episode(
+        self,
+        layout_source: Callable[[], None],
+        action_source: Callable[[int, Mapping[str, object]], Sequence[float]],
+        horizon: int,
+        record_steps: bool,
+    ) -> dict[str, object]:
+        if type(horizon) is not int or horizon <= 0:
+            raise ValueError("horizon must be a positive integer")
+        started = time.perf_counter()
+        self.dump_steps = []
+        limit_steps = 0
+        diagnostics = []
+        with torch.inference_mode():
+            if self.full_reset:
+                self._full_reset()
+            self.reset_layout(nominal=True)
+            layout_source()
+            self.set_joints(INITIAL_JOINTS)
+            self.tracker.reset()
+            self.sensor.reset()
+            self.ik = None
+            rack_pose = {
+                "pos": self.rack.data.root_pos_w.torch[0].cpu().tolist(),
+                "quat_xyzw": self.rack.data.root_quat_w.torch[0].cpu().tolist(),
+            }
+            for index in range(horizon):
+                radians = {
+                    name: float(
+                        self.robot.data.joint_pos.torch[
+                            0, self.robot.joint_names.index(name)
+                        ].item()
+                    )
+                    for name in self.names
+                }
+                observation = {"step": index, "joint_pos": UNITS.to_lerobot(radians, self.table)}
+                if self.uses_object_state:
+                    observation["objects"] = self.object_state()
+                action = action_source(index, observation)
+                self.apply_policy_action(action)
+                for _ in range(self.substeps):
+                    self.physics_step()
+                result = self.sample(index)
+                wrist = self.robot.joint_names.index("wrist_flex")
+                measured = float(self.robot.data.joint_pos.torch[0, wrist].item())
+                limits = self.robot.data.joint_pos_limits.torch[0, wrist].cpu().tolist()
+                limit_steps += int(min(abs(measured - bound) for bound in limits) <= 0.05)
+                if record_steps:
+                    tcp = self.object_state()["tcp"]["pos"]
+                    target = list(action[:3]) if self.action_space == "tcp" else None
+                    diagnostics.append(
+                        {
+                            **self.dump_steps[-1],
+                            "phase": getattr(
+                                self.policy, "command_phase", getattr(self.policy, "phase", None)
+                            ),
+                            "tcp_target": target,
+                            "tcp_measured": tcp,
+                            "tcp_error": math.dist(target, tcp) if target is not None else None,
+                            "joint_pos": self.robot.data.joint_pos.torch[0].cpu().tolist(),
+                            "gripper_force": self.forces(),
+                            "tracker": asdict(result),
+                        }
+                    )
+                if result.success:
+                    break
+        canonical = json.dumps(
+            self.dump_steps, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+        report = {
+            "index": self.seed,
+            "success": result.success,
+            "success_step": result.success_step,
+            "failure_reason": self.tracker.failure_reason(),
+            "steps_run": index + 1,
+            "trajectory_sha256": hashlib.sha256(canonical).hexdigest(),
+            "wall_seconds": time.perf_counter() - started,
+            "rack_pose": rack_pose,
+            "release_frame": None,
+            "forces": None,
+            "wrist_flex_limit_steps": limit_steps,
+        }
+        if record_steps:
+            report["steps"] = diagnostics
+        return report
