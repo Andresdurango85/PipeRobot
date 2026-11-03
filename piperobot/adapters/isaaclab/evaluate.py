@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -19,6 +21,9 @@ from typing import Protocol
 from piperobot.adapters.isaaclab.specs import PolicySpec, TaskSpec, object_dict, read_object
 from piperobot.results import EpisodeResult, EvalResults, ResultsError, save_results
 
+MAX_ATTEMPTS_PER_SEED = 2
+MAX_RETRIED_SEEDS = 3
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -31,9 +36,39 @@ class Runner(Protocol):
 def run_process(
     command: list[str], *, cwd: Path, env: dict[str, str], timeout: float
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(  # noqa: S603 - explicit evaluator executable and argument list
-        command, cwd=cwd, env=env, timeout=timeout, capture_output=True, text=True, check=False
+    process = subprocess.Popen(  # noqa: S603 - explicit evaluator executable and arguments
+        command,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=os.name != "nt",
     )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        kill_process_tree(process)
+        stdout, stderr = process.communicate()
+        raise subprocess.TimeoutExpired(command, timeout, output=stdout, stderr=stderr) from exc
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def kill_process_tree(process: subprocess.Popen[str]) -> None:
+    if os.name == "nt":
+        taskkill = shutil.which("taskkill")
+        if taskkill is None:
+            raise OSError("taskkill is required to terminate the worker process tree")
+        subprocess.run(  # noqa: S603 - resolved taskkill and fixed process-tree arguments
+            [taskkill, "/T", "/F", "/PID", str(process.pid)],
+            capture_output=True,
+            # The worker may exit on its own before taskkill runs; that is not an error.
+            check=False,
+        )
+    else:
+        with contextlib.suppress(ProcessLookupError):
+            # POSIX only; mypy on Windows does not know these names.
+            os.killpg(process.pid, signal.SIGKILL)  # type: ignore[attr-defined, unused-ignore]
 
 
 def git_commit() -> str | None:
@@ -115,6 +150,8 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
         "git_commit": git_commit(),
         "start_timestamp": start_timestamp,
     }
+    retried_seeds: list[int] = []
+    retries = 0
     details: list[dict[str, object]] = []
     episodes = []
     first_platform: dict[str, object] | None = None
@@ -127,65 +164,88 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
     )
     with tempfile.TemporaryDirectory(prefix="piperobot-", dir=workdir) as temporary:
         for seed in seeds:
-            worker_out = Path(temporary) / f"episode-{seed}.json"
-            command = [
-                str(args.isaac_python.resolve()),
-                "-m",
-                "piperobot.adapters.isaaclab.episode",
-                "--task",
-                str(args.task.resolve()),
-                "--policy",
-                str(args.policy.resolve()),
-                "--seed",
-                str(seed),
-                "--out",
-                str(worker_out),
-                "--device",
-                args.device,
-                "--viz",
-                "none",
-            ]
-            process_started = time.perf_counter()
-            code: int | None = None
-            stderr = ""
-            detail: dict[str, object] = {"seed": seed}
-            try:
-                process = runner(command, cwd=workdir, env=env.copy(), timeout=task.timeout_s)
-                code, stderr = process.returncode, process.stderr
-                if code != 0:
-                    raise ResultsError("Worker exited unsuccessfully")
-                data = read_object(worker_out)
-                detail.update(data)
-                episode = validate_episode(data, seed)
-                platform = object_dict(data["platform"], "platform")
-                if first_platform is None:
-                    first_platform = platform
-                else:
-                    changed = {
-                        key: {"first": first_platform.get(key), "current": platform.get(key)}
-                        for key in first_platform.keys() | platform.keys()
-                        if key not in first_platform
-                        or key not in platform
-                        or first_platform.get(key) != platform.get(key)
-                    }
-                    if changed:
-                        differences.append({"seed": seed, "fields": changed})
-                episodes.append(episode)
-            except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-                if isinstance(exc, subprocess.TimeoutExpired):
-                    raw = exc.stderr or ""
-                    stderr = raw.decode(errors="replace") if isinstance(raw, bytes) else raw
-                error = f"Seed {seed}, exit code {code}: {exc}; stderr tail: {stderr[-4000:]}"
-                detail["error"] = error
-                print(error, file=sys.stderr)
-            detail.update(
-                exit_code=code, process_wall_seconds=time.perf_counter() - process_started
-            )
-            detail["stderr_tail"] = stderr[-4000:]
+            attempts: list[dict[str, object]] = []
+            detail: dict[str, object] = {"seed": seed, "attempts": attempts}
             details.append(detail)
+            for attempt in range(1, MAX_ATTEMPTS_PER_SEED + 1):
+                worker_out = Path(temporary) / f"episode-{seed}-{attempt}.json"
+                command = [
+                    str(args.isaac_python.resolve()),
+                    "-m",
+                    "piperobot.adapters.isaaclab.episode",
+                    "--task",
+                    str(args.task.resolve()),
+                    "--policy",
+                    str(args.policy.resolve()),
+                    "--seed",
+                    str(seed),
+                    "--out",
+                    str(worker_out),
+                    "--device",
+                    args.device,
+                    "--viz",
+                    "none",
+                ]
+                process_started = time.perf_counter()
+                code: int | None = None
+                stderr = ""
+                attempt_error: str | None = None
+                try:
+                    process = runner(command, cwd=workdir, env=env.copy(), timeout=task.timeout_s)
+                    code, stderr = process.returncode, process.stderr
+                    if code != 0:
+                        raise ResultsError("Worker exited unsuccessfully")
+                    data = read_object(worker_out)
+                    episode = validate_episode(data, seed)
+                    platform = object_dict(data["platform"], "platform")
+                    if first_platform is None:
+                        first_platform = platform
+                    else:
+                        changed = {
+                            key: {"first": first_platform.get(key), "current": platform.get(key)}
+                            for key in first_platform.keys() | platform.keys()
+                            if key not in first_platform
+                            or key not in platform
+                            or first_platform.get(key) != platform.get(key)
+                        }
+                        if changed:
+                            differences.append({"seed": seed, "fields": changed})
+                    detail.update(data)
+                    episodes.append(episode)
+                except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+                    if isinstance(exc, subprocess.TimeoutExpired):
+                        raw = exc.stderr or ""
+                        stderr = raw.decode(errors="replace") if isinstance(raw, bytes) else raw
+                    attempt_error = (
+                        f"Seed {seed}, exit code {code}: {exc}; stderr tail: {stderr[-4000:]}"
+                    )
+                    print(attempt_error, file=sys.stderr)
+                attempts.append(
+                    {
+                        "exit_code": code,
+                        "process_wall_seconds": time.perf_counter() - process_started,
+                        "error": attempt_error,
+                        "stderr_tail": stderr[-4000:],
+                    }
+                )
+                if attempt_error is None:
+                    break
+                if attempt == MAX_ATTEMPTS_PER_SEED:
+                    error = attempt_error
+                    break
+                retried_seeds.append(seed)
+                if len(retried_seeds) > MAX_RETRIED_SEEDS:
+                    error = f"Infrastructure retry budget exceeded at seed {seed}"
+                    break
+                retries += 1
             if error:
+                detail["error"] = error
                 break
     metadata.update(
+        retried_seeds=retried_seeds,
+        retries=retries,
+        max_attempts_per_seed=MAX_ATTEMPTS_PER_SEED,
+        max_retried_seeds=MAX_RETRIED_SEEDS,
         end_timestamp=timestamp(),
         wall_seconds=time.perf_counter() - started,
         platform=first_platform,
@@ -199,7 +259,10 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
         return 2
     results = EvalResults(policy.name, "isaaclab", tuple(episodes))
     save_results(results, output)
-    print(f"{policy.name}: {results.successes}/{results.trials} episodes succeeded")
+    print(
+        f"{policy.name}: {results.successes}/{results.trials} episodes succeeded "
+        f"({retries} infrastructure retries)"
+    )
     return 0
 
 

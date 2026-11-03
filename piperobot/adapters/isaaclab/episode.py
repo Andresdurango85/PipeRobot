@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,8 @@ from typing import cast
 
 from piperobot.adapters.isaaclab.specs import Policy, PolicySpec, TaskSpec, load_module
 from piperobot.platform_info import describe_platform
+
+_exit = os._exit
 
 
 def version(distribution: str) -> str | None:
@@ -115,7 +118,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 payload = json.dumps(result, indent=2, allow_nan=False) + "\n"
                 args.out.parent.mkdir(parents=True, exist_ok=True)
-                args.out.write_text(payload, encoding="utf-8")
+                temporary = args.out.with_name(args.out.name + ".tmp")
+                with temporary.open("w", encoding="utf-8") as stream:
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temporary, args.out)
+                saved = json.loads(args.out.read_text(encoding="utf-8"))
+                if not isinstance(saved, dict) or saved.get("seed") != args.seed:
+                    raise ValueError("Persisted worker result has a mismatched seed")
+                # NVBug 5948099: Kit shutdown can deadlock. Fsync and re-read the result
+                # before bypassing shutdown so a successful exit guarantees durable JSON.
+                sys.stdout.flush()
+                sys.stderr.flush()
+                _exit(0)
             except Exception:
                 args.out.unlink(missing_ok=True)
                 traceback.print_exc()

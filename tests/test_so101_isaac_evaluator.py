@@ -109,6 +109,9 @@ def test_bad_seeds(value: str) -> None:
     [
         "pass",
         "trial_failure",
+        "transient",
+        "transient_timeout",
+        "budget",
         "crash",
         "timeout",
         "invalid",
@@ -136,8 +139,12 @@ def test_driver(
         calls.append((command, kwargs))
         seed = int(command[command.index("--seed") + 1])
         path = Path(command[command.index("--out") + 1])
+        if mode == "transient_timeout" and len(calls) == 1:
+            raise subprocess.TimeoutExpired(command, 300, stderr="timeout details")
         if mode == "timeout":
             raise subprocess.TimeoutExpired(command, 300, stderr=b"timeout details")
+        if mode in {"transient", "budget"} and len(calls) % 2 == 1:
+            return subprocess.CompletedProcess(command, 7, "", "transient crash")
         if mode == "crash":
             return subprocess.CompletedProcess(command, 7, "", "crash details")
         if mode == "invalid":
@@ -148,7 +155,15 @@ def test_driver(
                 {
                     "seed": seed + 1 if mode == "wrong_seed" else seed,
                     "scene": "scene",
-                    "success": "yes" if mode == "bad_success" else mode == "pass",
+                    "success": "yes"
+                    if mode == "bad_success"
+                    else mode
+                    in {
+                        "pass",
+                        "transient",
+                        "transient_timeout",
+                        "budget",
+                    },
                     "failure": "no_grasp",
                     "trajectory_sha256": "fingerprint",
                     "platform": {"device": "cpu", "varying": seed},
@@ -162,7 +177,7 @@ def test_driver(
         "--policy",
         str(policy),
         "--seeds",
-        "0,3,7",
+        "0,3,7,9" if mode == "budget" else "0,3,7",
         "--isaac-python",
         "isaac-python",
         "--workdir",
@@ -175,23 +190,32 @@ def test_driver(
     code = evaluate.main(argv, runner=runner)
     details = json.loads(output.with_name("episodes_detail.json").read_text())
     metadata = json.loads(output.with_name("run_metadata.json").read_text())
-    if mode in {"pass", "trial_failure"}:
+    if mode in {"pass", "trial_failure", "transient", "transient_timeout"}:
         assert code == 0
         results = load_results(output)
         assert results.trials == 3
-        assert results.successes == (3 if mode == "pass" else 0)
+        assert results.successes == (3 if mode in {"pass", "transient", "transient_timeout"} else 0)
         assert [ep.seed for ep in results.episodes] == [0, 3, 7]
         assert all(ep.failure == "no_grasp" for ep in results.failed)
-        assert "test-policy:" in capsys.readouterr().out
+        retries = 3 if mode == "transient" else int(mode == "transient_timeout")
+        assert f"({retries} infrastructure retries)" in capsys.readouterr().out
+        assert metadata["retries"] == retries
+        assert [len(d["attempts"]) for d in details] == (
+            [2, 2, 2] if mode == "transient" else [2, 1, 1] if retries else [1, 1, 1]
+        )
+        assert len(calls) == 3 + retries
         assert len(metadata["platform_differences"]) == 2
         assert len(details) == 3
     else:
         assert code == 2
         assert not output.exists()
-        assert len(calls) == len(details) == 1
+        assert len(calls) == (7 if mode == "budget" else 2)
+        assert len(details) == (4 if mode == "budget" else 1)
+        assert len(details[0]["attempts"]) == 2
         assert "error" in metadata
         assert "Seed 0, exit code" in capsys.readouterr().err
     for _, kwargs in calls:
+        assert len({c[0][c[0].index("--out") + 1] for c in calls}) == len(calls)
         assert kwargs["cwd"] == (tmp_path / "work").resolve()
         assert kwargs["timeout"] == 300
         assert kwargs["env"]["PYTHONUNBUFFERED"] == "1"
@@ -269,11 +293,11 @@ def test_replay_and_task(tmp_path: Path) -> None:
         TASK.scene_label(0, "unknown")
 
 
-@pytest.mark.parametrize("fails", [False, True])
+@pytest.mark.parametrize("fails", [False, True, "write", "read"])
 def test_worker(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    fails: bool,
+    fails: bool | str,
 ) -> None:
     import argparse
     from collections.abc import Iterator
@@ -327,7 +351,7 @@ def test_worker(
         "def run_episode(**kwargs):\n"
         + (
             "    raise RuntimeError('task exploded')\n"
-            if fails
+            if fails is True
             else "    return {'success': True, 'scene': 'test-scene'}\n"
         ),
         encoding="utf-8",
@@ -355,6 +379,37 @@ def test_worker(
     )
     output = tmp_path / "worker.json"
     output.write_text("stale")
+    synced: list[int] = []
+
+    def fsync(fd: int) -> None:
+        synced.append(fd)
+        if fails == "write":
+            raise OSError("disk failure")
+
+    def fast_exit(code: int) -> None:
+        assert synced
+        assert reads == [output]
+        assert json.loads(output.read_text())["seed"] == 7
+        raise SystemExit(code)
+
+    monkeypatch.setattr(episode.os, "fsync", fsync)
+    monkeypatch.setattr(episode, "_exit", fast_exit)
+    original_read = Path.read_text
+    reads: list[Path] = []
+
+    def read_result(
+        path: Path,
+        encoding: str | None = None,
+        errors: str | None = None,
+    ) -> str:
+        if path == output:
+            reads.append(path)
+            assert synced
+            if fails == "read":
+                return '{"seed": 99}'
+        return original_read(path, encoding=encoding, errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", read_result)
     with pytest.raises(SystemExit, match="1" if fails else "0"):
         episode.main(
             [
@@ -543,3 +598,53 @@ def test_action_hook_preserves_replay_trace() -> None:
         {"step": 0, "joint_pos": {"gripper": 0.0}},
         {"step": 1, "joint_pos": {"gripper": 0.0}},
     ]
+
+
+@pytest.mark.parametrize("windows", [False, True])
+def test_timeout_kills_process_tree(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    windows: bool,
+) -> None:
+    from types import SimpleNamespace
+
+    events: list[object] = []
+
+    class Process:
+        pid = 123
+        returncode = -9
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            events.append(timeout)
+            if timeout is not None:
+                raise subprocess.TimeoutExpired(["worker"], timeout)
+            return "output", "timeout stderr"
+
+    def popen(command: list[str], **kwargs: object) -> Process:
+        assert kwargs["start_new_session"] is not windows
+        return Process()
+
+    def taskkill(command: list[str], **kwargs: object) -> None:
+        events.append(command)
+
+    monkeypatch.setattr(
+        evaluate,
+        "os",
+        SimpleNamespace(
+            name="nt" if windows else "posix",
+            killpg=lambda pid, sig: events.append((pid, sig)),
+        ),
+    )
+    monkeypatch.setattr(evaluate, "signal", SimpleNamespace(SIGKILL=9))
+    monkeypatch.setattr(evaluate.shutil, "which", lambda name: "taskkill.exe")
+    monkeypatch.setattr(evaluate.subprocess, "Popen", popen)
+    monkeypatch.setattr(evaluate.subprocess, "run", taskkill)
+    with pytest.raises(subprocess.TimeoutExpired, match="timed out") as caught:
+        evaluate.run_process(["worker"], cwd=tmp_path, env={}, timeout=12)
+    assert caught.value.stderr == "timeout stderr"
+    assert events[0] == 12
+    assert events[-1] is None
+    if windows:
+        assert events[1] == ["taskkill.exe", "/T", "/F", "/PID", "123"]
+    else:
+        assert events[1] == (123, evaluate.signal.SIGKILL)
