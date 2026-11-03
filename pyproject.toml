@@ -106,8 +106,9 @@ pytest_add_cli_args_test_selection = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["-ra", "--strict-markers", "-m", "not hub"]
+addopts = ["-ra", "--strict-markers", "-m", "not hub and not github"]
 markers = [
+    "github: live certificate verification against GitHub Pages (run with -m github)",
     "hub: needs network access to the Hugging Face Hub and the `lerobot` extra (run with -m hub)",
 ]
 
