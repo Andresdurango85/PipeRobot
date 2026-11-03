@@ -66,6 +66,13 @@ Pinned version: 0.6.1 ([ADR 0002](../decisions/0002-python-tooling-and-pinning.m
   restored by `DataProcessorPipeline.from_pretrained`, unless overridden with
   `overrides={"normalizer_processor": {"stats": ...}}`.
   _(verified 2026-10-26, LeRobot 0.6.1, `processor/normalize_processor.py` docstring)_
+- **Open question: a dataset's `fps` can be a label, not the control rate.**
+  `sreetz-nv/so101_teleop_vials_rack_left` (NVIDIA's course) says 30 fps, but the course's
+  published code records and evaluates it at one frame per 1/60 s of simulated time
+  ([isaac.md](isaac.md), [ADR 0024](../decisions/0024-so101-demo-replay-go-no-go-and-control-rate.md)).
+  A policy trained on it (ACT's chunk of 100 actions, temporal ensembling, the timestamps of
+  `delta_timestamps`) inherits the 30-fps reading. How that maps to the real arm's control loop is
+  for the training work to decide; nothing is changed yet. _(noted 2026-11-02)_
 
 ## Robot Learning Tutorial snippets vs 0.6.1
 

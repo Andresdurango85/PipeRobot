@@ -163,3 +163,74 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   tasks such as `Lerobot-So101-Teleop-Vials-To-Rack` in `source/sim_to_real_so101`, tested on
   "Ubuntu Linux >22.04", set up only through Docker (`docker/sim/Dockerfile`).
   _(verified 2026-11-01, repository README)_
+- **The course repository's public history starts on 2026-04-16** (initial commit `d327be4`, 5
+  commits by `ce807d9`), but its training dataset `sreetz-nv/so101_teleop_vials_rack_left` was
+  created on 2026-01-26. The dataset was recorded with code older than anything published, so
+  the published code shows how the course replays and evaluates that data, not how it was
+  recorded. _(verified 2026-11-02, GitHub commits API and the Hub dataset API)_
+- **Licences of what we port.** The repository is Apache-2.0. Its `THIRD_PARTY_NOTICES` does not
+  list the USD assets (robot, tubes, rack, mat, light box), so the repository's Apache-2.0
+  applies to them; the 24 HDRIs are CC0 (Poly Haven, `assets/hdri/LICENCE`). Files ported into
+  this repo keep the course's SPDX header and name the source commit:
+  `robots/so101/envs/joint_units.py` (from `utils/lerobot_interface.py`), and the scene facts in
+  `robots/so101/envs/vials_to_rack.json` (from `assets/so101.py`,
+  `tasks/vials_to_rack_env_cfg.py`, `tasks/task_env_cfg.py`), all at
+  `ce807d99724cb65671abec01f908a2fcb4a6eab7`. Asset binaries are never committed.
+  _(verified 2026-11-02)_
+
+## SO-101 course demos on the Isaac Lab 3.0 asset
+
+The object-free go/no-go of [ADR 0024](../decisions/0024-so101-demo-replay-go-no-go-and-control-rate.md).
+
+- **The course's training dataset holds no object poses**: `observation.state`, `action`, two
+  videos (`ego`, `external_D455`, 640×480) and indices; 75 episodes, 18250 frames, LeRobot v3.0,
+  revision `69802873f4a26bffb716fca1f4fb1bb0e3d2a07a`. The course randomizes the rack and tubes
+  on every reset, so a demo cannot be replayed into its own scene.
+  _(verified 2026-11-02, `meta/info.json`)_
+- **Its joint values are LeRobot units, not degrees**: arm joints in -100..100 (wrist_flex
+  reaches -100.0 exactly), gripper 0..100 (0.5..58.7). The course converts them with a per-joint
+  degree table that belongs to its own robot USD; that table is now
+  `robots/so101/envs/joint_units.json`. _(verified 2026-11-02, `meta/stats.json`,
+  `utils/lerobot_interface.py`)_
+- **The metadata says 30 fps, the published course code runs it at 60 Hz.** The recorder
+  (`scripts/lerobot_agent.py`, `utils/lerobot_recorder.py`) writes one frame per `env.step` with
+  no subsampling, and `env.step` is physics dt 1/120 × decimation 2 = 1/60 s; the course's
+  evaluation also gives one action per `env.step`, with a 450/60 s timeout. 243 frames per
+  episode is 4.05 s at 60 Hz, 8.1 s at 30 Hz. The dataset predates the public code (above); the
+  matched-gains replay below measured 60 Hz. _(verified 2026-11-02, course code at `ce807d9`)_
+- **The tube in the jaw shows in the recorded data**: while holding, the gripper state stays
+  5+ units above the commanded gripper (median gap 15.7). A run of 15+ frames with that gap
+  finds a hold in all 75 episodes (72 with one, 3 with a regrasp); the first hold starts the
+  grasp, the end of the last one is the release. An absolute "gripper closed" threshold does not
+  work: operators close to anywhere between 1 and 13. _(verified 2026-11-02)_
+- **The Isaac Lab 3.0 SO-101 asset** (`so101_new_calib_SysID`, variant `Physics=physx`) has
+  bodies `base, shoulder, upper_arm, lower_arm, wrist, gripper, moving_jaw_so101_v1` and hard
+  limits (degrees) pan ±110, lift ±100, elbow ±96.8, wrist_flex ±95, wrist_roll -157.2..162.8,
+  gripper -10..100: the course table except elbow ([-100, 90]) and wrist_roll (±160). Its
+  tool-centre point is the URDF's `gripper_frame_link`, (-0.0079, -0.0002, -0.0981) m from the
+  `gripper` body (TheRobotStudio/SO-ARM100 `a758567`). _(verified 2026-11-02, Isaac Lab 3.0)_
+- **Replaying the 75 demos on it, object-free** (`isaac_demo_replay.py`, robot at the course's
+  base pose): all 75 grasps land in the course's tube region and all 75 releases over its rack
+  region, at both rates; no target leaves the joint limits. Joint tracking against the recorded
+  states (LeRobot units, pooled arm p95): 5.55 at 60 Hz (wrist_flex p95 10.0, max 19.1; fails
+  the pre-set bar) and 1.71 at 30 Hz (passes). The pre-registered verdict is GO at 30 Hz, but a
+  slower replay of the same targets always tracks better when the asset's gains differ from the
+  recording robot's, so this comparison cannot tell the rate; it shows that the asset's SysID
+  gains lag the course robot's at 60 Hz. Without rendering, 18250 frames take 155 s at 2
+  substeps and 303 s at 4. _(verified 2026-11-02, RTX 5060 Ti, branch
+  `feat/so101-replay-gonogo`)_
+- **The asset's USD gains are not the course's.** Read back after spawning (stiffness /
+  damping, effort limit): pan 48.4 / 3.34, lift 47.8 / 2.56, elbow 14.7 / 0.34, wrist_flex
+  43.6 / 4.14, wrist_roll 54.9 / 2.97, gripper 68.3 / 2.82, all 3.35 N·m. The course's
+  (`assets/so101.py`): 55 / 0.7, 30 / 0.8, 25 / 0.7, 12 / 0.5, 7 / 0.5, 4 / 0.3, all 30 N·m, with
+  32 solver position iterations (the asset uses 8). Overriding them is a per-joint
+  `ImplicitActuatorCfg(stiffness, damping, joint_effort_limit)` and a
+  `PhysxArticulationCfg` in `spawn.articulation_props`; the read-back values confirm it takes
+  effect. _(verified 2026-11-02, Isaac Lab 3.0, `robot.data.joint_stiffness` etc.)_
+- **With the course's gains, the 3.0 asset reproduces the recording at 60 Hz** (diagnostic,
+  [ADR 0024](../decisions/0024-so101-demo-replay-go-no-go-and-control-rate.md)): pooled arm p95
+  0.71 LeRobot units, best-fit action-to-state lag 1.30 frames against the dataset's own 1.34,
+  recorded-vs-simulated shift 0.01 frames. At 30 Hz it runs ahead: p95 2.72, lag 0.47, shift
+  +0.91. With the USD gains at 60 Hz the lag is 2.95 frames. Two articulations in one stage
+  changed the USD-gain p95 slightly (5.50 / 1.67 against 5.55 / 1.71 alone).
+  _(verified 2026-11-02, RTX 5060 Ti)_

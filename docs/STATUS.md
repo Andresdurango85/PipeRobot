@@ -23,6 +23,11 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-02: the Isaac Lab 3.0 SO-101 asset passed the object-free go/no-go on the course's
+  75 demos (all grasps and releases in the course's tube and rack regions, no limit hits), and
+  the course dataset's real rate is 60 Hz despite its 30-fps label, measured by replaying it with
+  the course's gains ([ADR 0024](decisions/0024-so101-demo-replay-go-no-go-and-control-rate.md),
+  [isaac.md](knowledge/isaac.md)).
 - 2026-11-02: Codex CLI writes the code and the Claude sessions (one orchestrator, several
   workers in their own worktrees) brief it and review its diff
   ([ADR 0023](decisions/0023-codex-writes-code-claude-reviews.md), recipe in
@@ -43,24 +48,19 @@ Project Cangrejo, the `piperobot` package).
 
 ## Next
 
-1. Andrés turns on Windows Developer Mode on the home PC before the first training run
-   ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)).
-2. Start the crab's v0 in Onshape, in its private repo.
-3. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
+1. Start the crab's v0 in Onshape, in its private repo.
+2. A nightly run on rotating seeds, and a paired same-seed comparison to catch smaller drops; it
    must tolerate CPU-dependent near-miss flips or compare runs on the same logged CPU model.
-4. Isaac: port the course's tube-to-rack task to Isaac Lab 3.0 (approved 2026-11-02), in small
-   PRs, Codex coding. In progress on branch `feat/so101-replay-gonogo`. PR 1 is the go/no-go for
-   Isaac Lab's SO-101 asset: replay the course dataset's actions without objects (the dataset has
-   no rack or tube poses), check joint tracking and where the gripper closes and opens against
-   the randomization boxes, with thresholds fixed before the run. It also settles the joint units
-   and the control rate: the dataset says 30 fps, but the course records one frame per 60 Hz
-   step. PR 2 validates success detection; then the `piperobot.adapters.isaaclab` evaluator
-   (lazy Isaac imports), with the task data in `robots/so101/envs/`, and reproducibility re-checked
-   with cameras and a policy in the loop.
-5. Look at the simulated rack dataset as training data for a first ACT policy
+3. Isaac: port the course's tube-to-rack task to Isaac Lab 3.0, in small PRs, Codex coding.
+   PR 1 (go/no-go, units, 60 Hz) is done. PR 2: the scene on the 3.0 asset with the course's
+   assets fetched by sha256 outside the repo, success detection validated by scripting a tube
+   into the rack, and a decision (own ADR) on running the course's gains or the asset's SysID
+   gains. Then the `piperobot.adapters.isaaclab` evaluator (lazy Isaac imports) and
+   reproducibility with cameras and a policy in the loop.
+4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-6. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
-7. Add `persist-credentials: false` to the checkout steps of the self-hosted workflows
+5. Find out why Dependabot bumped `setup-uv` only to v7 (latest is v10).
+6. Add `persist-credentials: false` to the checkout steps of the self-hosted workflows
    (`gpu-smoke`, `isaac-render`) ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)).
 
 ## Open questions for Andrés

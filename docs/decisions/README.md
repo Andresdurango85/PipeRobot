@@ -31,6 +31,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0021](0021-isaac-lab-3-on-windows-without-arena.md) | Simulate the SO-101 in Isaac Lab 3.0 on native Windows, without Isaac Lab-Arena | Accepted |
 | [0022](0022-so101-hardware-deps-and-manual-outcomes.md) | SO-101 hardware deps as a dependency group, no Hub uploads, Developer Mode, manual real-arm outcomes | Accepted |
 | [0023](0023-codex-writes-code-claude-reviews.md) | Codex writes the code; Claude sessions orchestrate and review | Accepted |
+| [0024](0024-so101-demo-replay-go-no-go-and-control-rate.md) | Object-free demo replay as the SO-101 asset go/no-go; control rate measured per dataset | Accepted |
 
 ## Template
 

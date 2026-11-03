@@ -35,3 +35,8 @@ The SO-101 tube-to-rack task. `envs/` will hold the Isaac Lab 3.0 environment co
 developer tools that are not part of the gate: `dataset_stats.py` (Hub dataset metadata) and
 `isaac_seed_check.py` (does Isaac Lab reproduce an episode from its seed; runs in the Isaac Lab
 env).
+
+The object-free asset check uses `so101/tools/demo_extract.py` (pinned parquet extraction without
+videos), `so101/tools/isaac_demo_replay.py` (Isaac Lab 3.0, substeps 2 and 4) and
+`so101/tools/demo_replay_report.py` (bare-Python GO / BASE_OFFSET / NO_GO report). Scene data,
+unit mapping and fixed analysis rules live in `so101/envs/`.

@@ -77,6 +77,8 @@ specs in single quotes so PowerShell leaves the braces alone. `COM3`/`COM4` are 
 - **Enable Windows Developer Mode on the training PC** (Settings > System > For developers >
   Developer Mode): without it `lerobot-train` crashes at its first checkpoint (step 11). Andrés
   turns it on himself ([ADR 0022](../decisions/0022-so101-hardware-deps-and-manual-outcomes.md)).
+  Done on the home PC: `AllowDevelopmentWithoutDevLicense=1`, and `os.symlink` to a directory
+  works without admin rights. _(verified 2026-11-02, home PC)_
 - **Test the cameras now**, if you have them: plug the C920 and the wrist camera and run
   `lerobot-find-cameras opencv` (step 6). This works with the current `.venv`.
 
