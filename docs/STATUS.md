@@ -31,9 +31,10 @@ Project Cangrejo, the `piperobot` package).
 - 2026-11-03: mypy --strict also checks `tests/` (except the SO-101 tests, which join with
   `robots/` later), and tolerances and confidences print exactly ("12.5 pp", "97.5%")
   ([testing.md](knowledge/testing.md)).
-- 2026-11-02: CI hardening. `gpu-smoke` runs on push, never on PRs; a job-started hook on the
-  runner refuses any job that is not one of our self-hosted workflows on a push, dispatch or
-  schedule; the runner folder's ACL no longer lets every local account write it; every action is
+- 2026-11-03: CI hardening. `gpu-smoke` runs on push, never on PRs; a job-started hook on the
+  runner skips the steps of any job that is not one of our self-hosted workflows on a push,
+  dispatch or schedule (but not its `if: always()` steps, a follow-up); the runner folder's ACL
+  no longer lets every local account read or write it; every action is
   pinned by SHA; zizmor runs in CI and the hooks; OpenSSF Scorecard runs weekly
   ([ADR 0027](decisions/0027-self-hosted-runner-push-only-and-pinned-actions.md),
   [ci.md](knowledge/ci.md)).
@@ -82,10 +83,11 @@ Project Cangrejo, the `piperobot` package).
    reproducibility with cameras and a policy in the loop.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. After the ADR 0027 PR merges: set the repo's Actions permissions (selected actions only,
-   SHA pinning required), check that a workflow, CodeQL's default setup and Monday's Dependabot
-   run still work, note Scorecard's first score and top findings in [ci.md](knowledge/ci.md),
-   and ask Andrés to add `zizmor` to the ruleset's required checks.
+5. Runner hook follow-up (approved): on refusal, end the job's `Runner.Worker` process so
+   `if: always()` steps cannot run, and a job-completed hook that wipes the workspace; test on
+   draft PR #35, then Andrés redeploys elevated. Also: note Scorecard's first score and top
+   findings in [ci.md](knowledge/ci.md), check that Monday's Dependabot run works under the new
+   Actions permissions, and ask Andrés to add `zizmor` to the ruleset's required checks.
 6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
    after a few weekly `mutation.yml` runs, decide a mutation-score threshold
    ([testing.md](knowledge/testing.md)).

@@ -15,8 +15,12 @@ repo setting "require approval for all external contributors".
 The hard fix GitHub offers, a runner group limited to selected workflows, exists only for
 organizations; this repo belongs to a personal account. The runner application does offer
 job-started hooks: the script named in `ACTIONS_RUNNER_HOOK_JOB_STARTED` runs before every job,
-and if it exits non-zero the job fails and none of its steps run. The script lives on the runner
-machine, out of reach of any workflow file.
+and the docs say that if it exits non-zero the job does not run. The script lives on the runner
+machine, out of reach of any workflow file. Tested on 2026-11-03, a refused job does skip its
+normal steps, but **steps with `if: always()` still run**: a refused `gpu-smoke` (run
+41573497209) ran `actions/upload-artifact` and uploaded a file a previous run had left in the
+workspace. The job's actions are also downloaded to the runner before the hook runs (not
+executed). An allowed job prints its decision under "Set up runner" (run 41573361134).
 
 Separately, every action was referenced by a movable tag (`@v7`). A moved or hijacked tag would
 run new code on the home PC and in every job with a token. Dependabot's github-actions ecosystem
@@ -33,7 +37,8 @@ no `v8`/`v10` tag for Dependabot to move to.
    here. Its job keeps a repository guard and the Dependabot actor guard. The check still shows on
    the PR, because it runs on the PR's head commit. This replaces 0020's rule "GPU workflows use
    `pull_request` and `workflow_dispatch`"; the rest of 0020 stands.
-2. **A job-started hook on the runner refuses everything else.**
+2. **A job-started hook on the runner refuses everything else** (it stops the job's normal
+   steps; see Consequences for what it does not stop yet).
    `.github/runner/job-started.ps1` allows a job only if the repository is
    `Andresdurango85/PipeRobot`, the event is `push`, `workflow_dispatch` or `schedule`, and
    `GITHUB_WORKFLOW_REF` names one of the allowlisted self-hosted workflow files on a
@@ -79,8 +84,12 @@ no `v8`/`v10` tag for Dependabot to move to.
 
 ## Consequences
 
-- A fork PR cannot run a step on the home PC even if the owner approves its workflows: the hook
-  fails the job first. A collaborator with push access can still run code there, by design.
+- A refused job's normal steps never run, but its `if: always()` steps do (see Context). Until
+  a follow-up makes the hook stop those too (end the job's worker process on refusal, and wipe
+  the workspace after every job), a fork-added workflow can still run code on the home PC once
+  its workflows are approved. The approval setting for external contributors and reading
+  `.github/` changes before approving stay the primary barrier. A collaborator with push
+  access can run code there, by design.
 - The hook only protects if its live copy is installed, current, and not writable by the
   runner's user. The rest of `C:\actions-runner` stays writable by that user, so a job that
   passes the hook could change the runner itself. Accepted: only trusted jobs get past the hook.

@@ -55,6 +55,11 @@
   `pytest` under `uv run --isolated --locked` (fresh env without the `lerobot` extra, like CI),
   ~5 s. Install once per clone with `uv run prek install`.
   _(verified 2026-10-27, prek 0.5.7, uv, Windows laptop)_
+- **Git worktrees share one `.git/hooks`**, and `prek install` writes the absolute path of the
+  current checkout's `prek.exe` into it. Installed from a worktree, every other worktree's
+  commits break (`exec: prek: not found`) once that worktree's venv is removed. Install from the
+  main checkout: `C:\Users\nuevo\PipeRobot\.venv\Scripts\prek.exe install`.
+  _(verified 2026-11-03, prek 0.5.7)_
 - **zizmor runs offline in the hooks** (on commit when `.github/` or the hook config changes,
   and on push always), because hooks must work without a token; CI adds the online audits.
   _(2026-11-02, ADR 0027)_
@@ -108,15 +113,38 @@
   the GPU runner. _(verified 2026-11-01, API)_
 - **Job-started hook**: the runner runs the script named in `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   (set in the OS environment or in `.env` in the runner folder; a change needs a runner restart)
-  after a job is assigned and before it starts. A non-zero exit marks the job failed and none of
-  its steps run; `continue-on-error` does not apply. `.ps1` runs with `pwsh`, falling back to
+  after a job is assigned and before it starts. The docs say a non-zero exit means the job does
+  not run; `continue-on-error` does not apply. `.ps1` runs with `pwsh`, falling back to
   `powershell`. It sees the default `GITHUB_*` variables, has no timeout, and its output shows
   under "Set up runner". Ours is `.github/runner/job-started.ps1`
   ([ADR 0027](../decisions/0027-self-hosted-runner-push-only-and-pinned-actions.md)).
   _(verified 2026-11-02, GitHub docs "Running scripts before or after a job", runner 2.338.2)_
-- **`C:\actions-runner` is writable by the runner's user**: `gh-runner` has Modify, and so do
-  "Authenticated Users" (inherited from `C:\`). The service runs as `.\gh-runner`. Keep the hook's
-  live copy in a folder where `gh-runner` can only read and execute. _(verified 2026-11-02, ACL)_
+- **A refused job still runs its `if: always()` steps.** With the hook exiting 1, "Set up
+  runner" fails and normal steps are skipped, but `always()` steps execute on the runner: a
+  refused `gpu-smoke` ran `actions/upload-artifact` and uploaded a 529-byte file a previous run
+  had left in `out/` (run 41573497209). The job's actions are downloaded before the hook runs.
+  On this runner the hook is invoked as `powershell -command ". '<script>'"`, so Windows
+  PowerShell 5.1 under the machine's execution policy runs it; an allowed job prints
+  "Allowed job: …" (run 41573361134). The fork approval setting stays the primary barrier until
+  the follow-up (end the worker process on refusal, wipe the workspace after each job) lands.
+  _(verified 2026-11-03, runner 2.338.2, throwaway PR #35)_
+- ~~`C:\actions-runner` inherits from `C:\`: "Authenticated Users" have Modify and "Users" read,
+  including `.credentials_rsaparams` (the runner's key), so every local account, the Codex
+  sandbox users included, could rewrite or read the runner.~~ _(verified 2026-11-02, ACL)_
+- **`C:\actions-runner` no longer inherits** (ADR 0027): SYSTEM and Administrators full,
+  `gh-runner` Modify (the service runs as `.\gh-runner`; self-update needs Modify), the
+  `GITHUB_ActionsRunner_*` group `config.cmd` created full, and `nuevo` read on `_diag` only.
+  `nuevo` can no longer read `_work` or the runner's config: debug runs through the Actions logs
+  or `_diag`, and anything else needs an elevated shell. `.env` is read-only for `gh-runner`
+  (Modify on the folder lacks delete-child). The hook's live copy is
+  `C:\ProgramData\piperobot-runner\job-started.ps1` (no inheritance; `gh-runner` and `nuevo`
+  read only). ACL backup for rollback: `C:\ProgramData\actions-runner-acl-backup.txt`, restored
+  with `icacls C:\ /restore <file>` (paths are stored relative to the parent folder).
+  Changing the tree's ACL takes minutes: `icacls` walks every file, and the Isaac tool cache
+  alone is ~17 GB (the `/save` backup is 202 MB). Closing the elevated window mid-run leaves the
+  tree half-changed and the service stopped; the steps are idempotent, so re-run them.
+  _(applied by Andrés, elevated, 2026-11-03; verified: `nuevo` denied on `.credentials_rsaparams`,
+  `_work`, the Isaac venv and `bin`; live hook's sha256 equals the tracked file; runner online)_
 - **Runner groups limited to selected workflows exist only for organizations**, so a personal
   repo cannot tie its runner to specific workflow files; the job-started hook does that job here.
   _(2026-11-02)_
