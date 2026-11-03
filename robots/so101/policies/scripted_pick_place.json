@@ -4,8 +4,8 @@
   "factory": "ScriptedPickPlace",
   "files": [],
   "options": {
-    "grasp_wrist_flex": 0.51,
-    "release_wrist_flex": -1.18,
+    "grasp_pitch": 1.025,
+    "release_pitch": -0.172,
     "grasp_wrist_roll": -1.41,
     "release_wrist_roll": -1.59,
     "roll_per_pan": 0.0,
@@ -13,11 +13,16 @@
     "gripper_open": 41,
     "gripper_closed": 5,
     "approach_dz": 0.06,
-    "carry_z": 0.2,
+    "carry_z": 0.15,
+    "transfer_z": 0.19,
     "release_z": 0.17,
     "grasp_along_axis_m": 0.04,
+    "min_along_axis_m": 0.015,
+    "max_grasp_x_m": 0.295,
+    "grasp_lateral_m": 0.02,
+    "grasp_dz": -0.008,
     "slot_index": 0,
-    "tolerance_m": 0.01,
+    "tolerance_m": 0.004,
     "dwell_steps": 20
   }
 }

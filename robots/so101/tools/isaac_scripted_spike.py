@@ -37,6 +37,8 @@ def run(args: argparse.Namespace, sim_cfg: object) -> dict[str, object]:
     env.policy = policy
     env.action_space = "tcp"
     env.uses_object_state = isinstance(policy, UsesObjectState) and policy.uses_object_state
+    env.ik_gain = args.ik_gain
+    env.ik_max_lead = args.ik_max_lead
     episodes = []
     for seed in parse_seeds(args.seeds):
         policy.reset(seed)
@@ -89,6 +91,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--param", action="append", default=[])
     parser.add_argument("--horizon", type=int, default=600)
+    parser.add_argument("--ik-gain", type=float, default=0.2)
+    parser.add_argument("--ik-max-lead", type=float, default=0.25)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--dump-steps", action="store_true")
     parser.add_argument("--assets-dir", type=Path)

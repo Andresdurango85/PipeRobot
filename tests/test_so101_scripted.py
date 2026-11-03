@@ -56,9 +56,12 @@ def test_all_waypoints_and_dwells() -> None:
         if not seen or seen[-1] != before:
             seen.append(before)
         obs["objects"]["tcp"]["pos"] = action[:3]
+        if before in ("lift", "reorient", "transfer", "insert"):
+            # A held tube moves with the TCP.
+            obs["objects"]["tubes"][0]["pos"] = list(action[:3])
     assert seen == list(P.PHASES)
     assert policy.phase == "retreat"
-    assert action == pytest.approx([0.3, 0.1, 0.2, -1.18, -1.59, 41])
+    assert action == pytest.approx([0.3, 0.1, 0.19, -0.172, -1.59, 41])
     policy.reset(123)
     assert policy.phase == "approach"
     assert policy.grasp is None
@@ -69,7 +72,8 @@ def test_grasp_geometry_and_roll() -> None:
     obs = observation()
     obs["objects"]["tubes"][0]["quat_xyzw"] = [0, math.sqrt(0.5), 0, math.sqrt(0.5)]
     action = policy.act(obs)
-    assert action[:3] == pytest.approx([0.24, 0, 0.11])
+    # 4 cm along the tube (+x), 2 cm across it (+y), 8 mm below its axis, 6 cm above for approach.
+    assert action[:3] == pytest.approx([0.24, 0.02, 0.102])
     pan = P.UNITS.to_radians(obs["joint_pos"], policy.table)["shoulder_pan"]
     assert action[4] == pytest.approx(-1.41 + 2 * (pan - 0.1))
     assert policy.grasp_roll(0.6) == pytest.approx(-0.41)
@@ -328,3 +332,22 @@ def test_policy_spec_defaults() -> None:
     assert spec.name == "scripted-pick-place"
     assert spec.files == ()
     assert spec.options == P.DEFAULTS
+
+
+def test_integrate_gain_and_lead() -> None:
+    ik = IK
+    # A fraction of the step from the previous target.
+    assert ik.integrate([0.0], [1.0], [0.0], 0.2, 1.0) == pytest.approx([0.2])
+    # Never further than max_lead from the measured joint.
+    assert ik.integrate([0.5], [2.0], [0.0], 1.0, 0.25) == pytest.approx([0.25])
+    with pytest.raises(ValueError, match="gain"):
+        ik.integrate([0.0], [1.0], [0.0], 0.0, 0.25)
+
+
+def test_grasp_moves_in_when_the_tube_is_far() -> None:
+    policy = P.ScriptedPickPlace(max_grasp_x_m=0.27)
+    obs = observation()
+    obs["objects"]["tubes"][0]["quat_xyzw"] = [0, math.sqrt(0.5), 0, math.sqrt(0.5)]
+    obs["objects"]["tubes"][0]["pos"][0] = 0.26
+    # Only 1 cm of reach left, but never closer to the tube's end than 1.5 cm.
+    assert policy.act(obs)[0] == pytest.approx(0.26 + 0.015)

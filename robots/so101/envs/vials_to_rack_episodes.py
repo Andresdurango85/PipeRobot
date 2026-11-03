@@ -55,6 +55,10 @@ class ReconstructedEpisodes:
         self.action_space = "joint"
         self.uses_object_state = False
         self.policy: object = None
+        # TCP action space: fraction of each IK step applied, and the furthest a joint target may
+        # lead the measured joint (rad).
+        self.ik_gain = 0.2
+        self.ik_max_lead = 0.25
 
     def tensor(self, values: object) -> object:
         return torch.tensor(values, device=self.sim.device, dtype=torch.float32)
@@ -293,7 +297,7 @@ class ReconstructedEpisodes:
             from isaaclab.controllers import DifferentialIKController, DifferentialIKControllerCfg
 
             helper = load_module("task_tcp_ik", ENV / "tcp_ik.py")
-            target, flex, roll, grip = helper.split_action(action)
+            target, pitch, roll, grip = helper.split_action(action)
             if self.ik is None:
                 # Isaac Lab 3.0 cfg defaults: ik_params={"lambda_val": 0.01} for DLS.
                 self.ik = DifferentialIKController(
@@ -322,16 +326,28 @@ class ReconstructedEpisodes:
                     self.tensor([tcp]),
                     quaternion,
                     self.tensor([shifted]),
-                    self.robot.data.joint_pos.torch[:, arm],
+                    # Integrate on the previous target, not the measured position: the course's
+                    # low gains let gravity hold the arm short of its target, and q + dq from the
+                    # measured q would stall at that offset forever.
+                    self.robot.data.joint_pos_target.torch[:, arm],
                 )[0]
                 .cpu()
                 .tolist()
+            )
+            solved = helper.integrate(
+                self.robot.data.joint_pos_target.torch[0, arm].cpu().tolist(),
+                solved,
+                self.robot.data.joint_pos.torch[0, arm].cpu().tolist(),
+                self.ik_gain,
+                self.ik_max_lead,
             )
             raw = {name: 0.0 for name in self.names}
             raw["gripper"] = grip
             values = UNITS.to_radians(raw, self.table)
             values.update(zip(("shoulder_pan", "shoulder_lift", "elbow_flex"), solved, strict=True))
-            values.update(wrist_flex=flex, wrist_roll=roll)
+            # The three pitch joints have parallel axes: the gripper's pitch is their sum, which is
+            # what the course demos hold steady (wrist_flex alone varies twice as much).
+            values.update(wrist_flex=pitch - solved[1] - solved[2], wrist_roll=roll)
             limits = self.robot.data.joint_pos_limits.torch[0]
             values = {
                 name: helper.clamp(

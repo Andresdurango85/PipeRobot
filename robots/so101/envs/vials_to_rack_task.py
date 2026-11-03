@@ -6,7 +6,8 @@ Actions contain six finite LeRobot values in the dataset's joint_names order
 Policies opting into UsesObjectState receive objects: tubes (scene order), rack and tcp
 poses as pos and quat_xyzw float lists, plus four rack-local slot centres transformed
 into world slots_w. TCP is the gripper body plus tcp.offset_m.
-The tcp action space is [world x, y, z metres, wrist_flex radians, wrist_roll radians,
+The tcp action space is [world x, y, z metres, gripper pitch radians (shoulder_lift + elbow_flex +
+wrist_flex), wrist_roll radians,
 gripper LeRobot 0..100]; joint is the default action space.
 Randomized reactive rollouts default to 600 control steps, configurable via horizon_steps.
 """
@@ -85,6 +86,11 @@ def run_episode(
     env.policy = policy
     env.action_space = options.get("action_space", "joint")
     env.uses_object_state = isinstance(policy, UsesObjectState) and policy.uses_object_state
+    # Optional controller settings for the TCP action space; the runtime has the defaults.
+    if "ik_gain" in options:
+        env.ik_gain = float(options["ik_gain"])
+    if "ik_max_lead_rad" in options:
+        env.ik_max_lead = float(options["ik_max_lead_rad"])
     sampled = None
     if layout == "reconstructed_demo":
         if not isinstance(policy, ReferenceEpisodes):

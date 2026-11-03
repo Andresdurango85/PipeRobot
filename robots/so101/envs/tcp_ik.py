@@ -32,3 +32,23 @@ def split_action(action: Sequence[float]) -> tuple[list[float], float, float, fl
     if not 0 <= action[5] <= 100:
         raise ValueError("TCP gripper must be in 0..100")
     return list(action[:3]), action[3], action[4], action[5]
+
+
+def integrate(
+    previous: Sequence[float],
+    solved: Sequence[float],
+    measured: Sequence[float],
+    gain: float,
+    max_lead: float,
+) -> list[float]:
+    """Move the joint target a fraction of the IK step, never further than max_lead from the arm.
+
+    Integrating on the previous target compensates the sag of low-gain joints under gravity; the
+    gain and the lead limit keep that integration from winding up while the arm lags.
+    """
+    if not 0 < gain <= 1 or max_lead <= 0:
+        raise ValueError("gain must be in (0, 1] and max_lead positive")
+    return [
+        clamp(p + gain * (s - p), m - max_lead, m + max_lead)
+        for p, s, m in zip(previous, solved, measured, strict=True)
+    ]
