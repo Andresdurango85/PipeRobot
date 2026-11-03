@@ -29,7 +29,7 @@ This supersedes 0035's "Gate policy and power" section and its baseline file nam
   Pairing stays strict (identical seed sets); there is no subset pairing.
 - **Why 100 and not 0034's 500**: while every PR runs the same fixed seeds, the other 400 seeds
   of a 500-seed baseline are never read by the paired test. They would cost 1.8-3.5 h of runner
-  time, subset pairing, and shards merged across dispatches, for no power. 100 seeds take ~22
+  time, subset pairing, and shards merged across dispatches, for no power. 100 seeds take ~25
   minutes with two workers.
 - The comment states what the policy is: "Privileged-state scripted policy: measures the
   simulated pipeline and regressions, not a deployable policy (ADR 0034)" (0034, Consequences).
@@ -41,7 +41,7 @@ This supersedes 0035's "Gate policy and power" section and its baseline file nam
 - The evaluate job runs up to two concurrent Isaac workers. The GPU preflight picks the largest
   count that fits the free VRAM (`VRAM_PER_WORKER_MB` each); when only one fits, it runs one,
   with a warning.
-- **The seeds never depend on the worker count**: the fallback runs the same 100 seeds in ~42
+- **The seeds never depend on the worker count**: the fallback runs the same 100 seeds in ~46
   minutes, over the 30-minute Phase 0 budget, so the power is fixed. The 30-minute criterion is
   met on the two-worker path with a free GPU; a desktop session holding ~11 of the 16 GB forces
   the fallback.
@@ -99,7 +99,7 @@ number of lost episodes `b` that blocks, given `c` gained episodes.
 
 ## Consequences
 
-- A PR touching the gate's paths costs ~22 minutes of the home PC with two workers, ~42 with one.
+- A PR touching the gate's paths costs ~25 minutes of the home PC with two workers, ~46 with one.
 - A change to the task, the randomization, the success tracker or the evaluator needs the
   baseline measured again (and voids 0034's go/no-go).
 - The gate still measures a privileged-state policy in simulation; ACT replaces it through the

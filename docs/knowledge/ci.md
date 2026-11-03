@@ -106,7 +106,7 @@
   `mode: gate | baseline`; a baseline run is never cancelled). Job `evaluate` on the self-hosted GPU runner (`contents: read`):
   reuses `isaac-render`'s tool-cache Isaac Lab, verifies inputs with `prepare_caches.py` into
   `$RUNNER_TOOL_CACHE\piperobot-cache`, picks 2 Isaac workers when the free VRAM allows
-  (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds, ~42 min), evaluates the scripted
+  (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds, ~46 min), evaluates the scripted
   policy on seeds 100000-100099 ([ADR 0036](../decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md))
   and uploads the `so101-gate` artifact. Job `report` on `ubuntu-24.04` (the only job with
   `pull-requests: write`): paired verdict against `$BASELINE-episodes.json`

@@ -644,7 +644,7 @@ def test_so101_scripted_gate_configuration() -> None:
     assert env["TASK"] == "robots/so101/envs/vials_to_rack_task_randomized.json"
     assert env["POLICY"] == "robots/so101/policies/scripted_pick_place.json"
     assert env["MAX_WORKERS"] == "2"
-    assert env["VRAM_PER_WORKER_MB"] == "3584"
+    assert env["VRAM_PER_WORKER_MB"] == "4352"
     assert "MIN_FREE_VRAM_MB" not in env
     assert evaluate["timeout-minutes"] == 70
     step = next(s for s in evaluate["steps"] if s.get("name", "").startswith("Evaluate ("))

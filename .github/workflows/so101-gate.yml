@@ -47,8 +47,8 @@ jobs:
       TASK: robots/so101/envs/vials_to_rack_task_randomized.json
       POLICY: robots/so101/policies/scripted_pick_place.json
       MAX_WORKERS: "2"
-      # Peak VRAM of one Isaac worker plus margin; set from the workers repeatability measurement.
-      VRAM_PER_WORKER_MB: "3584"
+      # Peak VRAM of one scripted-policy Isaac worker (3379 MiB over idle) + 25%, rounded to 256.
+      VRAM_PER_WORKER_MB: "4352"
     steps:
       - name: Start the clock
         run: |
@@ -145,12 +145,12 @@ jobs:
             exit 1
           }
           if ($workers -lt [int]$env:MAX_WORKERS) {
-            Write-Host "::warning::running $workers worker(s): not enough free VRAM for $env:MAX_WORKERS; expect ~42 min for 100 seeds, over the 30-min budget"
+            Write-Host "::warning::running $workers worker(s): not enough free VRAM for $env:MAX_WORKERS; expect ~46 min for 100 seeds, over the 30-min budget"
           }
           "WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           "Workers: $workers" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
       - name: Evaluate (scripted policy, 100 seeds, one Isaac process per seed)
-        # 60 minutes covers the 1-worker fallback, ~42 min for 100 seeds.
+        # 60 minutes covers the 1-worker fallback, ~46 min for 100 seeds.
         timeout-minutes: 60
         run: |
           $ErrorActionPreference = 'Continue'
