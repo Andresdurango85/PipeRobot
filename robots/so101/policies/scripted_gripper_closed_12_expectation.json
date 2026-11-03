@@ -1,0 +1,44 @@
+{
+  "registered": "2026-11-03, after the 100-seed baseline merged in the B PR (#63, a80deff) and before any run of this spec on seeds 100000-100099; changing it needs a new ADR.",
+  "spec": "robots/so101/policies/scripted_pick_place_gripper_closed_12.json: scripted_pick_place.json with one change, gripper_closed 5 -> 12. It is the spec record; the demo PR applies the same change in place to scripted_pick_place.json, as in #60.",
+  "seeds": "100000-100099, the gate's PR seeds (ADR 0036)",
+  "config": "so101-gate.yml in PR mode on the self-hosted runner, on a branch from main after the B PR merged (its step and job timeouts, 120 and 130 min, are needed); task vials_to_rack_task_randomized.json, cuda:0, one Isaac process per seed (ADR 0033), up to two workers; about 70 failures run the full horizon, so the 1-worker wall time is about 70 min",
+  "reference": "the committed baseline robots/so101/baselines/scripted-pick-place.json: scripted-pick-place on 100000-100099, S_B = 78/100 (dispatch 41707984345 at eed0025; all 22 failures not_placed)",
+  "mechanism": "A weaker squeeze: the gripper closes to 12 instead of 5, so the grip force on the tube drops; the tube is grasped but slips in the jaw during carry or release and is not placed. Tuned only on development seeds 200000+; nothing below ran on gate seeds.",
+  "screen": {
+    "seeds": "200000-200019, one worker; the base policy (gripper_closed 5) gets 18/20 on them",
+    "rows": [
+      {"gripper_closed": 10, "successes": "15/20", "lost": 4, "gained": "1 (200012)", "failures": "5 not_placed"},
+      {"gripper_closed": 12, "successes": "6/20", "lost": 12, "gained": 0, "failures": "14 not_placed"},
+      {"gripper_closed": 15, "successes": "0/20", "lost": 18, "gained": 0, "failures": "20 not_placed"},
+      {"gripper_closed": 20, "successes": "0/20", "lost": 18, "gained": 0, "failures": "20 no_grasp"}
+    ],
+    "note": "A first gc10 screen was stopped after 2.5 min, before any seed finished, to free the GPU for the --workers test; it recorded nothing. All four screens overlapped runner jobs; outcomes are deterministic per seed (workers_acceptance_result.json), and the gc12 screen matches the gc12 development run below on all 20 seeds, outcome and trajectory_sha256."
+  },
+  "development": {
+    "seeds": "200000-200099, one worker, 0 infrastructure retries",
+    "candidate": "30/100; all 70 failures not_placed",
+    "base": "91/100 on the same seeds (scratch run at 0bf1787; its first 50 match the --workers test's dev_S bit for bit)",
+    "paired": "lost 63 of 91 base successes (69%, Wilson 95%: 59.1%-77.8%), gained 2 of 9 base failures (200067, 200081; 22%, Wilson 95%: 6.3%-54.7%)",
+    "episodes_detail_sha256": "50d38e482c170c1c43eef3fed07f507c838e15487fc39f5323f63b4d851015f6",
+    "note": "A runner job held the GPU for the whole run (15:11-16:16), so its 36.7 s/seed is not a timing figure."
+  },
+  "model": "Gate seeds are harder than development seeds for the base policy (78/100 vs 91/100). The ranges below assume gc12's per-seed loss rate on base successes and rescue rate on base failures carry over from development to gate seeds.",
+  "expectation": {
+    "verdict": "BLOCK",
+    "b (baseline-only successes)": "46-61: floor(0.591 x 78) to ceil(0.778 x 78)",
+    "c (candidate-only successes)": "0-13: 0 to ceil(0.547 x 22). A non-zero c is possible: the development run rescued 2 seeds although the 20-seed screen rescued none.",
+    "candidate_successes": "17-45 (78 - 61 + 0 to 78 - 46 + 13); point estimate 78 x 28/91 + 22 x 2/9 = 29",
+    "minimum b for BLOCK": "exact one-sided McNemar P(X >= b | b + c) < 0.025: c = 0 -> b >= 6, 2 -> 10, 5 -> 15, 13 -> 27; even c = 22 (every baseline failure rescued) needs only b >= 39, below the expected minimum b of 46."
+  },
+  "validity": {
+    "conditions": [
+      "all 100 seeds evaluated",
+      "platform_differences empty",
+      "infrastructure retries within the evaluator's budget, and no infrastructure error counted as an episode failure",
+      "the candidate's diff against main is exactly gripper_closed 5 -> 12 in scripted_pick_place.json"
+    ],
+    "if_not_met": "The run is void, not a failed prediction. One rerun on the same commit is allowed and recorded as a deviation; a second invalid run voids C."
+  },
+  "failure_of_expectation": "Binding: the verdict. Any verdict other than BLOCK on a valid run is a failed prediction. Reported only: the b, c and candidate-count ranges. Each is a 95% interval and their joint coverage is about 85%, so about 1 valid run in 7 would miss one by chance under a correct model; a miss is recorded as a model miss (the development-to-gate transfer was off) and does not change the outcome."
+}
