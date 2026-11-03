@@ -131,3 +131,8 @@ testing of `piperobot/stats`.
   text) and distinct luminance, and each point also has a text tooltip and a table row, so the
   verdict does not rely on color alone: pass `#164e35` (9.7:1), block `#b91c1c` (6.5:1),
   warn `#98700a` (4.5:1). _(verified 2026-11-03)_
+- **Golden files need the shapes that break**: the first golden page had six records, so it
+  missed that a single record drew no baseline (an SVG polyline with one vertex is invisible) and
+  that a long platform string pushed the table off a narrow screen. Both showed on the first live
+  page; `history_single.html` and `history_long_platform.html` now cover them. _(verified
+  2026-11-03)_
