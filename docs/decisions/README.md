@@ -40,6 +40,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0030](0030-signed-certificates-of-evaluation.md) | Signed certificates of evaluation: Sigstore attestations of results and verdict on main | Accepted |
 | [0031](0031-history-schema-2-and-certify-trusted-builder.md) | History schema 2 for nightly records; one trusted builder, certify.yml, signs every series | Accepted |
 | [0032](0032-nightly-paired-run-on-rotating-seeds.md) | A nightly paired run on rotating seeds, decided by an exact McNemar test | Accepted |
+| [0033](0033-so101-isaac-evaluator-one-process-per-seed.md) | SO-101 Isaac evaluator: one fresh Isaac process per seed; infrastructure errors retried once, never counted as trials | Accepted |
 
 ## Template
 

@@ -287,11 +287,25 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   asset's SysID gains (21–27 episodes grasp but cannot place: sag). Most failures are `no_grasp`
   because the dataset does not say where along the tube the operator grasped (we assume
   mid-length). _(verified 2026-11-02)_
-- **Replays with contacts are not reproducible run to run**: two runs of the same code over the
-  75 reconstructed demos differ in 2 outcomes, in success steps by 1–4 control steps and in the
-  jaw-force summaries of 19 episodes. Not yet attributed (GPU PhysX contacts without enhanced
-  determinism, or state carried between episodes in one process). Same-seed runs without
-  contacts were bit-identical (above). _(verified 2026-11-02)_
+- **Replays with contacts are repeatable for a fixed episode order, but an episode's outcome
+  depends on the episodes run before it in the same process**: 3 runs of the 75 reconstructed
+  demos in one process are bit-identical (trajectory fingerprints), on GPU and on CPU physics;
+  the same list in reverse order changes 12/75 outcomes and 50/75 fingerprints. Neither
+  `PhysxCfg.enable_enhanced_determinism` nor `sim.reset(soft=False)` + `scene.reset()` before
+  each episode changes a single bit, so neither removes it; the carried state is unknown. One
+  fresh process per episode is order-free and repeatable. ADR 0028's "2/75 run to run" came from
+  different predecessors (S7b's setup changed between the runs). CPU physics changes 23/75
+  outcomes against GPU; one process per episode changes 20/75 against one process for all.
+  _(verified 2026-11-03, Isaac Lab 3.0 / PhysX 6.2, [ADR 0033](../decisions/0033-so101-isaac-evaluator-one-process-per-seed.md))_
+- **Kit's shutdown can hang**: `SimulationApp.close()` → `app.shutdown()` deadlocked once in 87
+  worker processes; Isaac Sim documents it (NVBug 5948099) and arms a 120 s faulthandler
+  watchdog that then exits with 1. Our worker writes, fsyncs and re-reads its result, then calls
+  `os._exit(0)`; that changed no fingerprint and no startup time.
+  _(verified 2026-11-03, Isaac Sim 6.2, `simulation_app.py`)_
+- **One Isaac process per episode costs ~20 s** (Kit startup plus a ~6 s episode) on the RTX 5060
+  Ti; a worker peaks at ~2.9 GB of GPU memory. On Windows (WDDM) `nvidia-smi` gives no
+  per-process memory: measure the total against the idle desktop load (~9.9 GB here).
+  _(verified 2026-11-03)_
 - **Teleporting an object relative to another one must use the other one's settled pose**, not
   its configured initial pose: the rack drops 1.9 cm from its spawn height, which made check S7b
   hold a tube 1.9 cm too high on its first run. _(verified 2026-11-02)_
