@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 import threading
@@ -682,8 +681,9 @@ def test_timeout_kills_process_tree(
         assert events[1] == (123, evaluate.signal.SIGKILL)
 
 
-@pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
-def test_driver_anchors_to_evaluated_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_driver_anchors_to_evaluated_repo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, git_binary: str
+) -> None:
     # Installed layout: piperobot lives in site-packages, the task specs in another repo.
     empty = tmp_path / "gitconfig"
     empty.write_text("")
@@ -693,8 +693,7 @@ def test_driver_anchors_to_evaluated_repo(tmp_path: Path, monkeypatch: pytest.Mo
         monkeypatch.setenv(key, "test")
     for key in ("GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"):
         monkeypatch.setenv(key, "test@example.com")
-    git = shutil.which("git")
-    assert git is not None
+    git = git_binary
     repo = tmp_path / "crab"
     specs_dir = repo / "specs"
     specs_dir.mkdir(parents=True)

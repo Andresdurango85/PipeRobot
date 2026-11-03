@@ -23,6 +23,10 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: ready for `ubuntu-latest` → Ubuntu 26.04 (by 2026-11-19). A probe on both images
+  gave the same ci results and the same mutation survivors. The pinned jobs stay on
+  `ubuntu-24.04`: PushT moves 4-8 near-miss episodes with the image and CPU together
+  ([ci.md](knowledge/ci.md)). Tests that need `pwsh` or `git` now fail in CI instead of skipping.
 - 2026-11-03: the Isaac evaluator runs seeds on concurrent workers (`--workers N`, still one
   process per seed). Registered test: 1 vs 2 workers on 125 seeds, 0 flips and identical
   fingerprints; 2 workers take 16.4 s per scripted seed instead of 27.5 s and need ~8.7 GB of
