@@ -1,0 +1,13 @@
+# Accepted equivalent mutants, identified by exact mutmut names. Every entry needs a reason.
+# Names belong to mutmut and change when the mutated function's code changes: the old name
+# becomes stale and the new name becomes NEW. Re-check the equivalence and update the list.
+piperobot.stats.gate.x_format_percent__mutmut_11  # "f" -> "F" differs only for inf/NaN, rejected before formatting
+piperobot.stats.gate.x_format_percent__mutmut_18  # rstrip("XX0XX"): rstrip takes a set of characters; no X in a number
+piperobot.stats.gate.x_format_percent__mutmut_19  # rstrip("XX.XX"): same, for the "." strip
+piperobot.stats.gate.xǁSuccessCountǁparse__mutmut_3  # partition -> rpartition: both leave a "/" that int() rejects when there are two
+piperobot.stats.gate.x_decide__mutmut_26  # upper < 0 -> <= 0: no exact 0.0 Newcombe upper bound for any n <= 200
+piperobot.stats.baseline.x_load_baseline__mutmut_3  # encoding None: the locale encoding is UTF-8 on the Linux runner
+piperobot.stats.baseline.x_load_baseline__mutmut_5  # "UTF-8" vs "utf-8": the same codec
+piperobot.stats.paired.x_exact_mcnemar_p__mutmut_30  # range(.., n + 2): math.comb(n, n + 1) == 0 adds nothing
+piperobot.stats.paired.x_newcombe_paired_interval__mutmut_84  # clamp at -2.0: the lower bound is provably >= -1 (ADR-free proof in testing.md)
+piperobot.stats.paired.x_newcombe_paired_interval__mutmut_89  # clamp at 2.0: the upper bound is provably <= 1
