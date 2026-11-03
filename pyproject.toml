@@ -101,6 +101,7 @@ pytest_add_cli_args_test_selection = [
     "tests/test_gate.py",
     "tests/test_gate_inputs.py",
     "tests/test_stats_properties.py",
+    "tests/test_paired.py",
     "tests/test_pr_comment.py",
 ]
 
