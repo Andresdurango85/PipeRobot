@@ -1,4 +1,4 @@
-# 0026. SO-101 scene: actuator gains and mount height of the Isaac Lab 3.0 asset
+# 0027. SO-101 scene: actuator gains and mount height of the Isaac Lab 3.0 asset
 
 - Status: Proposed
 - Date: 2026-11-02
