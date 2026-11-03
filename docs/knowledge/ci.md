@@ -112,7 +112,11 @@
   failure on BLOCK; with no baseline on the branch it only writes a summary while `main` has none
   either, and fails once `main` has one. Not a required
   check. A push before the hook allowed it was refused on the runner, as intended (run
-  41607023801). _(2026-11-03)_
+  41607023801). Live results: baseline dispatch 41659300745 on main; baseline PR #59 PASS
+  (run 41664424596, b = c = 0); demo PR #60 with the registered weak grip BLOCK (run
+  41669493827: 0/75, b = 6, c = 0, p = 1/64). Each run is ~26 min, and a merge that touches the
+  watched paths also queues a gate run on main, so a follow-up PR can wait ~25 min for the
+  runner. _(2026-11-03)_
 - **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
   policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced

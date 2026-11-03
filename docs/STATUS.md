@@ -14,7 +14,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
-| Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50) |
+| Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50). **SO-101 on Isaac, paired**: baseline PR #59 PASS (6/75 vs 6/75, 0 discordant); demo #60 (gripper floored at 25, registered beforehand) BLOCK as predicted, 0/75, 6 lost / 0 gained, exact McNemar p = 1/64 |
 | README reproducible in 30 min | **Done, tested by CI**: `readme.yml` runs the README's commands on a fresh checkout with cold caches; 4 min 14 s on `ubuntu-24.04`, 4 min 59 s on `windows-2025`, PASS (27/50) and the demo BLOCK (4–5/50) on both (run 41597539505) |
 
 ## Done recently
@@ -30,6 +30,9 @@ Project Cangrejo, the `piperobot` package).
   `gh-runner` (two branch heads and the baseline dispatch on main) gave 6/75 with 75/75
   trajectory fingerprints identical to the interactive acceptance run R1, in ~25 min of
   evaluation. Baseline `robots/so101/baselines/demo-replay.json` (6/75, seeds 0-74).
+  The registered weak-grip regression (#60, closed unmerged) was blocked exactly as predicted:
+  0/75 (all `no_grasp`), p = 1/64, red check and ❌ comment. Only a total collapse of the
+  replay is detectable; the scripted policy (ADR 0034) is next.
 - 2026-11-03: a scripted privileged-state pick-and-place policy (it sees the simulator's object
   poses; not deployable) passed its pre-registered go/no-go on the seeded randomized layout:
   43/50 through the evaluator, after tuning on separate seeds (91/100). It is proposed as the
