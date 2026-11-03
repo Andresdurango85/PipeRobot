@@ -5,13 +5,16 @@ from pathlib import Path
 
 import pytest
 
+from piperobot.results import load_results
 from piperobot.stats.baseline import BaselineError, load_baseline
 from piperobot.stats.gate import SuccessCount, main
 
 ROOT = Path(__file__).resolve().parent.parent
-# Every committed baseline: the mock's and the real policies'.
+# Stored count baselines; per-episode results use the separate results contract.
 COMMITTED_BASELINES = sorted(
-    [*ROOT.glob("robots/*/baseline.json"), *ROOT.glob("robots/*/baselines/*.json")]
+    path
+    for path in [*ROOT.glob("robots/*/baseline.json"), *ROOT.glob("robots/*/baselines/*.json")]
+    if "episodes" not in json.loads(path.read_text(encoding="utf-8"))
 )
 
 
@@ -95,3 +98,17 @@ def test_gate_cli_requires_both_inputs(provided: str) -> None:
         main([provided, "40/50"])
 
     assert exc_info.value.code == 2
+
+
+COMMITTED_EPISODE_FILES = sorted(
+    path
+    for path in ROOT.glob("robots/*/baselines/*.json")
+    if "episodes" in json.loads(path.read_text(encoding="utf-8"))
+)
+
+
+@pytest.mark.parametrize("path", COMMITTED_EPISODE_FILES, ids=lambda p: p.name)
+def test_committed_episode_files_load_as_results(path: Path) -> None:
+    """Per-episode baseline records follow the results contract, for paired comparisons."""
+    results = load_results(path)
+    assert results.trials > 0

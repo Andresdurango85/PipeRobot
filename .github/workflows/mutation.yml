@@ -7,11 +7,17 @@ on:
   pull_request:
     paths:
       - 'piperobot/stats/**'
+      - 'tests/test_certificate.py'
       - 'tests/test_gate.py'
       - 'tests/test_gate_inputs.py'
-      - 'tests/test_stats_properties.py'
+      - 'tests/test_history.py'
+      - 'tests/test_manual_eval.py'
+      - 'tests/test_mock_eval.py'
+      - 'tests/test_paired.py'
       - 'tests/test_pr_comment.py'
+      - 'tests/test_stats_properties.py'
       - 'tests/conftest.py'
+      - 'pyproject.toml'
       - '.github/workflows/mutation.yml'
 
 permissions:
@@ -82,6 +88,14 @@ jobs:
                   summary.write(f"### {name}\n\n```diff\n{diff.stdout}{diff.stderr}\n```\n\n")
                   # Also in the log: step summaries cannot be read through the API.
                   print(f"::group::{name}\n{diff.stdout}{diff.stderr}\n::endgroup::")
+              # A mutant no selected test reaches means a stats module escaped mutation testing
+              # (its test file is missing from [tool.mutmut]): fail instead of a silent green.
+              untested = re.findall(r"^\s*(\S+): no tests\s*$", result.stdout, re.MULTILINE)
+              if untested:
+                  modules = sorted({name.split(".x")[0] for name in untested})
+                  summary.write(f"**{len(untested)} mutants reached by no test** in {modules}.\n")
+                  print(f"::error::{len(untested)} mutants have no tests: {', '.join(modules)}")
+                  raise SystemExit(1)
           PY
 
       - name: Upload mutation statistics

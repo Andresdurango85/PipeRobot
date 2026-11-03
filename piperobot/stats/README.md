@@ -31,3 +31,19 @@ Seeded simulation, baseline success rate 80%, 95% confidence, candidate evaluate
 With 50 episodes per PR the gate reliably catches large regressions (≥ 30 points) and rarely
 blocks a good PR. Small regressions need more episodes; a larger baseline (e.g. built nightly)
 is the cheapest way to gain power, since it is evaluated once and reused by every PR.
+
+## Paired same-seed comparison
+
+`paired.py` pairs two results files by seed (identical seed sets are required).
+Run both policies under the same reproducible conditions, including CPU and scene
+variations. Only discordant episodes inform the one-sided exact McNemar test:
+**BLOCK** when p < alpha (default 0.025), otherwise **WARN** when the observed
+loss exceeds the tolerance (default 10 pp), else **PASS**. The paired Newcombe
+hybrid score interval at confidence `1 - 2*alpha` is reported only; it does not
+decide the verdict. Alpha must be in (0, 0.5).
+
+```
+python -m piperobot.stats.paired --reference reference.json --candidate candidate.json
+```
+
+Exit codes: 0 PASS/WARN, 1 BLOCK, 2 invalid input or arguments.

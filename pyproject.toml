@@ -97,11 +97,18 @@ ignore_missing_imports = true
 source_paths = ["piperobot"]
 only_mutate = ["piperobot/stats/*"]
 also_copy = ["robots"]
+# Every test file that imports piperobot.stats, or its mutants report "no tests"
+# (tests/test_mutation_config.py checks this list and mutation.yml's paths).
 pytest_add_cli_args_test_selection = [
+    "tests/test_certificate.py",
     "tests/test_gate.py",
     "tests/test_gate_inputs.py",
-    "tests/test_stats_properties.py",
+    "tests/test_history.py",
+    "tests/test_manual_eval.py",
+    "tests/test_mock_eval.py",
+    "tests/test_paired.py",
     "tests/test_pr_comment.py",
+    "tests/test_stats_properties.py",
 ]
 
 [tool.pytest.ini_options]

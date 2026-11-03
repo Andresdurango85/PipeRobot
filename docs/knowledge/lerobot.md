@@ -107,6 +107,16 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   (6/500), far fewer than CPU vs CUDA (143/500), but a baseline still has to be measured on the
   gate's own platform ([ADR 0016](../decisions/0016-real-evaluator-lerobot-pusht.md)).
   _(verified 2026-10-27, per-episode results of both machines)_
+- **The logged CPU model does not predict which near-miss episodes flip.** On seeds 1000–1499,
+  two `ubuntu-latest` runners that both logged "AMD EPYC 9V74" disagreed in 10 episodes (run
+  40621909121 on 2026-10-27: 267/500; run 41585590113 on 2026-11-03: 265/500), and the second
+  one matched an "AMD EPYC 7763" run (40621897268) on all 500 episodes. The 10 seeds (lost
+  1073, 1227, 1366, 1380, 1455, 1458; gained 1013, 1044, 1122, 1250) are the same set that
+  separated the 7763 and 9V74 runs on 10-27, so main had not drifted between those dates. A
+  paired comparison is only sound when both arms run in the same job. Unverified hypothesis:
+  the VM's exposed instruction set (e.g. AVX-512, and so the oneDNN/MKL code path) varies
+  between hosts with the same model name; logging a hash of the `/proc/cpuinfo` flags would
+  test it. _(verified 2026-11-03, per-episode results; files in `robots/pusht/baselines/`)_
 - **On CUDA, `lerobot-eval` is not reproducible**: `lerobot/scripts/lerobot_eval.py:746-747`
   sets `torch.backends.cudnn.benchmark = True` and `torch.backends.cuda.matmul.allow_tf32 = True`
   unconditionally, and `set_seed` does not undo them. Two 50-episode runs on the same seeds gave

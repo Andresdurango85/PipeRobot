@@ -79,6 +79,20 @@ testing of `piperobot/stats`.
   4 equivalent mutants. Tests now kill the first two groups: **336 / 340 killed (98.8%)**; the
   4 survivors are the equivalent mutants below (run 41567441367). _(verified 2026-11-02,
   mutmut 3.8.1)_
+- **A test file missing from `[tool.mutmut]`'s selection makes its module untested, silently.**
+  mutmut runs only the files in `pytest_add_cli_args_test_selection`; when `paired.py` landed,
+  all 334 of its mutants were "no tests" and the job stayed green. Now every test file that
+  imports `piperobot.stats` must be in that list and in `mutation.yml`'s `pull_request.paths`
+  (`tests/test_mutation_config.py`), and the summary step fails on any "no tests" mutant.
+  _(verified 2026-11-03, PR #47, mutmut 3.8.1)_
+- **Score with `paired.py`: 683 / 695 killed (98.3%)**, 0 "no tests" (run 41590237621). Of
+  `paired.py`'s 334 mutants, the first real run left 84 alive; tests now kill all but 5
+  accepted ones: `range(b, n + 2)` in `exact_mcnemar_p` (`math.comb(n, n + 1) == 0`), the
+  `max(-2.0, …)` / `min(2.0, …)` clamps (the bounds never leave [-1, 1] by more than float
+  noise), and two `--help` description mutants. The key test is a property: positive
+  correlation between the arms (phi > 0) must make the paired interval narrower than the
+  unpaired one with the same margins, and phi < 0 wider. 7 survivors in `gate.py` and
+  `baseline.py` were already on `main` before #47. _(verified 2026-11-03, mutmut 3.8.1)_
 - **Accepted equivalent mutants** (4):
   - `text.partition("/")` → `rpartition` in `SuccessCount.parse`: they differ only with two or
     more `/`, and then both leave a `/` in a part that `int()` rejects.
