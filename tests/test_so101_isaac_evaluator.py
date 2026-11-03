@@ -8,6 +8,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -750,3 +752,214 @@ def test_driver_anchors_to_evaluated_repo(tmp_path: Path, monkeypatch: pytest.Mo
 def test_git_commit_outside_a_checkout(tmp_path: Path) -> None:
     assert evaluate.evaluated_repo(tmp_path / "task.json") is None
     assert evaluate.git_commit(None) is None
+
+
+class SeedRunner:
+    """Dispatch by seed and attempt, with thread-safe call and completion records."""
+
+    def __init__(self, action: Callable[[int, int], bool | int]) -> None:
+        self.action = action
+        self.lock = threading.Lock()
+        self.calls: list[tuple[int, int, float]] = []
+        self.finished: list[int] = []
+        self.on_finish: Callable[[int], None] = lambda seed: None
+
+    def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seed = int(command[command.index("--seed") + 1])
+        path = Path(command[command.index("--out") + 1])
+        attempt = int(path.stem.rsplit("-", 1)[1])
+        with self.lock:
+            self.calls.append((seed, attempt, evaluate._monotonic()))
+        outcome = self.action(seed, attempt)
+        if type(outcome) is int:
+            return subprocess.CompletedProcess(command, outcome, "", "transient crash")
+        write(
+            path,
+            {
+                "seed": seed,
+                "success": outcome,
+                "scene": "scene",
+                "failure": "no_grasp",
+                "platform": {"device": "cpu", "varying": seed},
+            },
+        )
+        with self.lock:
+            self.finished.append(seed)
+        self.on_finish(seed)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+
+@pytest.fixture
+def worker_driver(
+    specs: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[int, str, SeedRunner], tuple[int, Path, list, dict]]:
+    monkeypatch.setattr(evaluate, "git_commit", lambda repo: "test-commit")
+    now = [0.0]
+
+    def sleep(delay: float) -> None:
+        now[0] += delay
+
+    monkeypatch.setattr(evaluate, "_monotonic", lambda: now[0])
+    monkeypatch.setattr(evaluate, "_sleep", sleep)
+    task, policy = specs
+
+    def run(workers: int, seeds: str, runner: SeedRunner) -> tuple[int, Path, list, dict]:
+        output = tmp_path / f"run-{workers}" / "results.json"
+        code = evaluate.main(
+            [
+                "--task",
+                str(task),
+                "--policy",
+                str(policy),
+                "--seeds",
+                seeds,
+                "--isaac-python",
+                "unused",
+                "--workdir",
+                str(tmp_path / "work"),
+                "--output",
+                str(output),
+                "--workers",
+                str(workers),
+            ],
+            runner=runner,
+        )
+        details = output.with_name("episodes_detail.json")
+        metadata = output.with_name("run_metadata.json")
+        return (
+            code,
+            output,
+            json.loads(details.read_text()) if details.exists() else [],
+            json.loads(metadata.read_text()) if metadata.exists() else {},
+        )
+
+    return run
+
+
+def test_workers_concurrent_and_spacing(
+    worker_driver: Callable, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    barrier = threading.Barrier(2, timeout=5)
+
+    def action(seed: int, attempt: int) -> bool:
+        barrier.wait()
+        return True
+
+    runner = SeedRunner(action)
+    code, _, _, metadata = worker_driver(2, "9,3", runner)
+    assert code == 0
+    assert metadata["workers"] == 2
+    assert runner.calls[1][2] - runner.calls[0][2] >= evaluate.LAUNCH_SPACING_S
+
+    monkeypatch.setattr(evaluate, "_sleep", lambda delay: pytest.fail("serial sleep"))
+    assert worker_driver(1, "9,3", SeedRunner(lambda seed, attempt: True))[0] == 0
+
+
+def test_workers_reverse_completion(worker_driver: Callable) -> None:
+    later_finished = threading.Event()
+
+    def action(seed: int, attempt: int) -> bool | int:
+        if seed == 9:
+            assert later_finished.wait(5)
+        if attempt == 1:
+            return 7
+        return True
+
+    runner = SeedRunner(action)
+    runner.on_finish = lambda seed: later_finished.set() if seed == 3 else None
+    code, output, details, metadata = worker_driver(2, "9,3", runner)
+    assert code == 0
+    assert runner.finished == [3, 9]
+    assert [ep.seed for ep in load_results(output).episodes] == [9, 3]
+    assert [detail["seed"] for detail in details] == [9, 3]
+    assert metadata["retried_seeds"] == [9, 3]
+    assert metadata["workers"] == 2
+    assert all(
+        right[2] - left[2] >= evaluate.LAUNCH_SPACING_S
+        for left, right in zip(runner.calls, runner.calls[1:], strict=False)
+    )
+    assert metadata["platform"]["varying"] == 9
+    assert metadata["platform_differences"][0]["seed"] == 3
+
+
+def test_workers_same_outputs(worker_driver: Callable) -> None:
+    def action(seed: int, attempt: int) -> bool | int:
+        if seed == 3 and attempt == 1:
+            return 7
+        return seed != 7
+
+    serial = worker_driver(1, "9,3,7", SeedRunner(action))
+    parallel = worker_driver(2, "9,3,7", SeedRunner(action))
+    assert serial[0] == parallel[0] == 0
+    assert serial[1].read_bytes() == parallel[1].read_bytes()
+    for run in (serial, parallel):
+        for detail in run[2]:
+            for attempt in detail["attempts"]:
+                attempt.pop("process_wall_seconds")
+        for key in ("start_timestamp", "end_timestamp", "wall_seconds", "workers"):
+            run[3].pop(key)
+    assert serial[2:] == parallel[2:]
+
+
+def test_workers_shared_budget(worker_driver: Callable) -> None:
+    retries_finished = threading.Event()
+
+    def action(seed: int, attempt: int) -> bool | int:
+        if seed == 3:
+            assert retries_finished.wait(5)
+        if seed == 2 and attempt == 2:
+            retries_finished.set()
+        return 7 if attempt == 1 else True
+
+    runner = SeedRunner(action)
+    code, output, _, metadata = worker_driver(2, "0,1,2,3", runner)
+    assert code == 2
+    assert not output.exists()
+    assert "Infrastructure retry budget exceeded" in metadata["error"]
+    assert metadata["retries"] == evaluate.MAX_RETRIED_SEEDS
+
+
+def test_workers_stop_and_earliest_error(
+    worker_driver: Callable,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stopped = threading.Event()
+    monkeypatch.setattr(evaluate, "Event", lambda: stopped)
+    both_started = threading.Barrier(2, timeout=5)
+
+    def action(seed: int, attempt: int) -> int:
+        if attempt == 1:
+            both_started.wait()
+        if seed == 9 and attempt == 1:
+            assert stopped.wait(5)
+        return 7
+
+    runner = SeedRunner(action)
+    code, output, details, metadata = worker_driver(2, "9,3,7,8,10,11", runner)
+    assert code == 2
+    assert not output.exists()
+    # Seed 3's error stops new seeds, but running seed 9 keeps its retry: its error is its own.
+    assert sorted((seed, attempt) for seed, attempt, _ in runner.calls) == [
+        (3, 1),
+        (3, 2),
+        (9, 1),
+        (9, 2),
+    ]
+    assert [detail["seed"] for detail in details] == [9, 3]
+    assert all(detail["error"].startswith(f"Seed {detail['seed']},") for detail in details)
+    assert metadata["error"].startswith("Seed 9,")
+
+
+@pytest.mark.parametrize("workers", [0, -1])
+def test_workers_invalid(worker_driver: Callable, workers: int) -> None:
+    runner = SeedRunner(lambda seed, attempt: pytest.fail("must not start workers"))
+    assert worker_driver(workers, "0,3,7", runner)[0] == 2
+    assert runner.calls == []
+
+
+def test_workers_capped(worker_driver: Callable) -> None:
+    code, _, _, metadata = worker_driver(5, "0,3,7", SeedRunner(lambda seed, attempt: True))
+    assert code == 0
+    assert metadata["workers"] == 3

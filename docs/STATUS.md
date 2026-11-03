@@ -23,6 +23,11 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: the Isaac evaluator runs seeds on concurrent workers (`--workers N`, still one
+  process per seed). Registered test: 1 vs 2 workers on 125 seeds, 0 flips and identical
+  fingerprints; 2 workers take 16.4 s per scripted seed instead of 27.5 s and need ~8.7 GB of
+  free GPU memory ([result](../robots/so101/envs/workers_acceptance_result.json),
+  [isaac.md](knowledge/isaac.md)).
 - 2026-11-03: the SO-101 gate runs on the self-hosted runner (`so101-gate.yml`): evidence from
   the GPU runner without a write token, paired verdict and sticky comment from a hosted job,
   fail closed on a missing baseline, platform guard
@@ -123,9 +128,7 @@ Project Cangrejo, the `piperobot` package).
    [ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)): switch the gate's policy
    to the scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)),
    measure its 500-seed baseline (100000-100499) with the workflow's baseline mode, and register a
-   deliberately worse scripted parameter for the BLOCK demo. Right after the first gate merge:
-   two parallel workers with a registered repeatability test (~25 min per run with one).
-   Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
+   deliberately worse scripted parameter for the BLOCK demo. Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
    for failed-episode videos.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
@@ -136,10 +139,9 @@ Project Cangrejo, the `piperobot` package).
    after about four clean weekly `mutation.yml` runs, make a NEW surviving mutant (one not in
    `tests/mutation_equivalents.txt`) fail the job, instead of a score threshold
    ([testing.md](knowledge/testing.md)).
-7. SO-101 gate: two parallel Isaac workers with a registered repeatability test (fingerprints
-   identical to the sequential run, 0 flips), to bring 75 seeds well under the 30-minute budget
-   ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)). Then videos of failed
-   episodes in the SO-101 comment (a Phase 0 criterion; needs cameras in the Isaac scene).
+7. SO-101 gate: videos of failed episodes in the SO-101 comment (a Phase 0 criterion; needs
+   cameras in the Isaac scene). Two workers are accepted (above); the workflow uses them when
+   ~8.7 GB of GPU memory is free.
 8. Proposal, for Andrés to decide: make the SO-101 verdict a required check. Today "blocked" means
    a red `so101-gate` check plus the ❌ comment, not a merge refusal (ADR 0035: not required).
    Snags and the design to solve them:

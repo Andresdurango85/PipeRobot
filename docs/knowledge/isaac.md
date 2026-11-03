@@ -306,6 +306,17 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   Ti; a worker peaks at ~2.9 GB of GPU memory. On Windows (WDDM) `nvidia-smi` gives no
   per-process memory: measure the total against the idle desktop load (~9.9 GB here).
   _(verified 2026-11-03)_
+- **Two Isaac workers at once give the same results as one** (`evaluate --workers 2`):
+  registered test, 125 seeds (replay 0-74, scripted dev 200000-200049), 0 outcome flips and
+  every `trajectory_sha256` identical
+  ([result](../../robots/so101/envs/workers_acceptance_result.json)). On the scripted policy one
+  worker takes 27.5 s per seed, two take 16.4 s (1.68×; each process slows from 27.4 to 32.1 s).
+  GPU memory above the idle desktop: 3379 MB peak with one worker, ~5.37 GB with two, so the
+  gate budgets 4352 MB per worker (peak + 25%). Kit's per-second log names did not collide with
+  launches 3 s apart. **More than two is not safe on 64 GB of RAM**: an accidental run with up
+  to 4 processes kept the same outcomes and hashes but hit three host-memory failures (a
+  timeout, a `MemoryError` in warp, PhysX "failed to allocate pinned host buffers"); with two,
+  free RAM stayed above ~10 GB. _(verified 2026-11-03, Isaac Sim 6.2, Isaac Lab 3.0, RTX 5060 Ti)_
 - **Evaluator inputs live under one cache root**: `PIPEROBOT_CACHE`, else
   `%LOCALAPPDATA%\piperobot` (XDG cache on Linux). `robots/so101/tools/prepare_caches.py` (repo
   env, `uv sync --group so101-data`) fills and verifies it by sha256: the course's assets under

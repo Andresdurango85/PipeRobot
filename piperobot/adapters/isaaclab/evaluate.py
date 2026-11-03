@@ -1,4 +1,4 @@
-"""Evaluate each seed in a fresh Isaac process; crashes never count as trials."""
+"""Evaluate seeds in fresh Isaac processes, optionally with concurrent workers."""
 
 from __future__ import annotations
 
@@ -13,9 +13,11 @@ import sys
 import tempfile
 import time
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event, Lock
 from typing import Protocol
 
 from piperobot.adapters.isaaclab.specs import PolicySpec, TaskSpec, object_dict, read_object
@@ -23,6 +25,10 @@ from piperobot.results import EpisodeResult, EvalResults, ResultsError, save_res
 
 MAX_ATTEMPTS_PER_SEED = 2
 MAX_RETRIED_SEEDS = 3
+# Kit log names have one-second resolution; concurrent startups must not share a log.
+LAUNCH_SPACING_S = 3.0
+_monotonic = time.monotonic
+_sleep = time.sleep
 
 # The directory that contains the piperobot package: the repo root in a checkout,
 # site-packages when installed. Only the worker's PYTHONPATH uses it.
@@ -156,6 +162,9 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
     task = TaskSpec.load(args.task)
     policy = PolicySpec.load(args.policy)
     seeds = select_seeds(args)
+    if args.workers < 1:
+        raise ResultsError("--workers must be positive")
+    workers = min(args.workers, len(seeds))
     workdir = args.workdir.resolve()
     repo = evaluated_repo(args.task)
     if repo is not None and (workdir == repo or repo in workdir.parents):
@@ -170,13 +179,14 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
         "policy": asdict(policy),
         "layout": task.layout,
         "device": args.device,
+        "workers": workers,
         "git_commit": git_commit(repo),
         "start_timestamp": start_timestamp,
     }
     retried_seeds: list[int] = []
     retries = 0
     details: list[dict[str, object]] = []
-    episodes = []
+    episodes: list[EpisodeResult] = []
     first_platform: dict[str, object] | None = None
     differences: list[dict[str, object]] = []
     error: str | None = None
@@ -185,11 +195,19 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
     env["PYTHONPATH"] = str(PACKAGE_PARENT) + (
         os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
     )
+    stopped = Event()
+    budget_lock = Lock()
+    launch_lock = Lock()
+    last_launch: float | None = None
+    seed_details: dict[int, dict[str, object]] = {}
+    completed: dict[int, EpisodeResult] = {}
+    platforms: dict[int, dict[str, object]] = {}
     with tempfile.TemporaryDirectory(prefix="piperobot-", dir=workdir) as temporary:
-        for seed in seeds:
+
+        def run_seed(seed: int) -> None:
+            nonlocal retries, last_launch
             attempts: list[dict[str, object]] = []
             detail: dict[str, object] = {"seed": seed, "attempts": attempts}
-            details.append(detail)
             for attempt in range(1, MAX_ATTEMPTS_PER_SEED + 1):
                 worker_out = Path(temporary) / f"episode-{seed}-{attempt}.json"
                 command = [
@@ -209,6 +227,23 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
                     "--viz",
                     "none",
                 ]
+                with launch_lock:
+                    # An error stops new seeds only; a running seed keeps its admitted retry,
+                    # so every reported error is that seed's own.
+                    if attempt == 1 and stopped.is_set():
+                        return
+                    if workers > 1 and last_launch is not None:
+                        delay = LAUNCH_SPACING_S - (_monotonic() - last_launch)
+                        if delay > 0:
+                            _sleep(delay)
+                    with budget_lock:
+                        if attempt == 1 and stopped.is_set():
+                            return
+                        last_launch = _monotonic()
+                        if attempt == 1:
+                            seed_details[seed] = detail
+                        else:
+                            retries += 1
                 process_started = time.perf_counter()
                 code: int | None = None
                 stderr = ""
@@ -221,20 +256,9 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
                     data = read_object(worker_out)
                     episode = validate_episode(data, seed)
                     platform = object_dict(data["platform"], "platform")
-                    if first_platform is None:
-                        first_platform = platform
-                    else:
-                        changed = {
-                            key: {"first": first_platform.get(key), "current": platform.get(key)}
-                            for key in first_platform.keys() | platform.keys()
-                            if key not in first_platform
-                            or key not in platform
-                            or first_platform.get(key) != platform.get(key)
-                        }
-                        if changed:
-                            differences.append({"seed": seed, "fields": changed})
                     detail.update(data)
-                    episodes.append(episode)
+                    completed[seed] = episode
+                    platforms[seed] = platform
                 except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
                     if isinstance(exc, subprocess.TimeoutExpired):
                         raw = exc.stderr or ""
@@ -253,17 +277,45 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
                 )
                 if attempt_error is None:
                     break
-                if attempt == MAX_ATTEMPTS_PER_SEED:
-                    error = attempt_error
-                    break
-                retried_seeds.append(seed)
-                if len(retried_seeds) > MAX_RETRIED_SEEDS:
-                    error = f"Infrastructure retry budget exceeded at seed {seed}"
-                    break
-                retries += 1
-            if error:
-                detail["error"] = error
-                break
+                with budget_lock:
+                    if attempt == MAX_ATTEMPTS_PER_SEED:
+                        detail["error"] = attempt_error
+                        stopped.set()
+                        return
+                    retried_seeds.append(seed)
+                    if len(retried_seeds) > MAX_RETRIED_SEEDS:
+                        detail["error"] = f"Infrastructure retry budget exceeded at seed {seed}"
+                        stopped.set()
+                        return
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(run_seed, seeds))
+
+    retried_seeds.sort(key=seeds.index)
+    for seed in seeds:
+        if seed not in seed_details:
+            continue
+        detail = seed_details[seed]
+        details.append(detail)
+        if error is None and "error" in detail:
+            error = str(detail["error"])
+        if seed in completed:
+            episodes.append(completed[seed])
+        if seed not in platforms:
+            continue
+        platform = platforms[seed]
+        if first_platform is None:
+            first_platform = platform
+        else:
+            changed = {
+                key: {"first": first_platform.get(key), "current": platform.get(key)}
+                for key in first_platform.keys() | platform.keys()
+                if key not in first_platform
+                or key not in platform
+                or first_platform.get(key) != platform.get(key)
+            }
+            if changed:
+                differences.append({"seed": seed, "fields": changed})
     metadata.update(
         retried_seeds=retried_seeds,
         retries=retries,
@@ -312,6 +364,12 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner = run_process) -> 
     parser.add_argument("--workdir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="concurrent Isaac worker processes, one seed each",
+    )
     args = parser.parse_args(argv)
     try:
         return evaluate(args, runner=runner)

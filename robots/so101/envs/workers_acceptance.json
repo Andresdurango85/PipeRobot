@@ -1,0 +1,46 @@
+{
+  "registered": "2026-11-03, before any run of the evaluator with --workers > 1; changing it needs a new ADR.",
+  "question": "Do two concurrent Isaac worker processes give the same per-seed results as one, so --workers can change the wall time but never a verdict?",
+  "code_commit": "71668b3",
+  "run": {
+    "evaluator": "piperobot.adapters.isaaclab.evaluate, one Isaac process per seed (ADR 0033), cuda:0",
+    "sets": {
+      "replay": {
+        "task": "robots/so101/envs/vials_to_rack_task.json",
+        "policy": "robots/so101/policies/demo_replay.json",
+        "seeds": "0-74",
+        "covers": "joint-space actions"
+      },
+      "scripted_dev": {
+        "task": "robots/so101/envs/vials_to_rack_task_randomized.json",
+        "policy": "robots/so101/policies/scripted_pick_place.json",
+        "seeds": "200000-200049",
+        "covers": "tcp actions through the differential IK"
+      }
+    },
+    "modes": {
+      "S": "--workers 1",
+      "P": "--workers 2"
+    },
+    "order": "replay S, scripted_dev S, replay P, scripted_dev P; all at code_commit, on the same machine and driver. The S runs need no extra GPU memory and go first; the P runs go together once the precondition holds.",
+    "precondition": "Before each P run, free GPU memory (total minus nvidia-smi memory.used) is at least 6.5 GB; otherwise the run waits. The free memory at each start is recorded."
+  },
+  "pass_criteria": [
+    "All four runs complete with exit 0 (infrastructure retries within the evaluator's own budget are allowed and reported).",
+    "For every one of the 125 seeds, S and P give the same outcome = (success, failure, success_step).",
+    "For every one of the 125 seeds, S and P give the same trajectory_sha256.",
+    "P's run_metadata records workers = 2 and S's records workers = 1."
+  ],
+  "failure_rule": "Any other result fails the test: workers stay at 1 in the gate and the cause is investigated under a new registration. No run is repeated under this file.",
+  "predictions_not_criteria": [
+    "replay S matches ADR 0033's acceptance run R1 on all 75 seeds (outcome and trajectory_sha256): 6/75 successes.",
+    "scripted_dev S matches the go/no-go's development run at 0bf1787 on these seeds (outcome and trajectory_sha256): 46/50 successes.",
+    "P's mean wall time per seed is at most 0.6 of S's (speedup >= 1.67x)."
+  ],
+  "measured_no_threshold": [
+    "Wall time per seed and the speedup, per set.",
+    "GPU memory: nvidia-smi memory.used sampled every 0.5 s during each run and for 30 s idle before it; idle = the median of that idle sample; peak above idle, for one worker (S) and for two (P).",
+    "Kit log files created during P runs: their count against the number of worker processes, and any name shared by two processes."
+  ],
+  "vram_constant": "Reported to the gate as three numbers: S peak above idle, P peak above idle, and the per-worker constant = the larger of (S peak above idle) and (P peak above idle)/2, plus a 25% margin, rounded up to 256 MB."
+}
