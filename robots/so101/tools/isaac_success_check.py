@@ -21,6 +21,8 @@ SUCCESS = load_module("scene_success", ENV / "vials_to_rack_success.py")
 
 # Fixed on 2026-11-02 before the first run; changing them needs a new ADR.
 # S7, S7b and the slot-depth rule added on 2026-11-02 before their first run.
+# S7b setup corrected on 2026-11-02 after its first run (held pose
+# from the settled rack, not the nominal origin); expectation unchanged.
 SETTLE_STEPS = 120
 RACK_Z = (0.03, 0.07)
 TUBE_Z = (0.02, 0.07)
@@ -149,6 +151,39 @@ def write_report(out_dir: Path, report: dict[str, object]) -> None:
     (out_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def episode_indices(value: str) -> set[int]:
+    """Parse the optional comma-separated nonnegative episode indices."""
+    try:
+        indices = {int(part) for part in value.split(",")}
+        if any(index < 0 for index in indices):
+            raise ValueError("negative index")
+        return indices
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Expected comma-separated nonnegative indices") from exc
+
+
+def write_episode_dump(
+    out_dir: Path,
+    index: int,
+    grasp: int | None,
+    release: int | None,
+    rack_pose: object,
+    params: SUCCESS.SuccessParams,
+    steps: list[dict[str, object]],
+) -> None:
+    payload = {
+        "episode_index": index,
+        "grasp_frame": grasp,
+        "release_frame": release,
+        "rack_pose": rack_pose,
+        "success_params": asdict(params),
+        "steps": steps,
+    }
+    (out_dir / f"dump_episode_{index}.json").write_text(
+        json.dumps(payload, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
+
+
 def run(args: argparse.Namespace, sim_cfg: object) -> int:
     import torch
     from isaaclab.sim import SimulationContext
@@ -203,6 +238,8 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
             raise RuntimeError(f"Expected three tube filters, got {values.shape}")
         return values[0].norm(dim=-1).sum(dim=0).cpu().tolist()
 
+    dump_steps: list[dict[str, object]] | None = None
+
     def sample(index: int) -> object:
         states = [
             SUCCESS.VialState(
@@ -212,12 +249,18 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
             )
             for obj, force in zip(tubes, forces(), strict=True)
         ]
-        return tracker.step(
-            index,
-            states,
-            tuple(rack.data.root_pos_w.torch[0].cpu().tolist()),
-            tuple(rack.data.root_quat_w.torch[0].cpu().tolist()),
-        )
+        rack_position = tuple(rack.data.root_pos_w.torch[0].cpu().tolist())
+        rack_quaternion = tuple(rack.data.root_quat_w.torch[0].cpu().tolist())
+        if dump_steps is not None:
+            dump_steps.append(
+                {
+                    "step_index": index,
+                    "vials": [asdict(state) for state in states],
+                    "rack_position": rack_position,
+                    "rack_quaternion_xyzw": rack_quaternion,
+                }
+            )
+        return tracker.step(index, states, rack_position, rack_quaternion)
 
     def reset(yaw: float = 0.0, nominal: bool = False) -> None:
         set_joints(INITIAL_JOINTS)
@@ -370,15 +413,33 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
 
         reset()
         slot = data["rack"]["slots_m"][0]
-        held_pose = (
-            origin[0] + slot[0],
-            origin[1] + slot[1],
-            origin[2] + RACK_TOP_Z + UPRIGHT_BOTTOM_OFFSET_Z + HELD_SLOT_CLEARANCE_Z,
-            *identity,
-        )
+        teleport(tubes[0], (-0.15, 0.0, data["tubes"]["origins_m"][0][2], *lying))
+        settle()
+        settled_rack_pose = {
+            "position": tuple(rack.data.root_pos_w.torch[0].cpu().tolist()),
+            "quaternion_xyzw": tuple(rack.data.root_quat_w.torch[0].cpu().tolist()),
+        }
+        tracker.reset()
+
+        def hold_over_slot() -> None:
+            local = (
+                slot[0],
+                slot[1],
+                RACK_TOP_Z + UPRIGHT_BOTTOM_OFFSET_Z + HELD_SLOT_CLEARANCE_Z,
+            )
+            rotated = SUCCESS.rotate_xyzw(
+                tuple(rack.data.root_quat_w.torch[0].cpu().tolist()), local
+            )
+            position = tuple(
+                a + b
+                for a, b in zip(rack.data.root_pos_w.torch[0].cpu().tolist(), rotated, strict=True)
+            )
+            write_pose(tubes[0], (*position, *identity))
+
         # A free tube falls into the opening; restore pose/zero velocity before every step.
-        result, _ = settle(hold=lambda: write_pose(tubes[0], held_pose))
+        result, _ = settle(hold=hold_over_slot)
         measured = placement_subpredicates(result.vials[0], tracker.params)
+        measured["settled_rack_pose"] = settled_rack_pose
         expected = {
             "vertical": True,
             "xy_in_footprint": True,
@@ -425,7 +486,18 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                 state_g = [row[gripper] for row in episode["state"]]
                 action_g = [row[gripper] for row in episode["action"]]
                 events = CORE.grasp_release_frames(state_g, action_g)
+                dump_steps = [] if episode["index"] in args.dump_episodes else None
                 if events is None:
+                    if dump_steps is not None:
+                        write_episode_dump(
+                            args.out_dir,
+                            episode["index"],
+                            None,
+                            None,
+                            None,
+                            tracker.params,
+                            dump_steps,
+                        )
                     episode_peak_forces.append({"index": episode["index"], "max_force_n": None})
                     diagnostic["episodes"].append(
                         {
@@ -473,6 +545,17 @@ def run(args: argparse.Namespace, sim_cfg: object) -> int:
                         windows["open_approach"].append(force)
                     if any(start <= index < end for start, end in holds):
                         windows["hold"].append(force)
+                if dump_steps is not None:
+                    write_episode_dump(
+                        args.out_dir,
+                        episode["index"],
+                        grasp,
+                        release,
+                        asdict(placement),
+                        tracker.params,
+                        dump_steps,
+                    )
+                dump_steps = None
                 successes += int(result.success)
                 episode_peak_forces.append({"index": episode["index"], "max_force_n": peak_force})
                 if result.success_step is not None:
@@ -513,6 +596,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--episodes-json", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--max-episodes", type=int)
+    parser.add_argument("--dump-episodes", type=episode_indices, default=set())
     parser.add_argument("--actuators", choices=("course", "usd"), default="course")
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--help" in argv or "-h" in argv:
