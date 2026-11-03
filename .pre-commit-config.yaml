@@ -46,6 +46,15 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: ci-mypy
+        # --isolated keeps the lerobot extra out, like CI (ADR 0025).
+        name: "CI: mypy --strict"
+        entry: uv run --isolated --locked mypy
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
       - id: ci-pytest
         # --isolated: a fresh env with only uv.lock's default deps (no `lerobot` extra), like CI.
         # Catches imports that only work because the extra is installed on this machine.
