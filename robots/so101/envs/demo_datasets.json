@@ -1,0 +1,12 @@
+{
+  "datasets": [
+    {
+      "repo_id": "sreetz-nv/so101_teleop_vials_rack_left",
+      "revision": "69802873f4a26bffb716fca1f4fb1bb0e3d2a07a",
+      "metadata_fps": 30,
+      "control_hz": null,
+      "control_hz_provenance": null,
+      "source": "Training set of NVIDIA's Sim-to-Real SO-101 course (75 sim teleop episodes)"
+    }
+  ]
+}

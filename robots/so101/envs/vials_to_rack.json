@@ -1,0 +1,137 @@
+{
+  "robot": {
+    "position_m": [
+      -0.05,
+      0,
+      0
+    ],
+    "yaw_deg": 90,
+    "source": {
+      "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+      "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+      "path": "source/sim_to_real_so101/assets/so101.py",
+      "license": "Apache-2.0"
+    }
+  },
+  "tubes": {
+    "origins_m": [
+      [
+        0.23,
+        -0.08,
+        0.05
+      ],
+      [
+        0.23,
+        0,
+        0.05
+      ],
+      [
+        0.23,
+        -0.16,
+        0.05
+      ]
+    ],
+    "axis_span_m": [
+      -0.017,
+      0.0995
+    ],
+    "radius_m": 0.01695,
+    "pitch_deg": 90,
+    "x_range_m": [
+      -0.04,
+      0.04
+    ],
+    "y_range_m": [
+      -0.01,
+      0.01
+    ],
+    "source": {
+      "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+      "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+      "path": "source/sim_to_real_so101/tasks/vials_to_rack_env_cfg.py",
+      "license": "Apache-2.0"
+    }
+  },
+  "rack": {
+    "origin_m": [
+      0.18,
+      0.08,
+      0.06
+    ],
+    "footprint_m": [
+      [
+        0,
+        0.12
+      ],
+      [
+        0,
+        0.12
+      ]
+    ],
+    "slots_m": [
+      [
+        0.0298,
+        0.0299,
+        0.1
+      ],
+      [
+        0.0902,
+        0.0299,
+        0.1
+      ],
+      [
+        0.0902,
+        0.0901,
+        0.1
+      ],
+      [
+        0.0308,
+        0.0901,
+        0.1
+      ]
+    ],
+    "x_range_m": [
+      -0.04,
+      0.04
+    ],
+    "y_range_m": [
+      -0.01,
+      0.01
+    ],
+    "yaw_range_rad": [
+      -0.5,
+      0.5
+    ],
+    "usd": "Vial_rack_simple.usda",
+    "sha256": "a5cd4af58fd8bb89e86bffae1429587eadfcd672a3da0a05f031ea24faba5d99",
+    "source": [
+      {
+        "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+        "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+        "path": "source/sim_to_real_so101/tasks/vials_to_rack_env_cfg.py",
+        "license": "Apache-2.0"
+      },
+      {
+        "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+        "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+        "path": "source/sim_to_real_so101/tasks/task_env_cfg.py",
+        "license": "Apache-2.0"
+      }
+    ]
+  },
+  "tcp": {
+    "body": "gripper",
+    "offset_m": [
+      -0.0079,
+      -0.000218121,
+      -0.0981274
+    ],
+    "source": {
+      "repo": "https://github.com/TheRobotStudio/SO-ARM100",
+      "commit": "a758567c3978dfeefe282ede0500085a48fe8f78",
+      "path": "Simulation/SO101/so101_new_calib.urdf",
+      "joint": "gripper_frame_joint",
+      "parent": "gripper_link"
+    }
+  }
+}

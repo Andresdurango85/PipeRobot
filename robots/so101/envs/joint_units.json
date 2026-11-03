@@ -1,0 +1,71 @@
+{
+  "source": {
+    "repo": "https://github.com/isaac-sim/Sim-to-Real-SO-101-Workshop",
+    "commit": "ce807d99724cb65671abec01f908a2fcb4a6eab7",
+    "path": "source/sim_to_real_so101/utils/lerobot_interface.py",
+    "license": "Apache-2.0",
+    "note": "The ranges belong to the course robot USD, not to LeRobot."
+  },
+  "joints": {
+    "shoulder_pan": {
+      "degrees": [
+        -110,
+        110
+      ],
+      "raw": [
+        -100,
+        100
+      ]
+    },
+    "shoulder_lift": {
+      "degrees": [
+        -100,
+        100
+      ],
+      "raw": [
+        -100,
+        100
+      ]
+    },
+    "elbow_flex": {
+      "degrees": [
+        -100,
+        90
+      ],
+      "raw": [
+        -100,
+        100
+      ]
+    },
+    "wrist_flex": {
+      "degrees": [
+        -95,
+        95
+      ],
+      "raw": [
+        -100,
+        100
+      ]
+    },
+    "wrist_roll": {
+      "degrees": [
+        -160,
+        160
+      ],
+      "raw": [
+        -100,
+        100
+      ]
+    },
+    "gripper": {
+      "degrees": [
+        -10,
+        100
+      ],
+      "raw": [
+        0,
+        100
+      ]
+    }
+  }
+}
