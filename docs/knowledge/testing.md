@@ -118,3 +118,16 @@ testing of `piperobot/stats`.
   the decimal as typed (`format_percent`: "12.5 pp", "97.5%"); the defaults still print "10 pp"
   and "95%", so the golden file is unchanged. Observed drops keep one decimal on purpose.
   _(verified 2026-11-03)_
+
+## Rendered output (history page)
+
+- **Look at rendered HTML, not only at its source**: the golden file of
+  `piperobot/reports/history.py` passed while the last date label was clipped by the SVG's edge
+  and the run URLs pushed the table off the page. Screenshot it headless:
+  `msedge --headless=new --window-size=900,1700 --screenshot=<png> file:///<path>/history.html`
+  (Edge ships with Windows; Chrome takes the same flags). _(verified 2026-11-03, Edge on
+  Windows 11)_
+- **Verdict colors on the history page** have at least 4.5:1 contrast on white (WCAG AA for
+  text) and distinct luminance, and each point also has a text tooltip and a table row, so the
+  verdict does not rely on color alone: pass `#164e35` (9.7:1), block `#b91c1c` (6.5:1),
+  warn `#98700a` (4.5:1). _(verified 2026-11-03)_

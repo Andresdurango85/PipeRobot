@@ -33,6 +33,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0023](0023-codex-writes-code-claude-reviews.md) | Codex writes the code; Claude sessions orchestrate and review | Accepted |
 | [0024](0024-so101-demo-replay-go-no-go-and-control-rate.md) | Object-free demo replay as the SO-101 asset go/no-go; control rate measured per dataset | Accepted |
 | [0025](0025-mypy-strict-type-checking.md) | Type-check the piperobot package with mypy --strict | Accepted |
+| [0026](0026-success-rate-history-data-branch-and-pages.md) | Success-rate history: an append-only data branch, rendered to Pages | Accepted |
 
 ## Template
 
