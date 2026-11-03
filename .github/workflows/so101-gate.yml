@@ -9,9 +9,9 @@ on:
       - "robots/so101/envs/**"
       - "robots/so101/baselines/**"
       - "robots/so101/tools/prepare_caches.py"
-      - "piperobot/adapters/isaaclab/**"
-      - "piperobot/stats/paired.py"
-      - "piperobot/reports/paired_comment.py"
+      - "piperobot/**"
+      - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/so101-gate.yml"
   workflow_dispatch:
     inputs:
@@ -21,9 +21,11 @@ on:
         default: gate
 
 permissions: {}
+env:
+  SEEDS: "0-74"
 concurrency:
-  group: so101-gate-${{ github.ref }}
-  cancel-in-progress: true
+  group: so101-gate-${{ github.ref }}-${{ inputs.mode || 'gate' }}
+  cancel-in-progress: ${{ inputs.mode != 'baseline' }}
 
 jobs:
   evaluate:
@@ -43,7 +45,6 @@ jobs:
       PYTHONUNBUFFERED: "1"
       TASK: robots/so101/envs/vials_to_rack_task.json
       POLICY: robots/so101/policies/demo_replay.json
-      SEEDS: "0-74"
       MIN_FREE_VRAM_MB: "3584"
     steps:
       - name: Start the clock
@@ -205,7 +206,7 @@ jobs:
             cp out/results.json out/baseline/demo-replay-episodes.json
             uv run --no-sync python -m piperobot.adapters.isaaclab.baseline record \
               --results out/results.json --metadata out/run_metadata.json \
-              --seeds 0-74 --run-url "$RUN_URL" --output out/baseline/demo-replay.json
+              --seeds "$SEEDS" --run-url "$RUN_URL" --output out/baseline/demo-replay.json
             for file in out/baseline/demo-replay-episodes.json out/baseline/demo-replay.json; do
               echo "$file" >> "$GITHUB_STEP_SUMMARY"
               head -n 12 "$file" >> "$GITHUB_STEP_SUMMARY"
@@ -213,6 +214,21 @@ jobs:
             exit 0
           fi
           if [[ ! -f robots/so101/baselines/demo-replay-episodes.json || ! -f robots/so101/baselines/demo-replay.json ]]; then
+            main_has_baseline=false
+            for file in demo-replay.json demo-replay-episodes.json; do
+              if gh api "repos/$GITHUB_REPOSITORY/contents/robots/so101/baselines/$file?ref=main" --silent 2> out/baseline-api-error.txt; then
+                main_has_baseline=true
+              elif ! grep -Eq 'HTTP 404([^0-9]|$)' out/baseline-api-error.txt; then
+                cat out/baseline-api-error.txt >&2
+                echo '::error::could not check main for a baseline'
+                exit 1
+              fi
+            done
+            if [[ "$main_has_baseline" == true ]]; then
+              echo 'baseline exists on main but is missing here; no verdict' >> "$GITHUB_STEP_SUMMARY"
+              echo '::error::the SO-101 baseline exists on main but is missing here; restore it (no verdict)'
+              exit 1
+            fi
             echo 'no baseline committed yet; nothing to compare' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi

@@ -128,7 +128,8 @@ Project Cangrejo, the `piperobot` package).
    ([testing.md](knowledge/testing.md)).
 7. SO-101 gate: two parallel Isaac workers with a registered repeatability test (fingerprints
    identical to the sequential run, 0 flips), to bring 75 seeds well under the 30-minute budget
-   ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)).
+   ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md)). Then videos of failed
+   episodes in the SO-101 comment (a Phase 0 criterion; needs cameras in the Isaac scene).
 
 ## Open questions for Andrés
 

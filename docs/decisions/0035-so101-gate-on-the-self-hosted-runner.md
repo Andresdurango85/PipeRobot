@@ -69,9 +69,10 @@ reach the home PC.
 ### Workflow: evidence on the runner, verdict and comment from a hosted job
 
 - `.github/workflows/so101-gate.yml` is triggered only by `push` (this repo's branches except
-  `dependabot/**`, on the SO-101 policy, scene, baseline and cache files, the Isaac adapter, the
-  paired statistics and comment code, and the workflow itself) and `workflow_dispatch` (with
-  `mode: gate | baseline`). Never by `pull_request`, `pull_request_target` or `workflow_run`.
+  `dependabot/**`, on the SO-101 policy, scene, baseline and cache files, all of `piperobot/`,
+  `pyproject.toml`, `uv.lock` and the workflow itself; a test checks that every module the gate
+  imports is covered) and `workflow_dispatch` (with `mode: gate | baseline`). Never by
+  `pull_request`, `pull_request_target` or `workflow_run`.
 - Job `evaluate` runs on `[self-hosted, Windows, gpu]` with `contents: read` only. It reuses the
   Isaac Lab install that `isaac-render.yml` keeps in the runner's tool cache (built as
   `gh-runner` at the pinned commit; `OMNI_KIT_ACCEPT_EULA` records the owner's acceptance of
@@ -88,6 +89,9 @@ reach the home PC.
   its own marker (`<!-- piperobot-gate:so101 -->`, next to PushT's) on the open PRs whose head
   is the evaluated commit, and fails on BLOCK. The artifact is treated as untrusted data
   (validated by the results contract, escaped in the comment).
+- **Fail closed on a missing baseline**: a run without the baseline files passes with a note
+  only while `main` has no baseline either. Once `main` has one, a branch that lacks it fails
+  ("restore it, no verdict"), and so does a failed lookup.
 - **No `workflow_run`.** Because the workflow is push-only, only collaborators can trigger it,
   so a second job in the same workflow can hold the write token while the token never reaches
   the home PC. A `workflow_run` reporter would add a trigger that zizmor flags as dangerous,
@@ -97,8 +101,10 @@ reach the home PC.
   runner.
 - The hook's allowlist gains `so101-gate.yml`; the owner redeploys the live copy (elevated, a
   copy and a hash check, no restart).
-- **Concurrency**: one group per workflow and branch, `cancel-in-progress: true`, so a newer push
-  supersedes an older run of the same branch. No group shared across the GPU workflows: GitHub
+- **Concurrency**: one group per workflow, branch and mode. In gate mode
+  `cancel-in-progress: true`, so a newer push supersedes an older run of the same branch; a
+  baseline dispatch (hours long) is never cancelled, neither by a push to its branch nor by
+  another dispatch, which queues behind it. No group shared across the GPU workflows: GitHub
   keeps one pending run per group and cancels older pending ones, so a shared group would
   silently drop one branch's queued run when two branches push. The single runner already runs
   one job at a time.
