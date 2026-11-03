@@ -80,6 +80,8 @@ jobs:
                       capture_output=True, text=True, check=False,
                   )
                   summary.write(f"### {name}\n\n```diff\n{diff.stdout}{diff.stderr}\n```\n\n")
+                  # Also in the log: step summaries cannot be read through the API.
+                  print(f"::group::{name}\n{diff.stdout}{diff.stderr}\n::endgroup::")
           PY
 
       - name: Upload mutation statistics
