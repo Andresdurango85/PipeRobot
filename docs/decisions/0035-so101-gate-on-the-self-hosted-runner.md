@@ -117,7 +117,8 @@ reach the home PC.
 - **Budget**: the evaluator step times out at 32 minutes and the job at 40 (240 in baseline
   mode); the job summary flags a run above the 30-minute Phase 0 budget.
 - **Not a required check**: the runner is a PC that can be off, and a required check would then
-  block every merge touching these paths.
+  block every merge touching these paths. Superseded by
+  [0037](0037-so101-gate-verdict-is-a-required-check.md): `so101-gate-verdict` is required.
 
 ## Alternatives considered
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import fnmatch
 import importlib.util
 import os
 import re
@@ -21,6 +20,12 @@ WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
 HOOK = ROOT / ".github" / "runner" / "job-started.ps1"
 REPOSITORY = "Andresdurango85/PipeRobot"
 REF = f"{REPOSITORY}/.github/workflows/"
+
+SPEC = importlib.util.spec_from_file_location("so101_gate", ROOT / ".github/scripts/so101_gate.py")
+assert SPEC is not None
+assert SPEC.loader is not None
+gate_script = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(gate_script)
 
 
 def _load(path: Path) -> dict[str | bool, Any]:
@@ -528,24 +533,6 @@ def test_so101_missing_baseline_fails_closed_once_main_has_one() -> None:
     assert "HTTP 404" in script[lookup:green]
 
 
-def _matches_push_path(path: str, pattern: str) -> bool:
-    """Match path components with ** spanning zero or more directories."""
-    parts, patterns = path.split("/"), pattern.split("/")
-    if patterns[0] == "**":
-        return len(patterns) == 1 or any(
-            _matches_push_path("/".join(parts[index:]), "/".join(patterns[1:]))
-            for index in range(len(parts) + 1)
-        )
-    return fnmatch.fnmatchcase(parts[0], patterns[0]) and (
-        len(parts) == len(patterns) == 1
-        or (
-            len(parts) > 1
-            and len(patterns) > 1
-            and _matches_push_path("/".join(parts[1:]), "/".join(patterns[1:]))
-        )
-    )
-
-
 @pytest.mark.parametrize(
     ("path", "pattern", "expected"),
     [
@@ -554,7 +541,7 @@ def _matches_push_path(path: str, pattern: str) -> bool:
     ],
 )
 def test_push_path_matching(path: str, pattern: str, expected: bool) -> None:
-    assert _matches_push_path(path, pattern) is expected
+    assert gate_script.matches(path, pattern) is expected
 
 
 def _in_repo_imports(entry_points: set[Path]) -> set[Path]:
@@ -593,7 +580,7 @@ def test_so101_push_paths_cover_dependencies() -> None:
     data = _load(ROOT / ".github/workflows/so101-gate.yml")
     triggers = data.get("on", data.get(True))
     assert isinstance(triggers, dict)
-    patterns = triggers["push"]["paths"]
+    patterns = gate_script.PATHS
     dependencies = _in_repo_imports(
         {
             ROOT / path
@@ -614,10 +601,18 @@ def test_so101_push_paths_cover_dependencies() -> None:
         manifest = ROOT / env[key]
         module = json.loads(manifest.read_text(encoding="utf-8"))["module"]
         dependencies.add(manifest.parent / module)
-    dependencies.update(ROOT / name for name in ("pyproject.toml", "uv.lock"))
+    dependencies.update(
+        ROOT / name
+        for name in (
+            "pyproject.toml",
+            "uv.lock",
+            ".github/workflows/so101-gate.yml",
+            ".github/scripts/so101_gate.py",
+        )
+    )
     for path in dependencies:
         name = path.relative_to(ROOT).as_posix()
-        assert any(_matches_push_path(name, pattern) for pattern in patterns), name
+        assert any(gate_script.matches(name, pattern) for pattern in patterns), name
     assert {"pyproject.toml", "uv.lock"} <= set(patterns)
 
 
@@ -697,3 +692,35 @@ def test_so101_worker_selection(tmp_path: Path, free: int, workers: int, powersh
     else:
         assert "::error::" in result.stdout
         assert not (tmp_path / "env").exists()
+
+
+def test_so101_required_verdict_job() -> None:
+    data = _load(ROOT / ".github/workflows/so101-gate.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    assert triggers["push"] == {"branches": ["**"]}
+    jobs = data["jobs"]
+    final = jobs["so101-gate-verdict"]
+    assert "name" not in final
+    assert final["if"] == "always()"
+    assert final["needs"] == ["changes", "evaluate", "report"]
+    for job, action in ((final, "verdict"), (jobs["changes"], "changes")):
+        assert job["runs-on"] == "ubuntu-24.04"
+        assert job["permissions"] == {"contents": "read"}
+        assert job["timeout-minutes"] == 5
+        assert any(
+            f".github/scripts/so101_gate.py {action}" in step.get("run", "")
+            for step in job["steps"]
+        )
+    assert jobs["changes"]["steps"][0]["with"]["fetch-depth"] == 0
+    assert jobs["evaluate"]["needs"] == "changes"
+    for guard in (
+        "github.repository == 'Andresdurango85/PipeRobot'",
+        "github.actor != 'dependabot[bot]'",
+        "needs.changes.outputs.relevant == 'true'",
+        "needs.changes.outputs.dependabot != 'true'",
+    ):
+        assert guard in jobs["evaluate"]["if"]
+    assert jobs["report"]["needs"] == "evaluate"
+    assert "if" not in jobs["report"]
+    assert [name for name, job in jobs.items() if "self-hosted" in _labels(job)] == ["evaluate"]
