@@ -3,6 +3,12 @@
 Observation: {"step": int, "joint_pos": {joint_units name: LeRobot value}}.
 Actions contain six finite LeRobot values in the dataset's joint_names order
 (the .pos suffix is removed for observation keys). Replay seeds are demo indices.
+Policies opting into UsesObjectState receive objects: tubes (scene order), rack and tcp
+poses as pos and quat_xyzw float lists, plus four rack-local slot centres transformed
+into world slots_w. TCP is the gripper body plus tcp.offset_m.
+The tcp action space is [world x, y, z metres, gripper pitch radians (shoulder_lift + elbow_flex +
+wrist_flex), wrist_roll radians,
+gripper LeRobot 0..100]; joint is the default action space.
 Randomized reactive rollouts default to 600 control steps, configurable via horizon_steps.
 """
 
@@ -15,7 +21,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Protocol
 
-from piperobot.adapters.isaaclab.specs import Policy, ReferenceEpisodes, load_module
+from piperobot.adapters.isaaclab.specs import (
+    Policy,
+    ReferenceEpisodes,
+    UsesObjectState,
+    load_module,
+)
 
 ENV = Path(__file__).resolve().parent
 TOOLS = ENV.parent / "tools"
@@ -51,6 +62,7 @@ def run_episode(
     seed: int, policy: Policy, layout: str, options: Mapping[str, object], sim_cfg: SimulationConfig
 ) -> dict[str, object]:
     validate_layout(policy, layout)
+    validate_action_space(policy, options.get("action_space", "joint"))
     # Existing study modules import siblings by name; keep that convention local to this task.
     sys.path.insert(0, str(TOOLS))
     runtime = load_module("task_reconstructed_episodes", ENV / "vials_to_rack_episodes.py")
@@ -70,7 +82,15 @@ def run_episode(
     env = runtime.ReconstructedEpisodes(
         assets_dir, str(options.get("actuators", "course")), sim_cfg, names
     )
-    layout_source = None
+    env.seed = seed
+    env.policy = policy
+    env.action_space = options.get("action_space", "joint")
+    env.uses_object_state = isinstance(policy, UsesObjectState) and policy.uses_object_state
+    # Optional controller settings for the TCP action space; the runtime has the defaults.
+    if "ik_gain" in options:
+        env.ik_gain = float(options["ik_gain"])
+    if "ik_max_lead_rad" in options:
+        env.ik_max_lead = float(options["ik_max_lead_rad"])
     sampled = None
     if layout == "reconstructed_demo":
         if not isinstance(policy, ReferenceEpisodes):
@@ -82,12 +102,9 @@ def run_episode(
     else:
         randomization = load_module("task_randomization", ENV / "vials_to_rack_randomization.py")
         sampled = randomization.sample_layout(seed, data)
-        initial = runtime.UNITS.to_lerobot(runtime.INITIAL_JOINTS, env.table)
-        row = [initial[name] for name in env.names]
         horizon = options.get("horizon_steps", 600)
         if type(horizon) is not int or horizon <= 0:
             raise ValueError("horizon_steps must be a positive integer")
-        episode = {"index": seed, "state": [row] * horizon, "action": [row] * horizon}
 
         def apply_layout() -> None:
             env.teleport(
@@ -100,20 +117,26 @@ def run_episode(
             for tube, position in zip(env.tubes, sampled.tubes, strict=True):
                 env.teleport(tube, (*position, *env.lying))
 
-        layout_source = apply_layout
-    result = env.run_reconstructed_episode(
-        episode,
-        record_steps=False,
-        action_source=lambda index, observation: policy.act(observation),
-        layout_source=layout_source,
-    )
+        result = env.run_policy_episode(
+            apply_layout,
+            lambda index, observation: policy.act(observation),
+            horizon,
+            record_steps=bool(options.get("record_steps", False)),
+        )
+    if layout == "reconstructed_demo":
+        result = env.run_reconstructed_episode(
+            episode,
+            record_steps=False,
+            action_source=lambda index, observation: policy.act(observation),
+        )
     result["scene"] = scene_label(seed, layout)
     reason = result.pop("failure_reason")
     result["failure"] = None if result["success"] else reason
-    if sampled is not None:
-        result["rack_pose"] = {
-            "origin_xyz": sampled.rack_position,
-            "yaw": sampled.rack_yaw,
-        }
-        result["release_frame"] = None
     return result
+
+
+def validate_action_space(policy: Policy, action_space: object) -> None:
+    if action_space not in ("joint", "tcp"):
+        raise ValueError("action_space must be joint or tcp")
+    if getattr(policy, "action_space", "joint") != action_space:
+        raise ValueError("Policy action_space differs from task action_space")

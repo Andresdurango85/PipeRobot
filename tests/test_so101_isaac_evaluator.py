@@ -606,7 +606,23 @@ def test_action_hook_preserves_replay_trace() -> None:
 
     original = run(default, episode, False)
     with_policy = run(hooked, episode, False, action_source=actions)
+    assert default.trace == [
+        "reset",
+        ("teleport", (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)),
+        ("teleport", (0.0,) * 7),
+        ("joints", {"gripper": 0.0}),
+        ("target", {"target": [[1.0]], "joint_ids": [0]}),
+        "step",
+        "step",
+        ("sample", 0),
+        ("target", {"target": [[2.0]], "joint_ids": [0]}),
+        "step",
+        "step",
+        ("sample", 1),
+    ]
     assert default.trace == hooked.trace
+    expected_samples = b'[{"forces":[1.0],"step":0},{"forces":[1.0],"step":1}]'
+    assert original["trajectory_sha256"] == hashlib.sha256(expected_samples).hexdigest()
     assert original["trajectory_sha256"] == with_policy["trajectory_sha256"]
     assert observations == [
         {"step": 0, "joint_pos": {"gripper": 0.0}},

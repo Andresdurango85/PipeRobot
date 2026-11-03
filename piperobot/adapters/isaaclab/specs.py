@@ -161,3 +161,10 @@ class Policy(Protocol):
 @runtime_checkable
 class ReferenceEpisodes(Protocol):
     def reference_episode(self, seed: int) -> Mapping[str, object] | None: ...
+
+
+@runtime_checkable
+class UsesObjectState(Protocol):
+    """Optional opt-in to privileged task object observations."""
+
+    uses_object_state: bool

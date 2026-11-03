@@ -10,7 +10,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | Done-criterion | State |
 | --- | --- |
 | GPU workflow, headless, < 30 min per PR | **Done for PushT**: `gpu-smoke` on the self-hosted RTX runner, ~2–3 min per PR, not a gate ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)); the gate stays on CPU ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)). Isaac's time on it not yet measured |
-| ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min) ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). **SO-101 on Isaac**: evaluator runs 75 seeds, one process each, ~20 s per seed, repeatable bit for bit; replay policy only, seeded randomized layout built but not yet run ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)) |
+| ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min) ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). **SO-101 on Isaac**: evaluator runs 75 seeds, one process each, ~20 s per seed, repeatable bit for bit; a scripted privileged-state policy on the seeded randomized layout passed its registered go/no-go, 43/50, ~25 s per seed ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md), [ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)) |
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
@@ -23,6 +23,11 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: a scripted privileged-state pick-and-place policy (it sees the simulator's object
+  poses; not deployable) passed its pre-registered go/no-go on the seeded randomized layout:
+  43/50 through the evaluator, after tuning on separate seeds (91/100). It is proposed as the
+  SO-101 gate's policy in place of the 6/75 demo replay
+  ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)).
 - 2026-11-03: the Isaac Lab evaluator (`piperobot.adapters.isaaclab`) runs every seed in a fresh
   Isaac process: in one process an episode's outcome depends on the episodes before it (12/75
   change in reverse order), and neither enhanced determinism nor a full reset fixes it. Worker
@@ -104,11 +109,13 @@ Project Cangrejo, the `piperobot` package).
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
    [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
    nightlies, decide on a paired mode for pr-gate.
-3. Isaac: measure the replay baseline the gate will use (50 seeds, one process each,
-   [ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)) and wire the
-   evaluator into a self-hosted workflow (Berta's area: `.github/`); then a reactive scripted
-   policy so the seeded randomized layout can run, cameras for failed-episode videos, and 2–3
-   parallel workers (measure GPU memory first).
+3. Isaac (with Berta's gate workflow, ADR 0034 in its PR): switch the gate's policy to the
+   scripted one ([ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)), measure
+   its 500-seed baseline (100000-100499) with the workflow's baseline mode, and register a
+   deliberately worse scripted parameter for the BLOCK demo. Right after the first gate merge:
+   two parallel workers with a registered repeatability test (~25 min per run with one).
+   Later: the wrist_flex-at-limit failure mode (needs a new untouched go/no-go range), cameras
+   for failed-episode videos.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
 5. CI: check that Monday's Dependabot runs work under the new Actions permissions and that the

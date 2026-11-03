@@ -1,0 +1,48 @@
+{
+  "registered": "2026-11-03, before any run on seeds 210000-210049; changing it needs a new ADR.",
+  "question": "Does the scripted privileged-state pick-and-place policy reach a success rate high enough to be the SO-101 gate's policy?",
+  "commits": {
+    "code": "0bf1787 (policy, task and evaluator code as tuned on development seeds)",
+    "run": "the commit that adds this file; its diff against 0bf1787 is this file only. run_metadata.json next to the run's results.json records the run commit (the results contract has no commit field); the working tree is checked clean with git status before the run."
+  },
+  "policy": {
+    "spec": "robots/so101/policies/scripted_pick_place.json",
+    "nature": "Privileged state: it reads the simulator's tube, rack, slot and TCP poses every step and closes the loop on the observed tube position, which the real arm cannot see. It measures the pipeline and regressions in simulation, not a deployable policy.",
+    "parameters": "as committed in the spec at the code commit (grasp pitch 1.025 rad, release pitch -0.172 rad, grasp 2 cm across and 8 mm below the tube axis, 4 cm along it but at most to x = 0.295 m and never under 1.5 cm, carry 0.15 m, transfer 0.19 m, release 0.17 m, tolerance 4 mm, dwell 20 steps)"
+  },
+  "task": {
+    "spec": "robots/so101/envs/vials_to_rack_task_randomized.json",
+    "layout": "seeded randomized layout, the course's ranges (vials_to_rack_randomization.py)",
+    "action_space": "tcp: position-only differential IK (DLS) on shoulder_pan, shoulder_lift, elbow_flex, integrated on the previous joint target with gain 0.2 and a 0.25 rad lead limit; wrist_flex derived from the commanded gripper pitch",
+    "horizon_steps": 600,
+    "actuators": "course",
+    "success": "the existing SuccessTracker, unchanged (5 N grasp threshold, slot-depth rule)"
+  },
+  "run": {
+    "evaluator": "piperobot.adapters.isaaclab.evaluate, one Isaac process per seed (ADR 0033), cuda:0",
+    "seeds": "210000-210049, at the run commit",
+    "infrastructure_retries": "the evaluator's own budget (one retry per seed for evaluator errors, at most 3 retried seeds); an evaluator error makes the run void, not a NO-GO, and it is reported"
+  },
+  "decision": {
+    "GO": ">= 30/50 successes (60%)",
+    "NO-GO": "< 30/50"
+  },
+  "reported_not_criteria": [
+    "per-seed failure reasons",
+    "seeds with any control step where wrist_flex is within 0.05 rad of a limit, and the share of steps",
+    "infrastructure retries",
+    "wall seconds per seed"
+  ],
+  "development_evidence_before_registration": "Seeds 200000-200099 at 0bf1787: 91/100 through the evaluator (one process per seed, 0 infrastructure retries, 24.1 s per seed; 9 not_placed, 4 of them with wrist_flex held at its limit); 88/100 in one process, with 7 seeds that differ between the two modes (ADR 0033, H1). 30/100 seeds have at least one step with wrist_flex within 0.05 rad of a limit, 26 of them successes.",
+  "no_go_path": "No retuning against 210000-210049. Any retune needs a new go/no-go seed range, declared in a new commit before it is touched, and the result on 210000-210049 stays reported.",
+  "invalidation": "Any change to the success tracker, the scene or the randomization after this commit voids the go/no-go.",
+  "environment_recorded_not_criteria": {
+    "isaac": "Isaac Sim 6.2 with an Isaac Lab release/3.0.0 clone at 44044b0963 (ADR 0021)",
+    "torch": "2.11.0+cu130 in the Isaac venv",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti, driver 610.88",
+    "rule": "If any of these changes before the run, the run is void."
+  },
+  "void_rule": "An evaluator error voids the run (it is not a NO-GO). Only infrastructure fixes are then allowed: no change to the policy, its parameters, the tracker or the scene. The same 50 seeds are re-run once and both runs are reported, including any per-seed outcomes the voided run produced. A second void stops the go/no-go and is reported to the orchestrator.",
+  "artifacts": "The per-seed results.json, run_metadata.json and episodes_detail.json stay outside the repository; the spike's ADR records the summary.",
+  "threshold_note": "The threshold stays at 30/50 as declared, although development gave 91/100."
+}
