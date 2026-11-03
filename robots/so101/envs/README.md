@@ -20,3 +20,8 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `course_assets.json`: pinned course asset sizes, LFS hashes, provenance and unresolved references.
 - `vials_to_rack_success.py`: stdlib placement and confirmation tracker using XYZW poses.
 - `../tools/fetch_course_assets.py`: verified HTTPS fetch/check into an external cache.
+
+- `vials_to_rack_scene.py`: nominal Isaac Lab scene without cameras or randomization.
+- `vials_to_rack_layout.py`: pure deterministic reconstructed-demo layouts.
+- `../tools/isaac_mount_compare.py`: verified course/native asset mount comparison.
+- `../tools/isaac_success_check.py`: registered static sensing checks and demo diagnostics.

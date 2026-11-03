@@ -234,3 +234,23 @@ The object-free go/no-go of [ADR 0024](../decisions/0024-so101-demo-replay-go-no
   +0.91. With the USD gains at 60 Hz the lag is 2.95 frames. Two articulations in one stage
   changed the USD-gain p95 slightly (5.50 / 1.67 against 5.55 / 1.71 alone).
   _(verified 2026-11-02, RTX 5060 Ti)_
+- **The course's robot USD is Isaac Lab 3.0's `so101_new_calib` with renamed joints**
+  (`Rotation, Pitch, Elbow, Wrist_Pitch, Wrist_Roll, Jaw`; default prim `/so101_new_calib`), its
+  own gains and the course's joint limits. Spawned side by side at the course pose and set to the
+  recorded states of the 75 grasp and 75 release frames, the `gripper` and jaw body origins agree
+  within 0.1 mm, the moving jaw's lowest collision point within ±7 mm, and both feet (lowest base
+  collision point) sit at z = +0.030 with the root at z = 0. So the 3.0 asset mounts at the
+  course pose (-0.05, 0, 0), yaw 90°, with no height correction. The fixed jaw's lowest point
+  differs by up to 3 cm at release because the two USDs carry different collision meshes for that
+  body (143k vs 57k points) and the lowest vertex jumps between them; it is not a kinematic
+  difference. `robots/so101/tools/isaac_mount_compare.py`.
+  _(verified 2026-11-02, Isaac Lab 3.0, course USD sha256 `11f5f0bb…991006`)_
+- **The asset's SysID gains sag under gravity.** Kinematically, from the recorded states, the fixed
+  jaw's lowest point at grasp is at z = 0.034 m (median), on the mat (top ≈ 0.035); replaying the
+  actions with the USD gains put the TCP 2 mm lower at the median and 14 mm lower at p5 (0.027),
+  because the 3.35 N·m effort limit cannot hold the arm. _(verified 2026-11-02)_
+- **An articulation without `fix_root_link=True` whose base intersects a ground plane explodes:**
+  the course USD spawned that way read its foot at z = -0.068 after one step, and its body
+  positions then went to ~1e8 m, silently (no error). Spawn it with
+  `UsdFileCfg(fix_root_link=True)` and, for kinematic comparisons, no ground plane and gravity
+  off. _(verified 2026-11-02, Isaac Lab 3.0)_
