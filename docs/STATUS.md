@@ -23,6 +23,9 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: `nightly.yml` runs the reference and `main` on the same 500 fresh seeds every
+  night and alerts on a paired regression (exact McNemar,
+  [ADR 0031](decisions/0031-nightly-paired-run-on-rotating-seeds.md), [ci.md](knowledge/ci.md)).
 - 2026-11-03: `piperobot.stats.paired` decides a same-seed comparison with an exact McNemar
   test; the PushT baseline was re-measured on main (265/500, identical episode by episode to
   10-27) and now records its commit and per-episode results ([lerobot.md](knowledge/lerobot.md)).
@@ -90,10 +93,9 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. `nightly.yml`: 500 rotating seeds per night, reference (vqbet.json's `commit`) and main in
-   the same job, decided by `piperobot.stats.paired`; its ADR, and the nightly series for the
-   history page with Carla. Same-job pairing is required: the logged CPU model does not predict
-   near-miss flips ([lerobot.md](knowledge/lerobot.md)).
+2. Wire `nightly.yml` into the success-rate history as a `nightly` series once Carla's reusable
+   `certify.yml` lands (schema 2, [ADR 0031](decisions/0031-nightly-paired-run-on-rotating-seeds.md));
+   after a week of nightlies, decide on a paired mode for pr-gate.
 3. Isaac: the `piperobot.adapters.isaaclab` evaluator on the tube-to-rack scene (lazy Isaac
    imports, task data in `robots/so101/envs/`, results contract, `failure` from the success
    tracker), Codex coding. First measure same-seed repeatability with contacts (2/75 outcomes

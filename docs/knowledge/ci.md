@@ -103,7 +103,20 @@
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
-- `nightly.yml` (larger baseline) does not exist yet; see [`../STATUS.md`](../STATUS.md).
+- **`nightly.yml`** ([ADR 0031](../decisions/0031-nightly-paired-run-on-rotating-seeds.md)):
+  daily at 03:17 UTC and by hand, on `ubuntu-latest`. One job evaluates the reference
+  (`vqbet.json`'s `commit`, its own lock) and then `main` on the same 500 fresh seeds
+  (`python -m piperobot.seeds`: first seed `100000 + episodes × days since 2026-01-01`) and
+  uploads `nightly-evaluation` (both results, both commits, platform, UTC time, raw CPU flags
+  line). A second job, without torch, runs `piperobot.stats.paired` and the unpaired gate for the
+  summary and fails on a paired BLOCK. `workflow_dispatch` only works once a workflow is on the
+  default branch, so the pre-merge measurement used a temporary `push` trigger on the PR branch.
+- **Triage of a nightly BLOCK**: an alert, never a merge block. Do not rerun the same seeds: CPU
+  PushT is deterministic within a runner, so a rerun only reproduces it. Look at the discordant
+  seeds in the two results files, then wait for the next nights' fresh seeds or dispatch more
+  episodes. If `main` really differs from the reference (a refactor, a dependency bump), a
+  neutral difference still raises a false BLOCK about once in 40 nights, until a baseline
+  refresh moves the reference forward.
 
 ## Local hooks
 
