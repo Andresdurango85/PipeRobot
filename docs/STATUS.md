@@ -92,9 +92,9 @@ Project Cangrejo, the `piperobot` package).
    randomization with seeds, cameras, and a policy in the loop.
 4. Look at the simulated rack dataset as training data for a first ACT policy
    ([datasets.md](knowledge/datasets.md)).
-5. CI: check that Monday's Dependabot run works under the new Actions permissions, fix its
-   failing `uv` job (torch/torchvision, [ci.md](knowledge/ci.md)), and ask Andrés to add `zizmor`
-   to the ruleset's required checks.
+5. CI: check that Monday's Dependabot runs work under the new Actions permissions and that the
+   `uv` job stays green with the torch ignore rule ([ci.md](knowledge/ci.md)); ask Andrés to add
+   `zizmor` to the ruleset's required checks.
 6. After the SO-101 scene PR: put `robots/` and the excluded SO-101 tests under mypy strict;
    after a few weekly `mutation.yml` runs, decide a mutation-score threshold
    ([testing.md](knowledge/testing.md)).

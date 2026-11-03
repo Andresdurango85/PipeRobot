@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,29 @@ POWERSHELL = shutil.which("pwsh") or shutil.which("powershell")
 def _load(path: Path) -> dict[str | bool, Any]:
     data: dict[str | bool, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
     return data
+
+
+def test_dependabot_ignores_torch_minor_and_major_updates() -> None:
+    data = _load(ROOT / ".github" / "dependabot.yml")
+    uv = next(update for update in data["updates"] if update["package-ecosystem"] == "uv")
+    for dependency in ("torch", "torchvision"):
+        rules = [rule for rule in uv["ignore"] if rule["dependency-name"] == dependency]
+        assert len(rules) == 1
+        assert sorted(rules[0]["update-types"]) == [
+            "version-update:semver-major",
+            "version-update:semver-minor",
+        ]
+
+
+def test_dependabot_torch_ignores_still_have_minor_caps() -> None:
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    extra: list[str] = data["project"]["optional-dependencies"]["lerobot"]
+    for dependency in ("torch", "torchvision"):
+        pins = [pin for pin in extra if re.match(rf"^{dependency}(?=[<>=!~;\s]|$)", pin)]
+        assert len(pins) == 1, f"Revisit the Dependabot ignore rule for {dependency}: missing pin"
+        assert re.search(r"(?:^|,)\s*<\d+\.\d+\s*(?:,|$)", pins[0]), (
+            f"Revisit the Dependabot ignore rule for {dependency}: missing <X.Y minor cap"
+        )
 
 
 def _self_hosted_jobs(data: dict[str | bool, Any]) -> list[dict[str, Any]]:
