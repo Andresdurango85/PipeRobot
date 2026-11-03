@@ -72,12 +72,24 @@
   Packaging and Signed-Releases do not apply (no releases). Results:
   `curl https://api.scorecard.dev/projects/github.com/Andresdurango85/PipeRobot`.
   _(verified 2026-11-03)_
-- **Known issue: Dependabot's `uv` update job fails** with `dependency_file_not_resolvable` on
-  `torch` and `torchvision`, before and after ADR 0027 (runs 41445044081, 41574159723); the
-  other `uv` updates still open their PR. Likely the CPU-index source for torch on Linux
-  ([ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). The 7-day cooldown works:
-  the log shows "Filtered out N versions due to cooldown", and the first SHA-pinned update was
-  setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier. _(verified 2026-11-03)_
+- ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
+  CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
+- **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**
+  Both runs (41445044081, 41574159723) ended with `dependency_file_not_resolvable` for exactly
+  `torch` (to 2.14.1/2.15.0) and `torchvision` (to 0.29.x): the `lerobot` extra pins
+  `torch>=2.11,<2.12` and `torchvision>=0.26,<0.27` to match LeRobot 0.6.1's
+  `torch>=2.7,<2.12`, so the resolver proved it unsatisfiable. The CPU index and the Pillow
+  override were not involved; the other uv updates still opened PRs (#36). Fix: an `ignore`
+  rule in `dependabot.yml` for minor and major updates of both (patches still come), guarded by
+  a test that pyproject still caps them at a minor. A Dependabot PR for lerobot 0.7 will likely
+  fail against this rule: that is the signal to raise the pins, the extra and the rule together,
+  by hand, in one PR. `update-types` was chosen over a `versions` range because GitHub's options
+  reference shows no pip/uv range example. Dependabot runs only on the default branch and has no
+  API to start a run; a change to `dependabot.yml` on `main` starts one right away (the UI's
+  "Check for updates" is the fallback). _(verified 2026-11-03)_
+- **The 7-day cooldown works**: the log shows "Filtered out N versions due to cooldown", and the
+  first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
+  _(verified 2026-11-03)_
 - `tests/test_workflows.py` checks the workflow invariants of ADR 0027 (self-hosted triggers,
   `gpu` label, hook allowlist, SHA pins, `persist-credentials`) and runs the job-started hook
   with PowerShell when one is installed (`pwsh` is preinstalled on `ubuntu-latest`).
