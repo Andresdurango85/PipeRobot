@@ -70,8 +70,11 @@ select = [
 ]
 
 [tool.mypy]
-# ADR 0025: check the package strictly; tests/ and robots/ are not checked yet.
-packages = ["piperobot"]
+# ADR 0025: check the package and tests strictly; robots/ is not checked yet.
+files = ["piperobot", "tests"]
+# These tests exercise robots/so101 code, which is not type-checked yet;
+# they join with robots/ later.
+exclude = '^tests/(test_so101_.*\.py|so101_loader\.py|test_dataset_stats\.py)$'
 python_version = "3.12"
 strict = true
 
@@ -79,6 +82,11 @@ strict = true
 # Lazy imports in piperobot/adapters/lerobot/policy.py come only with the lerobot extra,
 # absent from lint-and-test. The hub tests exercise the real API (ADR 0025).
 module = ["lerobot", "lerobot.*", "huggingface_hub", "huggingface_hub.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# These test dependencies come only with the lerobot extra, absent from lint-and-test.
+module = ["PIL", "PIL.*", "numpy", "numpy.*"]
 ignore_missing_imports = true
 
 # Linux mutation reporting: .github/workflows/mutation.yml.

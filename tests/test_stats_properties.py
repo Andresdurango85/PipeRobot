@@ -1,5 +1,6 @@
 """General laws of the statistical gate, with exact arithmetic for verdict oracles."""
 
+from decimal import Decimal
 from fractions import Fraction
 
 import pytest
@@ -7,10 +8,23 @@ from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.strategies import DrawFn
 
-from piperobot.stats.gate import SuccessCount, Verdict, decide, newcombe_interval, wilson_interval
+from piperobot.stats.gate import (
+    SuccessCount,
+    Verdict,
+    decide,
+    format_percent,
+    newcombe_interval,
+    wilson_interval,
+)
 
 CONFIDENCES = st.floats(min_value=0.5, max_value=0.999)
 TOLERANCES = st.floats(min_value=0, max_value=1)
+
+
+@given(st.decimals(min_value=0, max_value=1, places=6))
+def test_format_percent_preserves_decimal_value(value: Decimal) -> None:
+    # The oracle is the decimal Hypothesis drew, not the float: up to 6 places round-trip exactly.
+    assert Decimal(format_percent(float(value))) == value * 100
 
 
 @st.composite
@@ -166,9 +180,11 @@ def test_outside_successes_rejected(trials: int, excess: int) -> None:
 @given(st.one_of(st.floats(), st.booleans(), st.text(), st.none()))
 def test_non_integer_counts_rejected(value: object) -> None:
     with pytest.raises(TypeError, match="successes must be an int"):
-        SuccessCount(value, 5)
+        # Wrong argument types are the point of this runtime validation test.
+        SuccessCount(value, 5)  # type: ignore[arg-type]
     with pytest.raises(TypeError, match="trials must be an int"):
-        SuccessCount(0, value)
+        # Wrong argument types are the point of this runtime validation test.
+        SuccessCount(0, value)  # type: ignore[arg-type]
 
 
 INVALID_CONFIDENCES = st.one_of(
