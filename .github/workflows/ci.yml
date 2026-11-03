@@ -15,7 +15,11 @@ concurrency:
 jobs:
   lint-and-test:
     # Plain GitHub-hosted runner: no GPU, no LeRobot/torch. The GPU gate will be pr-gate.yml.
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04] # PROBE (DO NOT MERGE): compare images side by side
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,11 +39,25 @@ jobs:
       - name: Ruff format
         run: uv run ruff format --check .
 
+      - name: Probe the image
+        run: |
+          grep -E '^(PRETTY_NAME|VERSION_ID)=' /etc/os-release
+          echo "ImageVersion: ${ImageVersion:-unknown}"
+          uname -r
+          for b in pwsh powershell python3 git; do
+            if command -v "$b" >/dev/null; then echo "$b: $(command -v "$b") $("$b" --version 2>&1 | head -1)"; else echo "$b: MISSING"; fi
+          done
+          uv run python -c "import platform, sys; print(sys.version); print(platform.libc_ver())"
+
       - name: Pytest
-        run: uv run pytest
+        run: uv run pytest -rs
 
   clean-install:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04] # PROBE (DO NOT MERGE): compare images side by side
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -91,7 +109,11 @@ jobs:
 
   type-check:
     # mypy --strict on the piperobot package, without the lerobot extra (ADR 0025).
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04] # PROBE (DO NOT MERGE): compare images side by side
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
