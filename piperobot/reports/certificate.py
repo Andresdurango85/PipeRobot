@@ -45,7 +45,7 @@ class CertificateNotFound(CertificateError):
     def __init__(self, digest: str) -> None:
         super().__init__(
             "NOT CERTIFIED: no certificate exists for this exact file "
-            f"(sha256 {digest}). It was altered, or never certified by history.yml on main."
+            f"(sha256 {digest}). It was altered, or never certified on main."
         )
 
 

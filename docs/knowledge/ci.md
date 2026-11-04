@@ -74,6 +74,15 @@
   cannot pick another `certify.yml`. ADR 0031 writes `./`; the guarantee is the same.
   `tests/test_workflows.py` requires exactly `$/...` and exempts `./` and `$/` from SHA pins.
   _(verified 2026-11-03, zizmor 1.32.0)_
+- **First v2 certificate**: `history.yml` run 41770900924 on `3c42236` (merge of #71), schema-2
+  record 29/50 PASS. Its Fulcio certificate has `buildSignerURI`
+  `.../.github/workflows/certify.yml@refs/heads/main` and `buildConfigURI`
+  `.../.github/workflows/history.yml@refs/heads/main`: the reusable workflow is the signer
+  (`job_workflow_ref`), the caller is the config (`workflow_ref`), as the verifier assumes.
+  `certificate verify` gave VERIFIED with `--bundle` and no `gh` login and through the API, and
+  NOT CERTIFIED for an altered copy. Read the raw fields with `gh attestation verify ... --bundle
+  ... --predicate-type <gate-verdict-v2 URL> --format json`; without `--predicate-type`, gh looks
+  for SLSA provenance and finds none in the verdict bundle. _(verified 2026-11-04, gh 2.88.1)_
 - **The history's repo settings were applied on 2026-11-03** through the REST API by the
   orchestrator session, with Andrés's explicit OK: Pages `build_type=workflow`; the orphan
   `history` branch seeded with `[]`; the ruleset "history (append-only)" (id 26424151, deletion +
