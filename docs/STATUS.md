@@ -31,6 +31,12 @@ Project Cangrejo, the `piperobot` package).
   ([ADR 0038](decisions/0038-so101-failed-episode-videos.md), #75). Demo #76 (BLOCK as #65)
   recorded its 5 lost seeds, all matched, ~400 KB per MP4, +4 min 52 s of runner, the comment
   5 min 46 s after the verdict. Two evaluate workers now also need free commit.
+- 2026-11-04: no job runs on `ubuntu-latest` any more
+  ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)). `ci`, `dependency-review`,
+  `mutation`, `scorecard` and `zizmor` run on `ubuntu-26.04`, ahead of the 2026-11-19 flip. The
+  numeric PushT jobs stay on `ubuntu-24.04` until a registered comparison, which is designed
+  (same-VM containers for both userlands, plus real runs grouped by CPU flags) and waits for
+  Andrés's decision. `certify.yml` and the SO-101 hosted jobs move later, each with its own run.
 - 2026-11-04: `nightly.yml` calls `certify.yml` with series `nightly` on `main`, so every night
   becomes a signed point of the history's `nightly` series, BLOCK nights included
   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
@@ -181,7 +187,11 @@ Project Cangrejo, the `piperobot` package).
    re-run the camera on/off check after any Isaac or Kit upgrade. Before a GPU run, check free
    Windows commit as well as VRAM ([isaac.md](knowledge/isaac.md)). Watch for CUDA out-of-memory
    retries in 2-worker gate runs (2 of 3 used in demo #76's evaluate).
-8. Next time [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) is touched,
+8. Ubuntu 26.04 ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)): check that the
+   first `scorecard` run on `main` publishes on 26.04 (revert only that job if not). Andrés
+   decides whether to run the registered comparison for the numeric jobs. Later: `certify.yml`
+   in its own PR, the SO-101 hosted jobs with the next gate-relevant SO-101 change.
+9. Next time [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) is touched,
    note that GitHub keeps one pending run per concurrency group: with three quick merges to
    `main`, the middle one's post-merge run is replaced and never evaluated on `main`.
 

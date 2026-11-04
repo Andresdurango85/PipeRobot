@@ -2,7 +2,7 @@
 
 ## Current workflows
 
-- **`ci.yml`**: ruff + pytest on `ubuntu-latest`, no GPU, no LeRobot; ~7 s per run.
+- **`ci.yml`**: ruff + pytest on `ubuntu-26.04`, no GPU, no LeRobot; ~7 s per run.
   _(verified 2026-10-26, run 40439823769)_
 - **`dependency-review.yml`**: fails a PR that adds a dependency with a high or critical
   advisory. **CodeQL** runs as GitHub's default setup (no workflow file; Settings → Code security).
@@ -11,8 +11,8 @@
   summary) → sticky comment → gate verdict (fails on BLOCK) → artifact `pr-gate-<PR>` with
   results, report and the videos of the first 10 episodes
   ([ADR 0014](../decisions/0014-mock-evaluator-and-pr-gate-workflow.md),
-  [ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). Runs on `ubuntu-latest` with
-  CPU-only torch until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
+  [ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). Runs on `ubuntu-24.04`
+  (pinned, [ADR 0039](../decisions/0039-explicit-hosted-runner-images.md)) with CPU-only torch until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
   token); the report is still in the job summary.
 - **`baseline.yml`**: manual (`workflow_dispatch`) run of N episodes on the same runner type, to
   measure a baseline where the gate runs; its counts are committed to `robots/<robot>/baselines/` by PR.
@@ -43,7 +43,7 @@
   scorecard-action and harden-runner as steps. Only `push` and `schedule` are supported triggers;
   `workflow_dispatch` and `pull_request` are experimental. Not a gate.
   _(verified 2026-11-02, scorecard-action v2.5.0 README)_
-- **`mutation.yml`**: mutmut on `piperobot/stats` on `ubuntu-latest`, weekly, by hand, and on
+- **`mutation.yml`**: mutmut on `piperobot/stats` on `ubuntu-26.04`, weekly, by hand, and on
   PRs that touch the stats code or its tests; score and survivors in the job summary and log. Not
   a gate ([testing.md](testing.md)). _(verified 2026-11-02, mutmut 3.8.1)_
 - **`history.yml`**: on push to `main` touching `piperobot/`, `robots/pusht/`, `uv.lock` or itself,
@@ -446,7 +446,8 @@
   the OS's glibc/libm, which can flip near-miss PushT episodes like a CPU change does. So the jobs
   whose results are compared across runs pin `ubuntu-24.04`: `pr-gate`, `baseline.yml`,
   `nightly.yml` and `history.yml`'s `evaluate` job (`tests/test_workflows.py` checks it). The
-  others (`ci`, `zizmor`, `scorecard`, `mutation`, `dependency-review`) stay on `ubuntu-latest`.
+  others (`ci`, `zizmor`, `scorecard`, `mutation`, `dependency-review`) stayed on `ubuntu-latest`
+  until ADR 0039 (below).
   Until then every run of ours had landed on 24.04.5 (image versions 20261012, 20261025).
   _(verified 2026-11-03)_
 - **Moving the pinned jobs to a new image is a deliberate step**: dispatch `baseline.yml` on the
@@ -474,6 +475,15 @@
     isolated. It is within the 6-10 near-miss episodes that any two platforms differ by. The
     pinned jobs stay on `ubuntu-24.04`; moving them is a separate decision (procedure above).
     _(verified 2026-11-03)_
+- **Which hosted image each job uses** ([ADR 0039](../decisions/0039-explicit-hosted-runner-images.md)):
+  no job uses `ubuntu-latest` (`test_no_job_runs_on_a_moving_label`). `ubuntu-26.04`: `ci`
+  (three jobs), `dependency-review`, `mutation`, `scorecard`, `zizmor`. `ubuntu-24.04`: the
+  numeric jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`, `readme` `linux`), which
+  move only after a registered comparison, plus `certify.yml` and the hosted jobs of
+  `so101-gate.yml`, which move with their own validating run. `windows-2025`: `readme`
+  `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101 `video-report` job installs it
+  with apt). Scorecard's publishing check accepts `ubuntu-NN.NN` from 22.04 up
+  (`ossf/scorecard-infra`, `api/app/server/verify_workflow.go`). _(2026-11-04)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`
   ([ADR 0007](../decisions/0007-lf-line-endings.md)). _(verified 2026-10-26)_
 - **Editing the sticky PR comment needs `pull-requests: write`** in the workflow permissions

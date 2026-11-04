@@ -464,6 +464,40 @@ PINNED_IMAGE = "ubuntu-24.04"
 NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 
 
+CURRENT_IMAGE = "ubuntu-26.04"
+# Jobs follow green CI; numerics keep PINNED_IMAGE until the registered comparison (ADR 0039).
+NON_NUMERIC_HOSTED_JOBS = {
+    "ci.yml": ("lint-and-test", "clean-install", "type-check"),
+    "dependency-review.yml": ("dependency-review",),
+    "mutation.yml": ("mutation",),
+    "scorecard.yml": ("scorecard",),
+    "zizmor.yml": ("zizmor",),
+}
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_no_job_runs_on_a_moving_label(path: Path) -> None:
+    for name, job in _load(path)["jobs"].items():
+        message = f"{path.name}: {name}: images move explicitly (ADR 0039)"
+        if "uses" in job:
+            assert "runs-on" not in job, message
+            continue
+        runner = job.get("runs-on")
+        assert "${{" not in str(runner), message
+        assert (
+            re.fullmatch(r"(ubuntu-\d{2}\.\d{2}|windows-\d{4})", runner)
+            if isinstance(runner, str)
+            else _labels(job) == ["self-hosted", "Windows", "gpu"]
+        ), message
+
+
+def test_non_numeric_hosted_jobs_run_on_ubuntu_26_04() -> None:
+    for name, jobs in NON_NUMERIC_HOSTED_JOBS.items():
+        data = _load(ROOT / ".github" / "workflows" / name)
+        for job in jobs:
+            assert data["jobs"][job]["runs-on"] == CURRENT_IMAGE, f"{name}: {job}"
+
+
 @pytest.mark.parametrize("name", NUMERIC_WORKFLOWS)
 def test_numeric_workflows_pin_the_runner_image(name: str) -> None:
     for job in _load(ROOT / ".github" / "workflows" / name)["jobs"].values():
