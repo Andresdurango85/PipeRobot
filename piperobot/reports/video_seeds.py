@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -38,6 +38,14 @@ def select_video_seeds(
         raise ValueError("cap must be non-negative")
     if reference is None:
         return VideoSelection([], "No baseline; nothing recorded.")
+    # A baseline may cover more seeds than the gate runs (e.g. a larger pool); pair on the
+    # candidate's seeds only, and record nothing if the baseline lacks some of them.
+    wanted = {episode.seed for episode in candidate.episodes}
+    if not wanted <= {episode.seed for episode in reference.episodes}:
+        return VideoSelection([], "The baseline lacks some candidate seeds; nothing recorded.")
+    reference = replace(
+        reference, episodes=tuple(e for e in reference.episodes if e.seed in wanted)
+    )
     counts = PairedCounts.from_results(reference, candidate)
     if counts.reference_only == 0:
         return VideoSelection([], "No lost episodes; nothing recorded.")

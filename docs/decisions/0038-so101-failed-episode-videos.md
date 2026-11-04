@@ -42,6 +42,12 @@ against the camera-off episode on 30 development seed and policy pairs:
     - **a PASS with no lost seed records nothing**: its failures are the baseline's own (the
       scripted policy's wrist_flex mode), the same on every PR, so recording them would cost the
       single runner ~5 min per PR for no new information. The comment says so.
+    - Once at least one seed is lost (even on a PASS), the list is padded up to 5 with the
+      candidate's other failures, which may include failures the baseline shares: "b > 0"
+      decides whether to record, not what.
+    - Video selection pairs on the candidate's seeds only, so a baseline covering more seeds
+      does not break it. The gate's own verdict (`paired_comment`) still requires identical seed
+      sets.
   - `video` (self-hosted) runs only when that list is non-empty:
     - it re-runs those seeds with one fixed external camera (`robots/so101/envs/video_camera.json`)
       through the evaluator's own retry discipline;

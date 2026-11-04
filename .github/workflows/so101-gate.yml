@@ -393,6 +393,8 @@ jobs:
       POLICY: robots/so101/policies/scripted_pick_place.json
       # 19 GiB: the camera worker's cold commit peak (14.9 GiB) + 25%, rounded up
       COMMIT_FOR_VIDEO_MB: "19456"
+      # The camera worker's VRAM peak above idle (4510 MiB) + 25%, rounded up to 256.
+      VRAM_FOR_VIDEO_MB: "5888"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -446,11 +448,22 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $free = [math]::Floor((Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory / 1024)
           $needed = [int]$env:COMMIT_FOR_VIDEO_MB
-          if ($free -lt $needed) {
-            Write-Host ("::warning::not enough host memory to record videos " +
-              "(free commit $free MiB, needs $needed MiB)")
-            @{ free_mib = $free; needed_mib = $needed } | ConvertTo-Json |
-              Out-File -Encoding utf8 out/video-skip.json
+          $vram = @(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits)
+          if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi memory query failed' }
+          $freeVram = [int]$vram[0].Trim()
+          $neededVram = [int]$env:VRAM_FOR_VIDEO_MB
+          $shortCommit = $free -lt $needed
+          $shortVram = $freeVram -lt $neededVram
+          if ($shortCommit -or $shortVram) {
+            $short = if ($shortCommit -and $shortVram) { 'VRAM and commit' }
+                     elseif ($shortVram) { 'VRAM' }
+                     else { 'commit (host memory)' }
+            Write-Host ("::warning::not enough free $short to record videos " +
+              "(commit $free of $needed MiB, VRAM $freeVram of $neededVram MiB)")
+            @{
+              short = $short; free_mib = $free; needed_mib = $needed
+              free_vram_mib = $freeVram; needed_vram_mib = $neededVram
+            } | ConvertTo-Json | Out-File -Encoding utf8 out/video-skip.json
           } else {
             'ready=true' >> $env:GITHUB_OUTPUT
           }
@@ -574,16 +587,7 @@ jobs:
           fi
           args=()
           if [[ -f out/manifest.json ]]; then args+=(--manifest out/manifest.json); fi
-          if [[ -f out/video-skip.json ]]; then
-            memory=$(uv run --no-sync python -c '
-          import json
-          with open("out/video-skip.json", encoding="utf-8-sig") as source:
-              memory = json.load(source)
-          print(memory["free_mib"] / 1024, memory["needed_mib"] / 1024)
-          ')
-            read -r free needed <<< "$memory"
-            args+=(--memory-skip-free-gib "$free" --memory-needed-gib "$needed")
-          fi
+          if [[ -f out/video-skip.json ]]; then args+=(--skip-file out/video-skip.json); fi
           uv run --no-sync python -m piperobot.reports.video_section \
             --selection out/video-selection.json "${args[@]}" \
             --job-result "$VIDEO_RESULT" --artifact-url "$ARTIFACT_URL" \
