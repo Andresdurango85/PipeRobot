@@ -140,7 +140,6 @@
   registered demo PR #65 with gripper_closed 12 BLOCK (run 41728156209: 20/100, b = 59, c = 1,
   p = 5.3e-17), two workers, 36 min of evaluation although 80 seeds ran the full horizon.
   _(verified 2026-11-03)_
-  _(2026-11-03)_
 - **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
   policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced
