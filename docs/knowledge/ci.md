@@ -377,6 +377,10 @@
   `GITHUB_STEP_SUMMARY` are written with `Out-File -Append -Encoding utf8`. The service user has
   no Developer Mode, so `huggingface_hub` warns that it cannot symlink and copies cache files
   instead (harmless). _(verified 2026-11-01, run 41345428882)_
+- **PowerShell parses `"$env:NAME:"` inside a string as a drive-qualified variable**: the
+  so101-gate fallback warning `"... for $env:MAX_WORKERS: ~50 min"` printed `for  ~50 min`.
+  Write `$($env:NAME)` when a colon follows. _(verified 2026-11-04, Windows PowerShell 5.1,
+  tests/test_workflows.py runs the preflight)_
 
 ## Gotchas
 

@@ -102,6 +102,22 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   leak) while 16.7 GB of physical RAM was still free. Before a GPU run, check
   `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory` as well as `nvidia-smi`.
   _(verified 2026-11-04, Isaac Sim 6.2, a camera-on framing run)_
+- **Recording camera in Isaac Lab 3.0**:
+  - Use `isaaclab.sensors.CameraCfg`. `TiledCamera` is a deprecated alias of `Camera`
+    (`sensors/camera/tiled_camera.py`).
+  - The launcher enables cameras only when the launch config contains a Kit camera
+    (`app/sim_launcher.py:644-649`). Our worker builds the scene after launch, so it sets
+    `enable_cameras = True` itself. That switches Kit to `isaaclab.python.headless.rendering.kit`.
+  - Frames come from `sim.render()` then `camera.update(0.0, force_recompute=True)`.
+    `Camera.set_world_poses_from_view(eyes, targets)` places it.
+  - A camera-on re-run reproduces the camera-off episode bit for bit (same `trajectory_sha256`
+    on 30/30 seeds), and costs about +20 s per 600-step episode and twice the commit (12.8-14.9
+    against 6.6 GiB).
+  - The light box's back wall is at world x ≈ 0.40. A camera near its `camera_mount` (top left)
+    sees the rack and tubes.
+
+  _(verified 2026-11-04, Isaac Lab `44044b0963`,
+  [camera_record_check_result.json](../../robots/so101/envs/camera_record_check_result.json))_
 - **Leaving `launch_simulation`'s block ends the process**: it closes Kit with the block's exit
   status (a `SystemExit(n)` raised inside is kept), so code after the `with` never runs. Write
   results and print summaries inside the block. _(verified 2026-11-01, Isaac Lab 3.0.0,
