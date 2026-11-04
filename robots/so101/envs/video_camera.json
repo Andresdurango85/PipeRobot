@@ -1,0 +1,10 @@
+{
+  "eye": [0.55, -0.30, 0.40],
+  "target": [0.18, -0.02, 0.06],
+  "width": 640,
+  "height": 480,
+  "focal_length": 18.0,
+  "every_n_steps": 2,
+  "jpeg_quality": 90,
+  "note": "Initial external camera pose; adjust after one framing run."
+}

@@ -30,6 +30,7 @@ class ReconstructedEpisodes:
         sim_cfg: object,
         joint_names: Sequence[str],
         full_reset: bool = False,
+        record: Mapping | None = None,
     ) -> None:
         self.full_reset = full_reset
         self.names = [name.removesuffix(".pos") for name in joint_names]
@@ -38,8 +39,15 @@ class ReconstructedEpisodes:
         scene_module = load_module("tube_scene", ENV / "vials_to_rack_scene.py")
         self.data = json.loads((ENV / "vials_to_rack.json").read_text(encoding="utf-8"))
         self.sim = SimulationContext(sim_cfg)
-        self.scene = instantiate(scene_module.build_scene_cfg(assets_dir, actuators))
+        self.scene = instantiate(scene_module.build_scene_cfg(assets_dir, actuators, camera=record))
         self.sim.reset()
+        if record is not None:
+            self.record = record
+            self.camera = self.scene["video_camera"]
+            # Isaac Lab look-at helper uses world-space eyes/targets and the stage up axis.
+            self.camera.set_world_poses_from_view(
+                self.tensor([record["eye"]]), self.tensor([record["target"]])
+            )
         self.robot = self.scene["robot"]
         self.rack = self.scene["rack"]
         self.tubes = [self.scene[f"tube_{i}"] for i in range(1, 4)]
@@ -366,9 +374,16 @@ class ReconstructedEpisodes:
         action_source: Callable[[int, Mapping[str, object]], Sequence[float]],
         horizon: int,
         record_steps: bool,
+        record_dir: Path | None = None,
     ) -> dict[str, object]:
         if type(horizon) is not int or horizon <= 0:
             raise ValueError("horizon must be a positive integer")
+        frames = 0
+        if record_dir is not None:
+            import cv2
+
+            record_dir.mkdir(parents=True, exist_ok=True)
+            every_n_steps = self.record["every_n_steps"]
         started = time.perf_counter()
         self.dump_steps = []
         limit_steps = 0
@@ -403,6 +418,18 @@ class ReconstructedEpisodes:
                 for _ in range(self.substeps):
                     self.physics_step()
                 result = self.sample(index)
+                if record_dir is not None and index % every_n_steps == every_n_steps - 1:
+                    self.sim.render()
+                    self.camera.update(0.0, force_recompute=True)
+                    rgb = self.camera.data.output["rgb"].torch[0, ..., :3].cpu().numpy()
+                    path = record_dir / f"frame_{frames:04d}.jpg"
+                    if not cv2.imwrite(
+                        str(path),
+                        cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
+                        [cv2.IMWRITE_JPEG_QUALITY, self.record["jpeg_quality"]],
+                    ):
+                        raise OSError(f"Could not write frame: {path}")
+                    frames += 1
                 wrist = self.robot.joint_names.index("wrist_flex")
                 measured = float(self.robot.data.joint_pos.torch[0, wrist].item())
                 limits = self.robot.data.joint_pos_limits.torch[0, wrist].cpu().tolist()
@@ -444,4 +471,6 @@ class ReconstructedEpisodes:
         }
         if record_steps:
             report["steps"] = diagnostics
+        if record_dir is not None:
+            report["frames"] = frames
         return report

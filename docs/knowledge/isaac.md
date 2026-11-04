@@ -95,6 +95,13 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   104.4 GB. Empty stage: 10.9 s. Camera: 206 s cold (launch 184 s, shader compilation), 12.7 s
   warm; +3.4–3.6 GB of VRAM. _(verified 2026-11-01, `isaac-render.yml` run 41369455668,
   `robots/so101/tools/isaac_render_check.py`)_
+- **Kit fails at start when the Windows commit charge is exhausted, even with VRAM free**:
+  `VkResult: ERROR_OUT_OF_DEVICE_MEMORY`, `Texture creation failed`, then `LLVM ERROR: out of
+  memory`, with Git Bash forks failing on Win32 error 1455 (paging file too small). The GPU had
+  ~10 GB free; free commit was 8.9 of 180 GB, because explorer.exe held 71 GB of commit (a shell
+  leak) while 16.7 GB of physical RAM was still free. Before a GPU run, check
+  `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory` as well as `nvidia-smi`.
+  _(verified 2026-11-04, Isaac Sim 6.2, a camera-on framing run)_
 - **Leaving `launch_simulation`'s block ends the process**: it closes Kit with the block's exit
   status (a `SystemExit(n)` raised inside is kept), so code after the `with` never runs. Write
   results and print summaries inside the block. _(verified 2026-11-01, Isaac Lab 3.0.0,

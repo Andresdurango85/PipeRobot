@@ -59,8 +59,15 @@ def simulation_settings(options: Mapping[str, object]) -> dict[str, object]:
 
 
 def run_episode(
-    seed: int, policy: Policy, layout: str, options: Mapping[str, object], sim_cfg: SimulationConfig
+    seed: int,
+    policy: Policy,
+    layout: str,
+    options: Mapping[str, object],
+    sim_cfg: SimulationConfig,
+    record_dir: Path | None = None,
 ) -> dict[str, object]:
+    if record_dir is not None and layout == "reconstructed_demo":
+        raise ValueError("recording supports the randomized layout only")
     validate_layout(policy, layout)
     validate_action_space(policy, options.get("action_space", "joint"))
     # Existing study modules import siblings by name; keep that convention local to this task.
@@ -79,8 +86,11 @@ def run_episode(
     else:
         assets_dir = Path(str(assets)).resolve()
     names = getattr(policy, "joint_names", list(runtime.UNITS.load_table()))
+    recording = {}
+    if record_dir is not None:
+        recording["record"] = json.loads((ENV / "video_camera.json").read_text(encoding="utf-8"))
     env = runtime.ReconstructedEpisodes(
-        assets_dir, str(options.get("actuators", "course")), sim_cfg, names
+        assets_dir, str(options.get("actuators", "course")), sim_cfg, names, **recording
     )
     env.seed = seed
     env.policy = policy
@@ -122,6 +132,7 @@ def run_episode(
             lambda index, observation: policy.act(observation),
             horizon,
             record_steps=bool(options.get("record_steps", False)),
+            **({"record_dir": record_dir} if record_dir is not None else {}),
         )
     if layout == "reconstructed_demo":
         result = env.run_reconstructed_episode(

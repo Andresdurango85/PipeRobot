@@ -54,6 +54,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--record", type=Path)
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--help" in argv or "-h" in argv:
         parser.add_argument("--device", default="cuda:0")
@@ -85,6 +86,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             physics=physics.PhysxCfg(enable_enhanced_determinism=False),
             **extra,
         )
+        if args.record is not None:
+            args.enable_cameras = True
         with app.launch_simulation(sim_cfg, args):
             try:
                 torch = import_module("torch")
@@ -94,12 +97,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 policy = factory(**spec.options)
                 policy.reset(args.seed)
                 run = cast(Callable[..., dict[str, object]], task_module.run_episode)
+                recording = {}
+                if args.record is not None:
+                    args.record.mkdir(parents=True, exist_ok=True)
+                    recording["record_dir"] = args.record
                 result = run(
                     seed=args.seed,
                     policy=policy,
                     layout=task.layout,
                     options=task.options,
                     sim_cfg=sim_cfg,
+                    **recording,
                 )
                 cuda = torch.cuda.is_available() and str(sim_cfg.device).startswith("cuda")
                 result.update(
