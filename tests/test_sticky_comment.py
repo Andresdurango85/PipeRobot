@@ -40,7 +40,9 @@ class FakeGitHub:
             return self.comments[(page - 1) * PAGE_SIZE : page * PAGE_SIZE]
         assert payload is not None
         if method == "POST":
-            self.comments.append({"id": 999, "user": {"login": BOT_LOGIN}, **payload})
+            self.comments.append(
+                {"id": 1000 + len(self.comments), "user": {"login": BOT_LOGIN}, **payload}
+            )
         elif method == "PATCH":
             comment_id = int(path.rsplit("/", 1)[-1])
             next(c for c in self.comments if c["id"] == comment_id).update(payload)
@@ -305,3 +307,21 @@ def test_programming_error_does_not_retry() -> None:
     assert caught.value is error
     assert opener.sleeps == []
     assert opener.calls == [("GET", LIST_PATH), ("POST", LIST_PATH)]
+
+
+def test_video_comment_is_independent_and_idempotent() -> None:
+    from piperobot.reports.video_section import VIDEO_MARKER, render_video_section
+
+    gate_marker = "<!-- piperobot-gate:so101 -->"
+    assert gate_marker != VIDEO_MARKER
+    gate_body = gate_marker + "\nGate verdict\n"
+    github = FakeGitHub()
+    body = render_video_section({"seeds": []})
+    for _ in range(2):
+        upsert_sticky_comment(github, REPO, 7, gate_body, marker=gate_marker)
+        upsert_sticky_comment(github, REPO, 7, body, marker=VIDEO_MARKER)
+    assert [comment["body"] for comment in github.comments] == [gate_body, body]
+    upsert_sticky_comment(github, REPO, 7, gate_body + "Updated", marker=gate_marker)
+    assert github.comments[1]["body"] == body
+    upsert_sticky_comment(github, REPO, 7, body + "Updated", marker=VIDEO_MARKER)
+    assert github.comments[0]["body"] == gate_body + "Updated"

@@ -95,6 +95,29 @@ so the commit pins the lock), `uv sync --locked --extra isaacsim` into a venv ou
   104.4 GB. Empty stage: 10.9 s. Camera: 206 s cold (launch 184 s, shader compilation), 12.7 s
   warm; +3.4–3.6 GB of VRAM. _(verified 2026-11-01, `isaac-render.yml` run 41369455668,
   `robots/so101/tools/isaac_render_check.py`)_
+- **Kit fails at start when the Windows commit charge is exhausted, even with VRAM free**:
+  `VkResult: ERROR_OUT_OF_DEVICE_MEMORY`, `Texture creation failed`, then `LLVM ERROR: out of
+  memory`, with Git Bash forks failing on Win32 error 1455 (paging file too small). The GPU had
+  ~10 GB free; free commit was 8.9 of 180 GB, because explorer.exe held 71 GB of commit (a shell
+  leak) while 16.7 GB of physical RAM was still free. Before a GPU run, check
+  `(Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory` as well as `nvidia-smi`.
+  _(verified 2026-11-04, Isaac Sim 6.2, a camera-on framing run)_
+- **Recording camera in Isaac Lab 3.0**:
+  - Use `isaaclab.sensors.CameraCfg`. `TiledCamera` is a deprecated alias of `Camera`
+    (`sensors/camera/tiled_camera.py`).
+  - The launcher enables cameras only when the launch config contains a Kit camera
+    (`app/sim_launcher.py:644-649`). Our worker builds the scene after launch, so it sets
+    `enable_cameras = True` itself. That switches Kit to `isaaclab.python.headless.rendering.kit`.
+  - Frames come from `sim.render()` then `camera.update(0.0, force_recompute=True)`.
+    `Camera.set_world_poses_from_view(eyes, targets)` places it.
+  - A camera-on re-run reproduces the camera-off episode bit for bit (same `trajectory_sha256`
+    on 30/30 seeds), and costs about +20 s per 600-step episode and twice the commit (12.8-14.9
+    against 6.6 GiB).
+  - The light box's back wall is at world x ≈ 0.40. A camera near its `camera_mount` (top left)
+    sees the rack and tubes.
+
+  _(verified 2026-11-04, Isaac Lab `44044b0963`,
+  [camera_record_check_result.json](../../robots/so101/envs/camera_record_check_result.json))_
 - **Leaving `launch_simulation`'s block ends the process**: it closes Kit with the block's exit
   status (a `SystemExit(n)` raised inside is kept), so code after the `with` never runs. Write
   results and print summaries inside the block. _(verified 2026-11-01, Isaac Lab 3.0.0,

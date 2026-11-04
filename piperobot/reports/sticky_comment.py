@@ -79,15 +79,22 @@ def validate_marker(marker: str) -> str:
 def find_sticky_comment(
     transport: Transport, repo: str, pr: int, author: str, marker: str = COMMENT_MARKER
 ) -> int | None:
+    comment = _find_comment(transport, repo, pr, author, marker)
+    return int(comment["id"]) if comment else None
+
+
+def _find_comment(
+    transport: Transport, repo: str, pr: int, author: str, marker: str
+) -> dict[str, Any] | None:
     validate_marker(marker)
     page = 1
     while True:
-        comments = transport.request(
+        comments: list[dict[str, Any]] = transport.request(
             "GET", f"/repos/{repo}/issues/{pr}/comments?per_page={PAGE_SIZE}&page={page}"
         )
         for comment in comments:
             if comment["user"]["login"] == author and comment["body"].startswith(marker):
-                return int(comment["id"])
+                return comment
         if len(comments) < PAGE_SIZE:
             return None
         page += 1
@@ -114,12 +121,12 @@ def upsert_sticky_comment(
     sleep = time.sleep if sleep is None else sleep
     for attempt in range(attempts):
         try:
-            comment_id = find_sticky_comment(transport, repo, pr, author, marker)
-            if comment_id is None:
+            comment = _find_comment(transport, repo, pr, author, marker)
+            if comment is None:
                 transport.request("POST", f"/repos/{repo}/issues/{pr}/comments", {"body": body})
                 return "created"
             transport.request(
-                "PATCH", f"/repos/{repo}/issues/comments/{comment_id}", {"body": body}
+                "PATCH", f"/repos/{repo}/issues/comments/{comment['id']}", {"body": body}
             )
             return "updated"
         except Exception as error:
@@ -149,7 +156,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     body = args.body_file.read_text(encoding="utf-8")
     try:
         action = upsert_sticky_comment(
-            GitHubTransport(token), repo, args.pr, body, marker=args.marker
+            GitHubTransport(token),
+            repo,
+            args.pr,
+            body,
+            marker=args.marker,
         )
     except Exception as error:
         if not isinstance(error, urllib.error.HTTPError) and not is_transient(error):

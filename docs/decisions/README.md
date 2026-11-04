@@ -45,6 +45,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0035](0035-so101-gate-on-the-self-hosted-runner.md) | The SO-101 gate on the self-hosted runner: paired on a same-runner baseline, reported by a hosted job | Accepted |
 | [0036](0036-so101-gate-scripted-policy-on-100-fixed-seeds.md) | The SO-101 gate evaluates the scripted policy on 100 fixed seeds | Accepted |
 | [0037](0037-so101-gate-verdict-is-a-required-check.md) | The SO-101 gate verdict is a required check, produced on every push | Accepted |
+| [0038](0038-so101-failed-episode-videos.md) | SO-101 failed-episode videos: a camera re-run after the verdict | Accepted |
 
 ## Template
 

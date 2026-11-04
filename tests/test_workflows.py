@@ -157,7 +157,7 @@ def test_runner_hook(
     }.items():
         if value is not None:
             env[key] = value
-    result = subprocess.run(  # noqa: S603 -- resolved PowerShell executable and fixed script, no shell.
+    result = subprocess.run(  # noqa: S603 - resolved PowerShell and fixed script
         [powershell, "-NoProfile", "-NonInteractive", "-File", str(HOOK)],
         env=env,
         capture_output=True,
@@ -707,12 +707,18 @@ def test_so101_scripted_gate_configuration() -> None:
     assert env["POLICY"] == "robots/so101/policies/scripted_pick_place.json"
     assert env["MAX_WORKERS"] == "2"
     assert env["VRAM_PER_WORKER_MB"] == "4352"
+    assert env["COMMIT_PER_WORKER_MB"] == "8448"
     assert "MIN_FREE_VRAM_MB" not in env
     assert evaluate["timeout-minutes"] == 130
     step = next(s for s in evaluate["steps"] if s.get("name", "").startswith("Evaluate ("))
     assert step["timeout-minutes"] == 120
     assert "--workers $env:WORKERS" in step["run"]
     preflight = next(s["run"] for s in evaluate["steps"] if s.get("name") == "GPU preflight")
+    assert (
+        "(Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).FreeVirtualMemory / 1024"
+    ) in preflight
+    assert '"Free commit MiB: $freeCommit"' in preflight
+    assert "$freeCommit -ge ($n * [int]$env:COMMIT_PER_WORKER_MB)" in preflight
     assert '"WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV' in preflight
     report = next(
         s for s in data["jobs"]["report"]["steps"] if s.get("name") == "Verdict and PR comments"
@@ -733,9 +739,23 @@ def test_so101_scripted_gate_configuration() -> None:
 
 
 @pytest.mark.parametrize(
-    ("free", "workers"), [(3583, 0), (3584, 1), (7167, 1), (7168, 2), (12000, 2)]
+    ("free", "commit", "workers", "resource"),
+    [
+        (3583, 20000, 0, "VRAM"),
+        (12000, 8447, 0, "commit (host memory)"),
+        (3583, 8447, 0, "VRAM and commit"),
+        (3584, 20000, 1, "VRAM"),
+        (7167, 20000, 1, "VRAM"),
+        (12000, 8448, 1, "commit (host memory)"),
+        (12000, 16895, 1, "commit (host memory)"),
+        (7167, 16895, 1, "VRAM and commit"),
+        (7168, 16896, 2, ""),
+        (12000, 20000, 2, ""),
+    ],
 )
-def test_so101_worker_selection(tmp_path: Path, free: int, workers: int, powershell: str) -> None:
+def test_so101_worker_selection(
+    tmp_path: Path, free: int, commit: int, workers: int, resource: str, powershell: str
+) -> None:
     evaluate = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]["evaluate"]
     script = next(s["run"] for s in evaluate["steps"] if s.get("name") == "GPU preflight")
     script = script[script.index("$workers = 0") :]
@@ -743,11 +763,18 @@ def test_so101_worker_selection(tmp_path: Path, free: int, workers: int, powersh
     environment.update(
         MAX_WORKERS="2",
         VRAM_PER_WORKER_MB="3584",
+        COMMIT_PER_WORKER_MB="8448",
         GITHUB_ENV=str(tmp_path / "env"),
         GITHUB_STEP_SUMMARY=str(tmp_path / "summary"),
     )
     result = subprocess.run(  # noqa: S603 - repository script and fixed test inputs
-        [powershell, "-NoProfile", "-NonInteractive", "-Command", f"$free = {free}\n{script}"],
+        [
+            powershell,
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            f"$free = {free}\n$freeCommit = {commit}\n{script}",
+        ],
         env=environment,
         capture_output=True,
         text=True,
@@ -760,8 +787,14 @@ def test_so101_worker_selection(tmp_path: Path, free: int, workers: int, powersh
             encoding="utf-8-sig"
         ).strip() == f"Workers: {workers}"
         assert ("::warning::" in result.stdout) == (workers == 1)
+        if workers == 1:
+            assert (
+                f"::warning::running 1 worker(s), not enough free {resource} for 2: "
+                "~50 min at the baseline rate, longer if episodes fail"
+            ) in result.stdout
     else:
         assert "::error::" in result.stdout
+        assert f"::error::not enough free {resource} for 1 worker;" in result.stdout
         assert not (tmp_path / "env").exists()
 
 
@@ -794,4 +827,66 @@ def test_so101_required_verdict_job() -> None:
         assert guard in jobs["evaluate"]["if"]
     assert jobs["report"]["needs"] == "evaluate"
     assert "if" not in jobs["report"]
-    assert [name for name, job in jobs.items() if "self-hosted" in _labels(job)] == ["evaluate"]
+    assert {name for name, job in jobs.items() if "self-hosted" in _labels(job)} == {
+        "evaluate",
+        "video",
+    }
+
+
+def test_so101_optional_video_jobs() -> None:
+    jobs = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]
+    assert not {"video-select", "video", "video-report"} & set(jobs["so101-gate-verdict"]["needs"])
+    selection, video, report = jobs["video-select"], jobs["video"], jobs["video-report"]
+    assert selection["runs-on"] == "ubuntu-24.04"
+    assert selection["needs"] == ["changes", "evaluate"]
+    assert selection["timeout-minutes"] == 5
+    assert selection["permissions"] == {"contents": "read"}
+    assert "secrets" not in selection
+    assert "video-select" in video["needs"]
+    assert "needs.video-select.outputs.seed_list != ''" in video["if"]
+    assert "needs.video-select.result == 'success'" in video["if"]
+    assert report["needs"] == ["changes", "evaluate", "report", "video-select", "video"]
+    assert "needs.video-select.result == 'success'" in report["if"]
+    for job in (selection, video):
+        for guard in (
+            "github.repository == 'Andresdurango85/PipeRobot'",
+            "github.actor != 'dependabot[bot]'",
+            "needs.changes.outputs.relevant == 'true'",
+            "needs.changes.outputs.dependabot != 'true'",
+        ):
+            assert guard in job["if"]
+    for job in (selection, video, report):
+        assert "github.ref != 'refs/heads/main'" in job["if"]
+        assert "inputs.mode == 'gate'" in job["if"]
+        assert "github.event_name == 'push'" in job["if"]
+    assert not {"GH_TOKEN", "GITHUB_TOKEN"} & set(selection.get("env", {}))
+    for step in selection["steps"]:
+        assert not {"GH_TOKEN", "GITHUB_TOKEN"} & set(step.get("env", {}))
+        assert "secrets." not in str(step)
+    assert {
+        name
+        for name in ("video-select", "video", "video-report")
+        if jobs[name]["permissions"].get("pull-requests") == "write"
+    } == {"video-report"}
+    select_run = next(s["run"] for s in selection["steps"] if s.get("id") == "selection")
+    record = next(s for s in video["steps"] if s.get("name") == "Record judged seeds")
+    assert "^[0-9]+(,[0-9]+)*$" in select_run
+    assert "^[0-9]+(,[0-9]+)*$" in record["run"]
+    assert record["env"]["SEEDS_TO_RECORD"] == "${{ needs.video-select.outputs.seed_list }}"
+    assert not any(s.get("name") == "Select video seeds" for s in video["steps"])
+    for name in ("FFmpeg version", "Encode verified frames"):
+        step = next(s for s in report["steps"] if s.get("name") == name)
+        assert step["if"] == "needs.video-select.outputs.seed_list != ''"
+    assert video["continue-on-error"] is True
+    assert video["timeout-minutes"] == 15
+    assert "inputs.mode == 'gate'" in video["if"]
+    assert "github.event_name == 'push'" in video["if"]
+    assert report["if"].startswith("always() && needs.evaluate.result == 'success'")
+    assert video["env"]["COMMIT_FOR_VIDEO_MB"] == "19456"
+    for job, retention in ((selection, 1), (video, 1), (report, 7)):
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+            if step.get("uses", "").startswith("actions/upload-artifact@"):
+                assert step["with"]["retention-days"] == retention
+                assert "github.run_id" in step["with"]["name"]
+                assert "github.run_attempt" in step["with"]["name"]

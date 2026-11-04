@@ -3,15 +3,21 @@
 # Ported from isaac-sim/Sim-to-Real-SO-101-Workshop @ ce807d9,
 # source/sim_to_real_so101/tasks/{task_env_cfg,vials_to_rack_env_cfg}.py.
 # Modified for PipeRobot: Isaac Lab 3.0 API, XYZW quaternions, the
-# Isaac Lab 3.0 SO-101 asset, no cameras or randomization yet.
+# Isaac Lab 3.0 SO-101 asset and optional external recording camera.
 """Build the nominal tube-to-rack scene after the Isaac runtime has launched."""
 
 import json
 import math
+from collections.abc import Mapping
 from pathlib import Path
 
 
-def build_scene_cfg(assets_dir: Path, actuators: str = "course", num_envs: int = 1) -> object:
+def build_scene_cfg(
+    assets_dir: Path,
+    actuators: str = "course",
+    num_envs: int = 1,
+    camera: Mapping | None = None,
+) -> object:
     import isaaclab.sim as sim_utils
     from isaaclab.actuators import ImplicitActuatorCfg
     from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
@@ -101,4 +107,15 @@ def build_scene_cfg(assets_dir: Path, actuators: str = "course", num_envs: int =
         history_length=sensor["history_length"],
         filter_prim_paths_expr=["{ENV_REGEX_NS}/" + name for name in sensor["filtered_tubes"]],
     )
+    if camera is not None:
+        from isaaclab.sensors import CameraCfg
+
+        cfg.video_camera = CameraCfg(
+            prim_path="{ENV_REGEX_NS}/VideoCamera",
+            data_types=["rgb"],
+            width=camera["width"],
+            height=camera["height"],
+            update_period=0,
+            spawn=sim_utils.PinholeCameraCfg(focal_length=camera["focal_length"]),
+        )
     return cfg

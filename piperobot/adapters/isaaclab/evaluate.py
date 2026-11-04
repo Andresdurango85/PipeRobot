@@ -183,6 +183,9 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
         "git_commit": git_commit(repo),
         "start_timestamp": start_timestamp,
     }
+    record_dir = args.record_dir.resolve() if args.record_dir is not None else None
+    if record_dir is not None:
+        metadata["record_dir"] = str(record_dir)
     retried_seeds: list[int] = []
     retries = 0
     details: list[dict[str, object]] = []
@@ -227,6 +230,8 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
                     "--viz",
                     "none",
                 ]
+                if record_dir is not None:
+                    command.extend(["--record", str(record_dir / str(seed))])
                 with launch_lock:
                     # An error stops new seeds only; a running seed keeps its admitted retry,
                     # so every reported error is that seed's own.
@@ -249,6 +254,10 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
                 stderr = ""
                 attempt_error: str | None = None
                 try:
+                    if record_dir is not None and attempt > 1:
+                        frames_dir = record_dir / str(seed)
+                        if frames_dir.exists():
+                            shutil.rmtree(frames_dir)
                     process = runner(command, cwd=workdir, env=env.copy(), timeout=task.timeout_s)
                     code, stderr = process.returncode, process.stderr
                     if code != 0:
@@ -364,6 +373,7 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner = run_process) -> 
     parser.add_argument("--workdir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--record-dir", type=Path)
     parser.add_argument(
         "--workers",
         type=int,
