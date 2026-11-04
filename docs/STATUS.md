@@ -23,6 +23,11 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-03: `certify.yml`, the single signer of the history
+  ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
+  [ci.md](knowledge/ci.md)): `history.yml` keeps its evaluation and calls it with series `main`;
+  new points are schema 2 (`history record --schema` now defaults to 2), and the page links a
+  nightly point's candidate, reference and bundle.
 - 2026-11-03: the SO-101 verdict becomes a required check (Andrés's decision,
   [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md)): `so101-gate.yml` runs on
   every push, a hosted `changes` job decides relevance, and `so101-gate-verdict` passes in seconds
@@ -136,8 +141,10 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. Add the `certify` job to `nightly.yml` once Carla's reusable `certify.yml` lands, so nights
-   join the history as a `nightly` series
+2. Verify the first `certify.yml` certificate on `main` (`buildSignerURI` = `certify.yml`,
+   `buildConfigURI` = `history.yml`) with `piperobot.reports.certificate verify`. Then add a
+   `certify` job to `nightly.yml` (`uses: $/.github/workflows/certify.yml`, series `nightly`,
+   artifact `nightly-evaluation`), so nights join the history as a `nightly` series
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
    [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
    nightlies, decide on a paired mode for pr-gate.

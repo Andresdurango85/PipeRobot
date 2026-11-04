@@ -20,7 +20,7 @@ while (( $# )); do
         attachment="${1#*=}"
       fi
       source="${attachment%%=*}" destination="${attachment#*=}"
-      if [[ "$attachment" != *=* || -z "$source" || ! "$destination" =~ ^(results|bundles)/[0-9]+\.[0-9]+\.(json|jsonl)$ ]]; then
+      if [[ "$attachment" != *=* || -z "$source" || ! "$destination" =~ ^((results|bundles)/[0-9]+\.[0-9]+\.(json|jsonl)|results/[0-9]+\.[0-9]+\.reference\.json)$ ]]; then
         echo "ERROR: invalid --attach SRC=DEST" >&2
         exit 2
       fi
