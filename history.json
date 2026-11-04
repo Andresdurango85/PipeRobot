@@ -768,5 +768,39 @@
     },
     "cpu_flags_sha256": "9c39b836959294af15642451b3307a084bdf18b26aa8e3b4b2d37a09aff1a4b7",
     "runner_image": "ubuntu24 20261026.354.1"
+  },
+  {
+    "schema": 2,
+    "commit": "5f195b05078a59a4ee6fcdd47e7b91dd74a2e0e4",
+    "commit_date": "2026-11-04T20:12:30Z",
+    "evaluated_at": "2026-11-04T20:12:47Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/41904390664",
+    "run_id": 41904390664,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 27,
+    "trials": 50,
+    "confidence": 0.95,
+    "interval": [
+      0.4039887139915749,
+      0.6703034780777565
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.1327531482311236,
+      0.147470944853511
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "1000-1049",
+    "platform": "AMD EPYC 9V74 80-Core Processor, 4 CPUs",
+    "series": "main",
+    "paired": null,
+    "cpu_flags_sha256": "60bd61029e751f0b67f3d6ba9584f0f2d193787483d8f97400652f76aff0d61c",
+    "runner_image": "ubuntu24 20261101.360.1"
   }
 ]
