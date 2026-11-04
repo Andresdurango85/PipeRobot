@@ -114,4 +114,6 @@ def load_results(path: Path) -> EvalResults:
 
 def save_results(results: EvalResults, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(results.to_dict(), indent=2) + "\n", encoding="utf-8")
+    # LF on every OS: a certificate pins the exact bytes, and certified files are written on Linux.
+    text = json.dumps(results.to_dict(), indent=2) + "\n"
+    path.write_text(text, encoding="utf-8", newline="\n")

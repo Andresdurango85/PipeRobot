@@ -45,6 +45,9 @@ def test_save_and_load_round_trip(tmp_path: Path) -> None:
     save_results(results, path)
 
     assert load_results(path) == results
+    # The same bytes on Windows and Linux, so a certificate's sha256 matches on both.
+    assert b"\r\n" not in path.read_bytes()
+    assert path.read_bytes().endswith(b"}\n")
 
 
 @pytest.mark.parametrize(

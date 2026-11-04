@@ -42,11 +42,17 @@ class CertificateMismatch(CertificateError):
 class CertificateNotFound(CertificateError):
     """No certificate covers this exact file."""
 
-    def __init__(self, digest: str) -> None:
-        super().__init__(
+    def __init__(self, digest: str, *, crlf: bool = False) -> None:
+        message = (
             "NOT CERTIFIED: no certificate exists for this exact file "
             f"(sha256 {digest}). It was altered, or never certified on main."
         )
+        if crlf:
+            message += (
+                " The file has CRLF line endings; certified files are LF. "
+                "Was it checked out with core.autocrlf?"
+            )
+        super().__init__(message)
 
 
 class CertificateInputError(ValueError):
@@ -143,13 +149,14 @@ def _verify(
     run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> Certificate:
     try:
-        digest = hashlib.sha256(results_path.read_bytes()).hexdigest()
+        contents = results_path.read_bytes()
+        digest = hashlib.sha256(contents).hexdigest()
     except OSError as exc:
         raise CertificateInputError(str(exc)) from exc
     command = verification_command(results_path, repo=repo, gh=gh, predicate_type=predicate_type)
     if bundle is not None:
         if digest not in _bundle_types(bundle):
-            raise CertificateNotFound(digest)
+            raise CertificateNotFound(digest, crlf=b"\r\n" in contents)
         command.extend(("--bundle", str(bundle)))
     try:
         output = run(command, capture_output=True, text=True, check=False)
@@ -160,7 +167,7 @@ def _verify(
             "no attestations found" in output.stderr
             or ("HTTP 404" in output.stderr and f"/attestations/sha256:{digest}" in output.stderr)
         ):
-            raise CertificateNotFound(digest)
+            raise CertificateNotFound(digest, crlf=b"\r\n" in contents)
         raise CertificateError(output.stderr.strip())
     try:
         items = json.loads(output.stdout)
@@ -301,12 +308,13 @@ def verify(
     """
     if bundle is not None:
         try:
-            digest = hashlib.sha256(results_path.read_bytes()).hexdigest()
+            contents = results_path.read_bytes()
+            digest = hashlib.sha256(contents).hexdigest()
         except OSError as exc:
             raise CertificateInputError(str(exc)) from exc
         kind = _bundle_types(bundle).get(digest)
         if kind is None:
-            raise CertificateNotFound(digest)
+            raise CertificateNotFound(digest, crlf=b"\r\n" in contents)
         return _verify(
             results_path,
             reference_path=reference_path,
