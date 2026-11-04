@@ -1,10 +1,18 @@
 {
-  "eye": [0.55, -0.30, 0.40],
-  "target": [0.18, -0.02, 0.06],
+  "eye": [
+    0.2,
+    0.3,
+    0.45
+  ],
+  "target": [
+    0.2,
+    -0.06,
+    0.05
+  ],
   "width": 640,
   "height": 480,
   "focal_length": 18.0,
   "every_n_steps": 2,
   "jpeg_quality": 90,
-  "note": "Initial external camera pose; adjust after one framing run."
+  "note": "Fixed external view from near the light box's own camera_mount (top left corner), looking at the rack and tubes."
 }
