@@ -111,9 +111,9 @@ def test_section_cases() -> None:
     }
     memory = render_video_section({}, skip=skip)
     assert (
-        "not enough free commit (host memory) (commit 12.0 of 19.0 GiB, VRAM 10.0 of 5.8 GiB)"
-        in memory
-    )
+        "Videos not recorded: not enough free commit (host memory) (free commit 12.0 GiB, "
+        "needs 19.0 GiB; free VRAM 10.0 GiB, needs 5.8 GiB)."
+    ) in memory
     selection = {"seeds": [{"seed": n, "kind": "lost"} for n in range(3)]}
     manifest = {
         "seeds": [

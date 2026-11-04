@@ -36,8 +36,10 @@ def render_video_section(
     if skip is not None:
         lines.append(
             f"Videos not recorded: not enough free {skip['short']} "
-            f"(commit {skip['free_mib'] / 1024:.1f} of {skip['needed_mib'] / 1024:.1f} GiB, "
-            f"VRAM {skip['free_vram_mib'] / 1024:.1f} of {skip['needed_vram_mib'] / 1024:.1f} GiB)."
+            f"(free commit {skip['free_mib'] / 1024:.1f} GiB, "
+            f"needs {skip['needed_mib'] / 1024:.1f} GiB; "
+            f"free VRAM {skip['free_vram_mib'] / 1024:.1f} GiB, "
+            f"needs {skip['needed_vram_mib'] / 1024:.1f} GiB)."
         )
     elif not selection.get("seeds") and job_result in {"success", "skipped"}:
         reason = selection.get("reason")

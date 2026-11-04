@@ -459,7 +459,7 @@ jobs:
                      elseif ($shortVram) { 'VRAM' }
                      else { 'commit (host memory)' }
             Write-Host ("::warning::not enough free $short to record videos " +
-              "(commit $free of $needed MiB, VRAM $freeVram of $neededVram MiB)")
+              "(free commit $free MiB, needs $needed MiB; free VRAM $freeVram MiB, needs $neededVram MiB)")
             @{
               short = $short; free_mib = $free; needed_mib = $needed
               free_vram_mib = $freeVram; needed_vram_mib = $neededVram
