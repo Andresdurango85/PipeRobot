@@ -656,6 +656,7 @@ def _build_record(args: argparse.Namespace, previous: Sequence[HistoryRecord]) -
         run_attempt=args.run_attempt,
         platform=args.platform if args.platform is not None else describe_platform(),
         runner_image=runner_image,
+        # `append` has no --schema: its unsigned local/bootstrap path stays schema 1.
         schema=getattr(args, "schema", 1),
         series=getattr(args, "series", "main"),
         paired=(

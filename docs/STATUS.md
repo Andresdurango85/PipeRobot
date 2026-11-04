@@ -141,10 +141,9 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. Verify the first `certify.yml` certificate on `main` (`buildSignerURI` = `certify.yml`,
-   `buildConfigURI` = `history.yml`) with `piperobot.reports.certificate verify`. Then add a
-   `certify` job to `nightly.yml` (`uses: $/.github/workflows/certify.yml`, series `nightly`,
-   artifact `nightly-evaluation`), so nights join the history as a `nightly` series
+2. The first `certify.yml` certificate verified (run 41770900924, [ci.md](knowledge/ci.md)).
+   Berta adds a `certify` job to `nightly.yml` (`uses: $/.github/workflows/certify.yml`, series
+   `nightly`, artifact `nightly-evaluation`), so nights join the history as a `nightly` series
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
    [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
    nightlies, decide on a paired mode for pr-gate.
