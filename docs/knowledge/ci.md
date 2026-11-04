@@ -199,6 +199,9 @@
   line, runner image). A second job, without torch, runs `piperobot.stats.paired` and the unpaired gate for the
   summary and fails on a paired BLOCK. `workflow_dispatch` only works once a workflow is on the
   default branch, so the pre-merge measurement used a temporary `push` trigger on the PR branch.
+  A third job, `certify`, calls `certify.yml` with series `nightly` on `main` only. It needs
+  `evaluate`, not `verdict`, so a BLOCK night is signed too and the alert never waits on Sigstore.
+  A dispatch from `main` is signed like a scheduled night; one from a branch skips it. _(2026-11-04)_
 - **First nightly measurement** (run 41592248166, seeds 253000–253499, `ubuntu-24.04`, AMD EPYC
   9V45): evaluate job 22 min (reference 620 s, candidate 681 s for 500 episodes each), verdict
   job 7 s. Paired: 309/500 both, 0 discordant, PASS. Unpaired: 309/500 = 61.8% on fresh seeds
@@ -245,7 +248,7 @@
   [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md): PR and green checks required,
   no approving review).
   Required check names are the job names (`lint-and-test`, `dependency-review`, `pr-gate`, and
-  `so101-gate-verdict` once a docs-only PR shows it passing without the runner, ADR 0037):
+  `so101-gate-verdict` since 2026-11-04, ADR 0037):
   renaming a job requires updating the ruleset. Inspect it with
   `gh api repos/Andresdurango85/PipeRobot/rulesets`. _(pr-gate added 2026-10-27)_
 - **The owner cannot approve his own PRs**, including those opened by agents with his account.

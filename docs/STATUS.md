@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-03 (home PC)
+Last updated: 2026-11-04 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -23,6 +23,10 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-04: `nightly.yml` calls `certify.yml` with series `nightly` on `main`, so every night
+  becomes a signed point of the history's `nightly` series, BLOCK nights included
+  ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
+  [ci.md](knowledge/ci.md)). The first `main` v2 certificate verified (run 41770900924).
 - 2026-11-03: `certify.yml`, the single signer of the history
   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
   [ci.md](knowledge/ci.md)): `history.yml` keeps its evaluation and calls it with series `main`;
@@ -31,7 +35,8 @@ Project Cangrejo, the `piperobot` package).
 - 2026-11-03: the SO-101 verdict becomes a required check (Andrés's decision,
   [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md)): `so101-gate.yml` runs on
   every push, a hosted `changes` job decides relevance, and `so101-gate-verdict` passes in seconds
-  when nothing relevant changed. e5 adds it to the ruleset after a docs-only PR confirms that.
+  when nothing relevant changed. Docs-only #69 got it green in ~16 s without the runner, and e5
+  added it to the `main` ruleset's required checks on 2026-11-04.
 - 2026-11-03: the SO-101 gate runs the scripted policy on 100 fixed seeds (#63, baseline 78/100,
   [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)), and a registered
   regression it was not tuned on was blocked: gripper_closed 5 -> 12, 20/100, 59 lost / 1 gained,
@@ -141,12 +146,13 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. The first `certify.yml` certificate verified (run 41770900924, [ci.md](knowledge/ci.md)).
-   Berta adds a `certify` job to `nightly.yml` (`uses: $/.github/workflows/certify.yml`, series
-   `nightly`, artifact `nightly-evaluation`), so nights join the history as a `nightly` series
+2. Verify the first `nightly` certificate (`buildConfigURI` = `nightly.yml@refs/heads/main`):
+   `python -m piperobot.reports.certificate verify out/candidate.json --reference
+   out/reference.json --repo Andresdurango85/PipeRobot`
    ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
-   [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); after a week of
-   nightlies, decide on a paired mode for pr-gate.
+   [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)). After a week of
+   nightlies, check the unpaired fresh-seed rate (+8.8 pp on the first night) and decide on a
+   paired mode for pr-gate.
 3. Isaac: the gate runs the scripted policy on 100 fixed seeds and blocked its registered demo
    (#63, #65, [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)).
    Optional: gripper_closed 10 (about -15 pp on dev, with rescues) as a second registered demo,
@@ -164,9 +170,9 @@ Project Cangrejo, the `piperobot` package).
 7. SO-101 gate: videos of failed episodes in the SO-101 comment (a Phase 0 criterion; needs
    cameras in the Isaac scene). Two workers are accepted (above); the workflow uses them when
    ~8.7 GB of GPU memory is free.
-8. Required SO-101 verdict ([ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md)):
-   after it merges, a docs-only PR must get a green `so101-gate-verdict` in seconds without the
-   runner; then e5 adds `so101-gate-verdict` to the `main` ruleset's required checks.
+8. Next time [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) is touched,
+   note that GitHub keeps one pending run per concurrency group: with three quick merges to
+   `main`, the middle one's post-merge run is replaced and never evaluated on `main`.
 
 ## Open questions for Andrés
 
