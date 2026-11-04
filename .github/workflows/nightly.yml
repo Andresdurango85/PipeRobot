@@ -3,7 +3,7 @@ name: nightly
 # Rotate fresh seeds to detect overfitting to pr-gate's fixed seed set.
 # Compare reference and candidate on identical seeds for paired statistical power.
 # Run both arms sequentially in one hosted job: CPU model labels cannot predict flips.
-# Keep each commit's lockfile and upload only evaluation evidence for later certification.
+# Keep each commit's lockfile and upload evaluation evidence signed by certify.yml on main.
 # ADR 0032: a BLOCK is an alert to investigate on the next nights, never a merge block.
 on:
   schedule:
@@ -156,3 +156,12 @@ jobs:
             exit 1
           fi
           exit "$paired_exit"
+
+  # The caller grants the union; each job in certify.yml narrows it. It needs only evaluate:
+  # a paired BLOCK night is still certified, and the alert never depends on signing (ADR 0031).
+  certify:
+    needs: evaluate
+    if: github.ref == 'refs/heads/main'
+    uses: $/.github/workflows/certify.yml
+    with: {series: nightly, artifact: nightly-evaluation}
+    permissions: {contents: write, id-token: write, attestations: write, pages: write}

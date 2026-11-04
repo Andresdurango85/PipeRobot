@@ -344,6 +344,15 @@ def test_history_signing_boundary() -> None:
             assert "${{" not in step.get("run", "")
             assert "artifact-metadata" not in step.get("with", {})
     attest = data["jobs"]["attest"]
+    record_script = next(
+        step["run"] for step in attest["steps"] if step.get("name") == "Write the record"
+    )
+    assert "evidence=(out/reference_commit.txt)" in record_script
+    assert any(
+        '"${evidence[@]}"' in line
+        for line in record_script.splitlines()
+        if line.startswith("for file in ")
+    )
     verdict = next(step for step in attest["steps"] if step.get("id") == "verdict")
     assert verdict["with"] == {
         "subject-path": "${{ steps.record.outputs.subjects }}",
@@ -392,12 +401,33 @@ def test_nightly_hosted_read_only_jobs() -> None:
     assert path.is_file()
     data = _load(path)
     assert data["permissions"] == {}
-    assert set(data["jobs"]) == {"evaluate", "verdict"}
+    assert set(data["jobs"]) == {"evaluate", "verdict", "certify"}
+    assert "runs-on" not in data["jobs"]["certify"]
+    assert "steps" not in data["jobs"]["certify"]
     for job in data["jobs"].values():
+        if "steps" not in job:
+            continue
         assert job["runs-on"] == "ubuntu-24.04"
         assert job["permissions"] == {"contents": "read"}
         for step in job["steps"]:
             assert "${{" not in step.get("run", "")
+
+
+def test_nightly_signing_boundary() -> None:
+    jobs = _load(ROOT / ".github/workflows/nightly.yml")["jobs"]
+    for name in ("evaluate", "verdict"):
+        assert jobs[name]["permissions"] == {"contents": "read"}
+    caller = jobs["certify"]
+    assert caller["uses"] == "$/.github/workflows/certify.yml"
+    assert caller["needs"] == "evaluate"
+    assert caller["if"] == "github.ref == 'refs/heads/main'"
+    assert caller["with"] == {"series": "nightly", "artifact": "nightly-evaluation"}
+    assert caller["permissions"] == {
+        "contents": "write",
+        "id-token": "write",
+        "attestations": "write",
+        "pages": "write",
+    }
 
 
 def test_nightly_artifact_contract() -> None:
@@ -437,6 +467,8 @@ NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 @pytest.mark.parametrize("name", NUMERIC_WORKFLOWS)
 def test_numeric_workflows_pin_the_runner_image(name: str) -> None:
     for job in _load(ROOT / ".github" / "workflows" / name)["jobs"].values():
+        if "uses" in job:
+            continue
         assert job["runs-on"] == PINNED_IMAGE, (
             f"{name} must run on {PINNED_IMAGE}; move images only with a baseline comparison"
         )

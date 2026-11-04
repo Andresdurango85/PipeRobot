@@ -42,11 +42,13 @@ jobs:
             main)
               results=out/results.json
               extra=()
+              evidence=()
               subjects=(out/results.json)
               ;;
             nightly)
               results=out/candidate.json
-              extra=(--paired-reference out/reference.json --reference-commit "$(cat out/reference_commit.txt)")
+              extra=(--paired-reference out/reference.json)
+              evidence=(out/reference_commit.txt)
               subjects=(out/candidate.json out/reference.json)
               if [[ -f out/candidate_commit.txt && "$(cat out/candidate_commit.txt)" != "$GITHUB_SHA" ]]; then
                 echo "ERROR: candidate_commit.txt differs from GITHUB_SHA" >&2
@@ -55,12 +57,15 @@ jobs:
               ;;
             *) echo "ERROR: series must be main or nightly" >&2; exit 2 ;;
           esac
-          for file in "${subjects[@]}" out/platform.txt out/evaluated_at.txt out/cpu_flags.txt out/runner_image.txt; do
+          for file in "${subjects[@]}" "${evidence[@]}" out/platform.txt out/evaluated_at.txt out/cpu_flags.txt out/runner_image.txt; do
             if [[ ! -s "$file" ]]; then
               echo "ERROR: missing or empty evidence file: $file" >&2
               exit 2
             fi
           done
+          if [[ "$SERIES" == nightly ]]; then
+            extra+=(--reference-commit "$(cat out/reference_commit.txt)")
+          fi
           commit_date=$(TZ=UTC git show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd "$GITHUB_SHA")
           uv run --no-dev python -m piperobot.reports.history record --schema 2 --series "$SERIES" \
             --output out/record.json --results "$results" "${extra[@]}" --baseline-file "$BASELINE" \
