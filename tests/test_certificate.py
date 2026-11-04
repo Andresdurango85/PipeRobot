@@ -316,8 +316,13 @@ def test_altered_file_bundle(tmp_path: Path) -> None:
     def unexpected(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         pytest.fail("gh must not run for a bundle without this file's sha256")
 
-    with pytest.raises(CertificateNotFound, match=digest):
+    with pytest.raises(CertificateNotFound, match=digest) as raised:
         verify(path, bundle=bundle, run=unexpected)
+    # Neutral about the signer: v1 is history.yml, v2 is certify.yml.
+    assert str(raised.value) == (
+        f"NOT CERTIFIED: no certificate exists for this exact file (sha256 {digest}). "
+        "It was altered, or never certified on main."
+    )
 
 
 def test_bundle_collects_all_subjects_and_lines(tmp_path: Path) -> None:
