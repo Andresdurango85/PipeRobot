@@ -101,9 +101,18 @@
   first SHA-pinned update was setup-uv 7.6.0 → 10.3.2, not 10.3.3, released 6 days earlier.
   _(verified 2026-11-03)_
 - **`so101-gate.yml`** ([ADR 0035](../decisions/0035-so101-gate-on-the-self-hosted-runner.md)):
-  the SO-101 gate. On pushes touching the SO-101 policy, scene, baselines or cache script,
-  anything under `piperobot/`, `pyproject.toml`, `uv.lock` or itself (and by hand, with
-  `mode: gate | baseline`; a baseline run is never cancelled). Job `evaluate` on the self-hosted GPU runner (`contents: read`):
+  the SO-101 gate. Runs on every branch push (and by hand, with `mode: gate | baseline`; a
+  baseline run is never cancelled; on a branch a newer push cancels the older run, on `main`
+  runs queue). Job `changes` (hosted, ~10 s) decides whether the push is
+  gate-relevant: the whole branch against its merge-base with `main` (`before..sha` on `main`),
+  matched against `PATHS` in `.github/scripts/so101_gate.py` (the SO-101 policy, scene,
+  baselines and cache script, `piperobot/`, `pyproject.toml`, `uv.lock`, the workflow and that
+  script). Job `so101-gate-verdict` (hosted, `if: always()`) is the one check to require
+  ([ADR 0037](../decisions/0037-so101-gate-verdict-is-a-required-check.md)): green when nothing
+  relevant changed or `evaluate` and `report` both succeeded; red on a BLOCK, a skipped,
+  cancelled or failed run, or Dependabot touching relevant files (the runner never runs
+  Dependabot's code: review it and push a commit to the branch, or bypass). Job `evaluate` runs
+  only on a relevant, non-Dependabot push, on the self-hosted GPU runner (`contents: read`):
   reuses `isaac-render`'s tool-cache Isaac Lab, verifies inputs with `prepare_caches.py` into
   `$RUNNER_TOOL_CACHE\piperobot-cache`, picks 2 Isaac workers when the free VRAM allows
   (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds), evaluates the scripted
@@ -113,8 +122,7 @@
   (`robots/so101/baselines/scripted-pick-place`),
   sticky comment `<!-- piperobot-gate:so101 -->` on the open PRs whose head is the commit,
   failure on BLOCK; with no baseline on the branch it only writes a summary while `main` has none
-  either, and fails once `main` has one. Not a required
-  check. A push before the hook allowed it was refused on the runner, as intended (run
+  either, and fails once `main` has one. A push before the hook allowed it was refused on the runner, as intended (run
   41607023801). Live results: baseline dispatch 41659300745 on main; baseline PR #59 PASS
   (run 41664424596, b = c = 0); demo PR #60 with the registered weak grip BLOCK (run
   41669493827: 0/75, b = 6, c = 0, p = 1/64). Each run is ~26 min, and a merge that touches the
@@ -213,7 +221,8 @@
 - **`main` is protected by the ruleset `main`** ([ADR 0010](../decisions/0010-main-branch-ruleset.md),
   [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md): PR and green checks required,
   no approving review).
-  Required check names are the job names (`lint-and-test`, `dependency-review`, `pr-gate`):
+  Required check names are the job names (`lint-and-test`, `dependency-review`, `pr-gate`, and
+  `so101-gate-verdict` once a docs-only PR shows it passing without the runner, ADR 0037):
   renaming a job requires updating the ruleset. Inspect it with
   `gh api repos/Andresdurango85/PipeRobot/rulesets`. _(pr-gate added 2026-10-27)_
 - **The owner cannot approve his own PRs**, including those opened by agents with his account.
