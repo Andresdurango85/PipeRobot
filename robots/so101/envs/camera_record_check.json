@@ -1,0 +1,43 @@
+{
+  "registered": "2026-11-04, before any run with a camera in the SO-101 scene; changing it needs a new ADR.",
+  "question": "Does re-running a seed with a recording camera reproduce the episode the gate judged without a camera, so that a failed-episode video shows that episode?",
+  "risk": "The camera-on run differs from the judged one in two ways. (1) A camera prim in the scene makes the Isaac Lab launcher enable cameras (isaaclab/app/sim_launcher.py:644-649), so Kit starts from isaaclab.python.headless.rendering.kit instead of isaaclab.python.headless.kit. The rendering kit adds replicator, the RTX viewport and hydra_texture, and lacks omnigraph.updateToUsd = false. (2) The worker renders between physics steps: SimulationContext.render() calls physics_manager.pre_render() and may call forward(). (1) is the more likely way physics could change.",
+  "code_commit": "The first commit after this registration that adds recording (a worker --record option and a task option that adds one fixed external camera). Both arms run at that commit; it is stated in the result.",
+  "run": {
+    "worker": "piperobot.adapters.isaaclab.evaluate, one Isaac process per seed (ADR 0033), one worker, cuda:0, task robots/so101/envs/vials_to_rack_task_randomized.json",
+    "pairs": {
+      "base": {
+        "policy": "robots/so101/policies/scripted_pick_place.json",
+        "seeds": "200000-200019",
+        "expected_from_earlier_runs": "18/20; failures 200012 and 200018 (not_placed)"
+      },
+      "gc12": {
+        "policy": "robots/so101/policies/scripted_pick_place_gripper_closed_12.json",
+        "seeds": "200000-200009",
+        "expected_from_earlier_runs": "3/10; successes 200003, 200005, 200007"
+      }
+    },
+    "arms": {
+      "OFF": "the normal evaluation, recording off (no camera prim in the scene)",
+      "ON": "the same seeds with recording on: one fixed external camera viewing the rack and tubes, 640x480 RGB, one frame every 2 control steps (30 fps, 300 frames over the 600-step horizon), written as JPEG"
+    },
+    "order": "OFF for both policies, then ON for both policies, all at code_commit, development seeds only (never the gate's 100000-100099). No gate run or runner job is involved."
+  },
+  "pass_criteria": [
+    "All runs exit 0 (infrastructure retries within the evaluator's own budget are allowed and reported).",
+    "For each of the 30 seed and policy pairs, OFF and ON give the same success, the same failure label and the same success_step.",
+    "For each of the 30 pairs, OFF and ON give the same trajectory_sha256.",
+    "Every ON run writes 300 frames."
+  ],
+  "failure_rule": "Any other result fails the check. The video design then switches to recording states in the camera-off run and replaying them into a render-only scene, under a new plan and registration. No run is repeated under this file.",
+  "predictions_not_criteria": [
+    "PASS: rendering only reads the stage, and the kit file change does not reach PhysX.",
+    "OFF reproduces the earlier development runs on these seeds (outcome and trajectory_sha256): base 18/20 matches the --workers test's dev_S; gc12 3/10 matches the C development run. This shows that recording-off code leaves the judged episode unchanged."
+  ],
+  "measured_no_threshold": [
+    "GPU memory peak above idle for one camera-on process (nvidia-smi memory.used every 0.5 s; idle is the median of 30 s before the run), against an OFF process.",
+    "Seconds per seed, ON and OFF. The first ON run may pay the cold shader compilation (~184 s on the runner, isaac.md); it is reported separately and not counted as steady state.",
+    "JPEG bytes per recorded seed. MP4 size comes from the first real gate run (encoded on a hosted ubuntu job).",
+    "Projected extra runner time for 5 recorded seeds."
+  ]
+}
