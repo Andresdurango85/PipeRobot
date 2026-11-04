@@ -64,6 +64,8 @@ jobs:
       MAX_WORKERS: "2"
       # Peak VRAM of one scripted-policy Isaac worker (3379 MiB over idle) + 25%, rounded to 256.
       VRAM_PER_WORKER_MB: "4352"
+      # Peak commit of one camera-off Isaac worker (6.6 GiB, PeakPageFileUsage) + 25%, rounded up to 256.
+      COMMIT_PER_WORKER_MB: "8448"
     steps:
       - name: Start the clock
         run: |
@@ -145,22 +147,30 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi memory query failed' }
           $apps = nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
           if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi process query failed' }
-          @('GPU free/total MiB:', $memory, 'Compute processes:', $apps) |
+          $freeCommit = [math]::Floor((Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).FreeVirtualMemory / 1024)
+          @('GPU free/total MiB:', $memory, "Free commit MiB: $freeCommit", 'Compute processes:', $apps) |
             Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           $free = [int](($memory[0] -split ',')[0].Trim())
           $workers = 0
           for ($n = [int]$env:MAX_WORKERS; $n -ge 1; $n--) {
-            if ($free -ge ($n * [int]$env:VRAM_PER_WORKER_MB)) {
+            if (($free -ge ($n * [int]$env:VRAM_PER_WORKER_MB)) -and
+                ($freeCommit -ge ($n * [int]$env:COMMIT_PER_WORKER_MB))) {
               $workers = $n
               break
             }
           }
+          $target = if ($workers -eq 0) { 1 } else { [int]$env:MAX_WORKERS }
+          $shortVram = $free -lt ($target * [int]$env:VRAM_PER_WORKER_MB)
+          $shortCommit = $freeCommit -lt ($target * [int]$env:COMMIT_PER_WORKER_MB)
+          $resource = if ($shortVram -and $shortCommit) { 'VRAM and commit' }
+                      elseif ($shortVram) { 'VRAM' }
+                      else { 'commit (host memory)' }
           if ($workers -eq 0) {
-            Write-Host "::error::another process holds the GPU; the gate needs $env:VRAM_PER_WORKER_MB MiB free per worker"
+            Write-Host "::error::not enough free $resource for 1 worker; the gate needs $env:VRAM_PER_WORKER_MB MiB VRAM and $env:COMMIT_PER_WORKER_MB MiB commit free per worker"
             exit 1
           }
           if ($workers -lt [int]$env:MAX_WORKERS) {
-            Write-Host "::warning::running $workers worker(s), not enough free VRAM for $env:MAX_WORKERS: ~50 min at the baseline rate, longer if episodes fail"
+            Write-Host "::warning::running $workers worker(s), not enough free $resource for $($env:MAX_WORKERS): ~50 min at the baseline rate, longer if episodes fail"
           }
           "WORKERS=$workers" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           "Workers: $workers" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
