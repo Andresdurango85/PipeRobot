@@ -381,6 +381,11 @@
   so101-gate fallback warning `"... for $env:MAX_WORKERS: ~50 min"` printed `for  ~50 min`.
   Write `$($env:NAME)` when a colon follows. _(verified 2026-11-04, Windows PowerShell 5.1,
   tests/test_workflows.py runs the preflight)_
+- **ffmpeg is not preinstalled on `ubuntu-24.04`**: so101-gate's `video-report` falls back to
+  `apt-get install ffmpeg` (6.1.1-3ubuntu5, about 20 s), as the step summary shows. Not verified:
+  what `needs.video.result` reads when a job with job-level `continue-on-error` fails; the video
+  comment's renderer handles `success` and `failure` alike. _(verified 2026-11-04, run
+  41896631821)_
 
 ## Gotchas
 

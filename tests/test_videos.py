@@ -40,6 +40,17 @@ def test_more_than_five_lost() -> None:
     assert selection.to_dict()["seed_list"] == "0,1,2,3,4"
 
 
+def test_reference_with_more_seeds_pairs_on_candidate_seeds() -> None:
+    selection = select_video_seeds(results({2, 4, 15}, count=20), results(set()))
+    assert selection.to_dict()["seed_list"] == "2,4,0,1,3"
+
+
+def test_reference_missing_candidate_seeds_records_nothing() -> None:
+    selection = select_video_seeds(results({2}, count=5), results(set()))
+    assert not selection.seeds
+    assert "baseline lacks" in (selection.reason or "")
+
+
 def test_no_reference() -> None:
     selection = select_video_seeds(None, results(set()))
     assert not selection.seeds
@@ -91,8 +102,18 @@ def test_section_cases() -> None:
     no_baseline = render_video_section({"seeds": [], "reason": "No baseline."})
     assert "\nNo baseline.\n" in no_baseline
     assert NOTHING_SELECTED not in no_baseline
-    memory = render_video_section({}, memory_skip_free_gib=12, memory_needed_gib=19)
-    assert "free commit 12.0 GiB, needs 19.0 GiB" in memory
+    skip = {
+        "short": "commit (host memory)",
+        "free_mib": 12288,
+        "needed_mib": 19456,
+        "free_vram_mib": 10240,
+        "needed_vram_mib": 5888,
+    }
+    memory = render_video_section({}, skip=skip)
+    assert (
+        "Videos not recorded: not enough free commit (host memory) (free commit 12.0 GiB, "
+        "needs 19.0 GiB; free VRAM 10.0 GiB, needs 5.8 GiB)."
+    ) in memory
     selection = {"seeds": [{"seed": n, "kind": "lost"} for n in range(3)]}
     manifest = {
         "seeds": [

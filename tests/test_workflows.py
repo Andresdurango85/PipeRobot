@@ -157,7 +157,7 @@ def test_runner_hook(
     }.items():
         if value is not None:
             env[key] = value
-    result = subprocess.run(  # noqa: S603 - resolved PowerShell and fixed script
+    result = subprocess.run(  # noqa: S603 -- resolved PowerShell executable and fixed script, no shell.
         [powershell, "-NoProfile", "-NonInteractive", "-File", str(HOOK)],
         env=env,
         capture_output=True,
@@ -883,6 +883,11 @@ def test_so101_optional_video_jobs() -> None:
     assert "github.event_name == 'push'" in video["if"]
     assert report["if"].startswith("always() && needs.evaluate.result == 'success'")
     assert video["env"]["COMMIT_FOR_VIDEO_MB"] == "19456"
+    assert video["env"]["VRAM_FOR_VIDEO_MB"] == "5888"
+    # The camera re-run must record the same policy and task the gate judged.
+    evaluate = jobs["evaluate"]
+    for key in ("TASK", "POLICY", "ISAACLAB_COMMIT", "OMNI_KIT_ACCEPT_EULA"):
+        assert video["env"][key] == evaluate["env"][key]
     for job, retention in ((selection, 1), (video, 1), (report, 7)):
         for step in job["steps"]:
             assert "${{" not in step.get("run", "")

@@ -12,7 +12,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | GPU workflow, headless, < 30 min per PR | **Done for PushT**: `gpu-smoke` on the self-hosted RTX runner, ~2–3 min per PR, not a gate ([ADR 0020](decisions/0020-self-hosted-gpu-runner.md)); the gate stays on CPU ([ADR 0017](decisions/0017-pr-gate-pusht-on-github-runners.md)). **SO-101**: `so101-gate` on the same runner, 75 seeds paired against a same-runner baseline, ~26.5 min per run (setup 32 s warm), its verdict job `so101-gate-verdict` runs on every push and is a required check ([ADR 0035](decisions/0035-so101-gate-on-the-self-hosted-runner.md), [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md)) |
 | ≥ 50 episodes with seeds and scene variations | **Real on PushT** (50 seeded episodes, randomized start poses, CPU, ~5 min) ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). **SO-101 on Isaac**: evaluator runs 75 seeds, one process each, ~20 s per seed, repeatable bit for bit; a scripted privileged-state policy on the seeded randomized layout passed its registered go/no-go, 43/50, ~25 s per seed ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md), [ADR 0034](decisions/0034-so101-scripted-privileged-state-policy.md)) |
 | Statistical verdict vs. baseline | **Done**: `piperobot/stats/gate.py` + `robots/pusht/baselines/vqbet.json` ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)) |
-| Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact. **SO-101**: after the verdict, up to 5 lost seeds are re-run with a camera, verified bit for bit against the judged episode, and linked as MP4s in a second comment ([ADR 0038](decisions/0038-so101-failed-episode-videos.md)); proven on a demo PR before merge |
+| Automatic PR comment with rate, verdict, failed videos | **Done** in `pr-gate.yml` (sticky comment), with PushT videos of the first 10 episodes in the run artifact. **SO-101**: after the verdict, up to 5 lost seeds are re-run with a camera, verified bit for bit against the judged episode, and linked as MP4s in a second comment ([ADR 0038](decisions/0038-so101-failed-episode-videos.md)): #75, demo #76 recorded its 5 lost seeds, all matched, ~400 KB per MP4, +4 min 52 s of runner after the verdict |
 | Real-arm test, 20 attempts | Not started: arm printed, electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), `so101` dependency group and manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
 | Deliberately worse PR blocked, normal PR passes | **Done with the real PushT policy**: #13 PASS (27/50), demo #14 BLOCK (sampling temperature 2.0, 4/50). **SO-101 scripted policy on Isaac, paired, 100 fixed seeds**: swap PR #63 PASS (78/100 vs 78/100, b = c = 0); demo #65 (gripper_closed 5 -> 12, registered beforehand, tuned on dev seeds only) BLOCK as predicted, 20/100, 59 lost / 1 gained, exact McNemar p = 5.3e-17 ([result](../robots/so101/policies/scripted_gripper_closed_12_result.json)). Replay era: #59 PASS, #60 BLOCK (p = 1/64) |
 | README reproducible in 30 min | **Done, tested by CI**: `readme.yml` runs the README's commands on a fresh checkout with cold caches; 4 min 14 s on `ubuntu-24.04`, 4 min 59 s on `windows-2025`, PASS (27/50) and the demo BLOCK (4–5/50) on both (run 41597539505) |
@@ -28,8 +28,9 @@ Project Cangrejo, the `piperobot` package).
   and twice the Windows commit ([result](../robots/so101/envs/camera_record_check_result.json)).
   The gate re-runs up to 5 lost seeds with a camera after the verdict and links MP4s in a second
   comment; the verdict never depends on it
-  ([ADR 0038](decisions/0038-so101-failed-episode-videos.md)). Two evaluate workers now also need
-  free commit.
+  ([ADR 0038](decisions/0038-so101-failed-episode-videos.md), #75). Demo #76 (BLOCK as #65)
+  recorded its 5 lost seeds, all matched, ~400 KB per MP4, +4 min 52 s of runner, the comment
+  5 min 46 s after the verdict. Two evaluate workers now also need free commit.
 - 2026-11-04: `nightly.yml` calls `certify.yml` with series `nightly` on `main`, so every night
   becomes a signed point of the history's `nightly` series, BLOCK nights included
   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
@@ -177,9 +178,9 @@ Project Cangrejo, the `piperobot` package).
    `tests/mutation_equivalents.txt`) fail the job, instead of a score threshold
    ([testing.md](knowledge/testing.md)).
 7. SO-101 failed-episode videos ([ADR 0038](decisions/0038-so101-failed-episode-videos.md)):
-   prove them on a draft demo PR (gc12, as #65) before merging, and measure MP4 size and the
-   extra runner minutes. Re-run the camera on/off check after any Isaac or Kit upgrade. Before a
-   GPU run, check free Windows commit as well as VRAM ([isaac.md](knowledge/isaac.md)).
+   re-run the camera on/off check after any Isaac or Kit upgrade. Before a GPU run, check free
+   Windows commit as well as VRAM ([isaac.md](knowledge/isaac.md)). Watch for CUDA out-of-memory
+   retries in 2-worker gate runs (2 of 3 used in demo #76's evaluate).
 8. Next time [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) is touched,
    note that GitHub keeps one pending run per concurrency group: with three quick merges to
    `main`, the middle one's post-merge run is replaced and never evaluated on `main`.

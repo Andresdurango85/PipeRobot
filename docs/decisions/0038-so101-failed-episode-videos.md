@@ -42,6 +42,12 @@ against the camera-off episode on 30 development seed and policy pairs:
     - **a PASS with no lost seed records nothing**: its failures are the baseline's own (the
       scripted policy's wrist_flex mode), the same on every PR, so recording them would cost the
       single runner ~5 min per PR for no new information. The comment says so.
+    - Once at least one seed is lost (even on a PASS), the list is padded up to 5 with the
+      candidate's other failures, which may include failures the baseline shares: "b > 0"
+      decides whether to record, not what.
+    - Video selection pairs on the candidate's seeds only, so a baseline covering more seeds
+      does not break it. The gate's own verdict (`paired_comment`) still requires identical seed
+      sets.
   - `video` (self-hosted) runs only when that list is non-empty:
     - it re-runs those seeds with one fixed external camera (`robots/so101/envs/video_camera.json`)
       through the evaluator's own retry discipline;
@@ -77,6 +83,21 @@ against the camera-off episode on 30 development seed and policy pairs:
   JPEG via OpenCV needs nothing new.
 - **Replay recorded states into a render-only scene**: exact by construction, but more code. Kept
   as the fallback for a failed on/off check.
+
+## Demo result
+
+Draft PR #76 (closed unmerged; run 41896631821) applied #65's regression on top of #75:
+
+- Verdict: BLOCK, 20/100 against 78/100, b = 59, c = 1, the same as #65.
+- Recording:
+  - `video-select` picked the lost seeds 100000, 100001, 100006, 100007 and 100010;
+  - all 5 re-runs matched the judged episode's outcome and `trajectory_sha256`, with 300 frames each;
+  - the frames show the failure (the tube left lying across the rack).
+- Size: MP4s of 391-429 KB per seed (2.0 MB for 5), against 66 MB of JPEG frames.
+- Time:
+  - `video` held the runner for 4 min 52 s (recording 4 min 16 s, ~51 s per seed);
+  - `video-select` took 13 s and `video-report` 36 s, including installing ffmpeg with apt;
+  - the videos comment appeared 5 min 46 s after the verdict.
 
 ## Consequences
 

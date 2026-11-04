@@ -23,8 +23,7 @@ def render_video_section(
     *,
     commit: str = "",
     run_url: str = "",
-    memory_skip_free_gib: float | None = None,
-    memory_needed_gib: float | None = None,
+    skip: Mapping[str, Any] | None = None,
 ) -> str:
     commit_url = run_url.split("/actions/runs/", 1)[0] + f"/commit/{commit}"
     lines = [
@@ -34,10 +33,13 @@ def render_video_section(
         f"Commit: [{commit[:7]}](<{commit_url}>) | [Workflow run](<{run_url}>)",
         "",
     ]
-    if memory_skip_free_gib is not None:
+    if skip is not None:
         lines.append(
-            "Videos not recorded: not enough host memory "
-            f"(free commit {memory_skip_free_gib:.1f} GiB, needs {memory_needed_gib:.1f} GiB)."
+            f"Videos not recorded: not enough free {skip['short']} "
+            f"(free commit {skip['free_mib'] / 1024:.1f} GiB, "
+            f"needs {skip['needed_mib'] / 1024:.1f} GiB; "
+            f"free VRAM {skip['free_vram_mib'] / 1024:.1f} GiB, "
+            f"needs {skip['needed_vram_mib'] / 1024:.1f} GiB)."
         )
     elif not selection.get("seeds") and job_result in {"success", "skipped"}:
         reason = selection.get("reason")
@@ -77,12 +79,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--job-result", required=True)
     parser.add_argument("--artifact-url", default="")
-    parser.add_argument("--memory-skip-free-gib", type=float)
-    parser.add_argument("--memory-needed-gib", type=float)
+    parser.add_argument("--skip-file", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    if (args.memory_skip_free_gib is None) != (args.memory_needed_gib is None):
-        parser.error("both memory numbers are required")
     section = render_video_section(
         json.loads(args.selection.read_text(encoding="utf-8-sig")),
         json.loads(args.manifest.read_text(encoding="utf-8-sig")) if args.manifest else None,
@@ -90,8 +89,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.artifact_url,
         commit=args.commit,
         run_url=args.run_url,
-        memory_skip_free_gib=args.memory_skip_free_gib,
-        memory_needed_gib=args.memory_needed_gib,
+        skip=json.loads(args.skip_file.read_text(encoding="utf-8-sig")) if args.skip_file else None,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(section, encoding="utf-8")
