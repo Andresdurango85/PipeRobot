@@ -84,6 +84,21 @@ against the camera-off episode on 30 development seed and policy pairs:
 - **Replay recorded states into a render-only scene**: exact by construction, but more code. Kept
   as the fallback for a failed on/off check.
 
+## Demo result
+
+Draft PR #76 (closed unmerged; run 41896631821) applied #65's regression on top of #75:
+
+- Verdict: BLOCK, 20/100 against 78/100, b = 59, c = 1, the same as #65.
+- Recording:
+  - `video-select` picked the lost seeds 100000, 100001, 100006, 100007 and 100010;
+  - all 5 re-runs matched the judged episode's outcome and `trajectory_sha256`, with 300 frames each;
+  - the frames show the failure (the tube left lying across the rack).
+- Size: MP4s of 391-429 KB per seed (2.0 MB for 5), against 66 MB of JPEG frames.
+- Time:
+  - `video` held the runner for 4 min 52 s (recording 4 min 16 s, ~51 s per seed);
+  - `video-select` took 13 s and `video-report` 36 s, including installing ffmpeg with apt;
+  - the videos comment appeared 5 min 46 s after the verdict.
+
 ## Consequences
 
 - On a regressing PR the verdict comes first. A second comment follows ~5-7 min later (the runner
