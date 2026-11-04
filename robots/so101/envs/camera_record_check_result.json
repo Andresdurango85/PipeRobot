@@ -1,0 +1,50 @@
+{
+  "registration": "robots/so101/envs/camera_record_check.json (57aaae8, local, logged by piperobot-e5 on 2026-11-04 with sha256 df222ecf...986)",
+  "verdict": "PASS",
+  "summary": "Re-running a seed with the recording camera reproduces the camera-off episode on all 30 seed and policy pairs: same success, failure, success_step and trajectory_sha256. Every camera-on run wrote exactly floor(steps_run / 2) frames. A failed-episode video therefore shows the episode the gate judged.",
+  "code_commit": "1d419c0 (recording code 6298db3 plus the frozen camera pose), clean tree",
+  "machine": "home PC, RTX 5060 Ti 16 GB (driver 610.88), Ryzen 9 5900XT, 64 GB RAM; Isaac Sim 6.2 + Isaac Lab 3.0, cuda:0, one worker, no runner job during any arm",
+  "arms": {
+    "OFF_base": "scripted_pick_place, 200000-200019: 18/20, 0 retries, 12:47:28-12:55:14 -05:00",
+    "OFF_gc12": "scripted_pick_place_gripper_closed_12, 200000-200009: 3/10, 0 retries, 12:55:59-13:01:20",
+    "ON_base": "scripted_pick_place, 200000-200019, recording: 18/20, 0 retries, 13:01:58-13:15:07",
+    "ON_gc12": "scripted_pick_place_gripper_closed_12, 200000-200009, recording: 3/10, 0 retries, 13:15:47-13:24:05"
+  },
+  "criteria": {
+    "all runs exit 0": "met: 0 infrastructure retries in all four arms",
+    "same success, failure and success_step on all 30 pairs": "met: 30/30 (21 successes, 9 failures, all not_placed)",
+    "same trajectory_sha256 on all 30 pairs": "met: 30/30",
+    "frames": "met under the deviation below: every ON run wrote exactly floor(steps_run / 2) frames (300 for the 9 failures, 102-128 for the successes)"
+  },
+  "predictions": {
+    "PASS": "held",
+    "OFF reproduces the earlier development runs": "held: 30/30 outcomes and trajectory_sha256 equal to the --workers test's dev_S (base) and the C development run (gc12), so the recording-off code path leaves the judged episode unchanged"
+  },
+  "measured": {
+    "gpu_memory_peak_above_idle_mb": "OFF 2712 (base) and 3530 (gc12); ON 4510 (base) and 4172 (gc12)",
+    "commit_peak_per_worker_gib": "OFF 6.6 (all 30 workers 6.60-6.61); ON 12.8-13.1 when warm; 14.9 in the first camera run of the session (framing seed 200100). PeakPageFileUsage of each episode process, sampled every 3 s.",
+    "free_commit_during_arms_gib": "minimum 15.8 and 14.8 during the OFF arms, 8.5 and 8.9 during the ON arms, from 22-24 before each arm",
+    "seconds_per_seed": "process wall time: OFF 26.3 mean (successes 20-25, failures 31-39); ON 42.8 mean (successes 35-39, failures 53-61), about +20 s for a failed episode",
+    "cold_shader_compilation": "not seen: the shader cache was already warm from the framing runs; the runner may pay ~184 s once (isaac.md)",
+    "jpeg_bytes": "13.3 MB per failed seed (300 frames at 640x480, quality 90), 4.3-5.4 MB per success",
+    "projected_video_job": "5 failed seeds on one worker: about 5 x 57 s = 4.8 min of Isaac, plus setup and the frames upload (~66 MB); MP4 size comes from the first real gate run"
+  },
+  "framing": "Before the registered arms and not counted: 200100 (first-guess pose behind the light box's back wall; every frame showed the wall) and 200101 (the frozen pose). The first framing attempt on 200100 failed at Kit start because the Windows commit charge was exhausted (explorer.exe held 71 GB of commit); it ran after Andres restarted Explorer.",
+  "deviations": [
+    {
+      "what": "Criterion 'every ON run writes 300 frames' was replaced by 'exactly floor(steps_run / 2) frames'.",
+      "cause": "run_policy_episode stops at success, so a successful episode has fewer than 600 steps; continuing after success would change trajectory_sha256.",
+      "when": "Agreed with piperobot-e5 on 2026-11-04 at 12:30 -05:00, before any camera run."
+    },
+    {
+      "what": "code_commit is the pose-freeze commit 1d419c0, not the first commit that adds recording (6298db3).",
+      "cause": "At piperobot-e5's suggestion the recording code was committed first and the camera pose was frozen in a second commit after framing; both arms ran at 1d419c0, and neither commit changes the recording-off path.",
+      "when": "Agreed before the registered arms."
+    }
+  ],
+  "consequences": [
+    "The gate's video job can re-run judged seeds with the camera and keep a runtime check that the rerun's trajectory_sha256 matches the judged one.",
+    "Host commit, not GPU memory, limits camera runs: one camera worker peaks at ~13-15 GiB of commit. The video job needs a free-commit preflight (about 19 GiB: the cold 14.9 GiB peak plus 25%) and skips recording with a warning below it.",
+    "An OFF worker peaks at 6.6 GiB of commit, so two evaluate workers need about 13.2 GiB plus a margin; evaluate's two-worker decision should check free commit as well as VRAM."
+  ]
+}
