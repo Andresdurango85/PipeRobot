@@ -1,18 +1,11 @@
 name: so101-gate
 
 # Push-only trust boundary: the hosted report job alone holds a write token.
+# Every push produces so101-gate-verdict; the relevant-path list lives in
+# .github/scripts/so101_gate.py.
 on:
   push:
-    branches-ignore: ["dependabot/**"]
-    paths:
-      - "robots/so101/policies/**"
-      - "robots/so101/envs/**"
-      - "robots/so101/baselines/**"
-      - "robots/so101/tools/prepare_caches.py"
-      - "piperobot/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/so101-gate.yml"
+    branches: ["**"]
   workflow_dispatch:
     inputs:
       mode:
@@ -26,11 +19,33 @@ env:
   BASELINE: robots/so101/baselines/scripted-pick-place
 concurrency:
   group: so101-gate-${{ github.ref }}-${{ inputs.mode || 'gate' }}
-  cancel-in-progress: ${{ inputs.mode != 'baseline' }}
+  # Branches cancel superseded runs; main queues them, so a later docs-only merge never cancels
+  # the post-merge evaluation of a gate-relevant one (ADR 0037).
+  cancel-in-progress: ${{ inputs.mode != 'baseline' && github.ref != 'refs/heads/main' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+      dependabot: ${{ steps.detect.outputs.dependabot }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: detect
+        run: python3 .github/scripts/so101_gate.py changes
+        env:
+          BEFORE: ${{ github.event.before }}
+          ACTOR: ${{ github.actor }}
+
   evaluate:
-    if: github.repository == 'Andresdurango85/PipeRobot' && github.actor != 'dependabot[bot]'
+    needs: changes
+    if: github.repository == 'Andresdurango85/PipeRobot' && github.actor != 'dependabot[bot]' && needs.changes.outputs.relevant == 'true' && needs.changes.outputs.dependabot != 'true'
     runs-on: [self-hosted, Windows, gpu]
     permissions:
       contents: read
@@ -286,3 +301,25 @@ jobs:
           path: out/baseline/
           if-no-files-found: error
           retention-days: 30
+
+  so101-gate-verdict:
+    needs: [changes, evaluate, report]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - run: python3 .github/scripts/so101_gate.py verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          MODE: ${{ inputs.mode || 'gate' }}
+          CHANGES: ${{ needs.changes.result }}
+          RELEVANT: ${{ needs.changes.outputs.relevant }}
+          DEPENDABOT: ${{ needs.changes.outputs.dependabot }}
+          EVALUATE: ${{ needs.evaluate.result }}
+          REPORT: ${{ needs.report.result }}

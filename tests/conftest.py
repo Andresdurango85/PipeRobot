@@ -29,3 +29,11 @@ def powershell() -> str:
 @pytest.fixture
 def git_binary() -> str:
     return find_binary("git", env=os.environ, which=shutil.which)
+
+
+@pytest.fixture(autouse=True)
+def _no_hook_git_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Inside a git hook (prek's pre-push runs pytest) git exports GIT_DIR for this checkout; a
+    # test's git command that inherits it writes to the real repository (testing.md).
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_PREFIX"):
+        monkeypatch.delenv(key, raising=False)

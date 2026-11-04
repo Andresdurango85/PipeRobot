@@ -222,6 +222,11 @@ testing of `piperobot/stats`.
   `tests/test_so101_isaac_evaluator.py`), and set `GIT_CEILING_DIRECTORIES` to the temp dir's
   parent so a `--basetemp` inside a checkout does not resolve to it. Code that locates a repo with
   git (the Isaac evaluator) drops the same variables. _(verified 2026-11-03, git 2.x on Windows)_
+  It happened again the same day from a new test file without that fixture: besides
+  `core.bare`, the test's `git config user.email` overwrote the repo's local identity. The
+  variables are now dropped for every test by an autouse fixture in `tests/conftest.py`, and a
+  test that builds a temp repo also passes an isolated env (`tests/test_so101_gate_script.py`).
+  After such an accident, check `.git/config` for `core.bare` and `user.*`.
 
 ## Long GPU runs launched by an agent session
 
