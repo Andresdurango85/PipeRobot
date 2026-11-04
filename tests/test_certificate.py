@@ -27,6 +27,9 @@ from piperobot.stats.gate import SuccessCount, decide
 
 REPO = "Andresdurango85/PipeRobot"
 SIGNER = f"https://github.com/{REPO}/.github/workflows/history.yml@refs/heads/main"
+CRLF_HINT = (
+    "The file has CRLF line endings; certified files are LF. Was it checked out with core.autocrlf?"
+)
 
 
 def evidence(
@@ -409,6 +412,8 @@ def test_api_errors(
     assert type(exc.value) is error
     if error is CertificateError:
         assert str(exc.value) == stderr.strip()
+    else:
+        assert "CRLF" not in str(exc.value)
 
     def injected(path: Path, *, bundle: Path | None = None, repo: str = REPO) -> module.Certificate:
         return verify(path, bundle=bundle, repo=repo, run=fake({}, code=1, stderr=stderr))
@@ -428,3 +433,68 @@ def test_single_json_bundle(tmp_path: Path, pretty: bool) -> None:
     document = json.loads(bundle.read_text(encoding="utf-8"))
     bundle.write_text(json.dumps(document, indent=2 if pretty else None), encoding="utf-8")
     assert verify(path, bundle=bundle, run=fake(payload)).record.successes == 30
+
+
+@pytest.mark.parametrize("entrypoint", ["verify", "_verify"])
+def test_crlf_file_bundle(tmp_path: Path, entrypoint: str) -> None:
+    path = tmp_path / "results.json"
+    payload = evidence(path)
+    lf_bytes = json.dumps(json.loads(path.read_bytes()), indent=2).encode()
+    assert b"\n" in lf_bytes
+    statement = payload[0]["verificationResult"]["statement"]
+    statement["subject"][0]["digest"]["sha256"] = hashlib.sha256(lf_bytes).hexdigest()
+    bundle = tmp_path / "bundle.jsonl"
+    write_bundle(bundle, [statement])
+    crlf_bytes = lf_bytes.replace(b"\n", b"\r\n")
+    path.write_bytes(crlf_bytes)
+
+    def unexpected(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        pytest.fail("gh must not run for a bundle without this file's sha256")
+
+    verifier = verify if entrypoint == "verify" else module._verify
+    with pytest.raises(CertificateNotFound) as raised:
+        verifier(path, bundle=bundle, run=unexpected)
+    message = str(raised.value)
+    assert hashlib.sha256(crlf_bytes).hexdigest() in message
+    assert hashlib.sha256(lf_bytes).hexdigest() not in message
+    assert message.endswith(CRLF_HINT)
+
+
+def test_crlf_file_api(tmp_path: Path) -> None:
+    path = tmp_path / "results.json"
+    evidence(path)
+    crlf_bytes = (
+        json.dumps(json.loads(path.read_bytes()), indent=2).encode().replace(b"\n", b"\r\n")
+    )
+    path.write_bytes(crlf_bytes)
+    calls: list[list[str]] = []
+    not_found = fake({}, code=1, stderr="\nError: no attestations found\n")
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return not_found(command, **kwargs)
+
+    with pytest.raises(CertificateNotFound) as raised:
+        verify(path, run=run)
+    assert len(calls) == 2
+    assert calls[0][calls[0].index("--predicate-type") + 1].endswith("gate-verdict-v2.md")
+    assert calls[1][calls[1].index("--predicate-type") + 1] == GATE_VERDICT_PREDICATE_TYPE
+    assert hashlib.sha256(crlf_bytes).hexdigest() in str(raised.value)
+    assert str(raised.value).endswith(CRLF_HINT)
+
+
+def test_crlf_file_bundle_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = tmp_path / "results.json"
+    payload = evidence(path)
+    lf_bytes = json.dumps(json.loads(path.read_bytes()), indent=2).encode()
+    statement = payload[0]["verificationResult"]["statement"]
+    statement["subject"][0]["digest"]["sha256"] = hashlib.sha256(lf_bytes).hexdigest()
+    bundle = tmp_path / "bundle.jsonl"
+    write_bundle(bundle, [statement])
+    path.write_bytes(lf_bytes.replace(b"\n", b"\r\n"))
+    assert module.main(["verify", str(path), "--bundle", str(bundle)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert len(captured.err.splitlines()) == 1
+    assert captured.err.startswith("NOT CERTIFIED:")
+    assert "core.autocrlf" in captured.err

@@ -26,7 +26,11 @@ Project Cangrejo, the `piperobot` package).
 - 2026-11-04: `nightly.yml` calls `certify.yml` with series `nightly` on `main`, so every night
   becomes a signed point of the history's `nightly` series, BLOCK nights included
   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
-  [ci.md](knowledge/ci.md)). The first `main` v2 certificate verified (run 41770900924).
+  [ci.md](knowledge/ci.md)). The first `main` v2 certificate verified (run 41770900924), and the
+  first `nightly` one (run 41779993747, signer `certify.yml`, config `nightly.yml`, 259/500
+  PASS). Night 2's unpaired fresh-seed rate was 51.8% against the committed 53.0%, so night 1's
+  +8.8 pp did not repeat. `certificate verify` now hints at CRLF line endings
+  (`core.autocrlf`) when a file is NOT CERTIFIED.
 - 2026-11-03: `certify.yml`, the single signer of the history
   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
   [ci.md](knowledge/ci.md)): `history.yml` keeps its evaluation and calls it with series `main`;
@@ -146,13 +150,11 @@ Project Cangrejo, the `piperobot` package).
 ## Next
 
 1. Start the crab's v0 in Onshape, in its private repo.
-2. Verify the first `nightly` certificate (`buildConfigURI` = `nightly.yml@refs/heads/main`):
-   `python -m piperobot.reports.certificate verify out/candidate.json --reference
-   out/reference.json --repo Andresdurango85/PipeRobot`
-   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
-   [ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)). After a week of
-   nightlies, check the unpaired fresh-seed rate (+8.8 pp on the first night) and decide on a
-   paired mode for pr-gate.
+2. After a week of nightlies, check the unpaired fresh-seed rate (+8.8 pp on night 1, -1.2 pp on
+   night 2) and decide on a paired mode for pr-gate
+   ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)). Watch the evaluate
+   time (22 and 43.5 min so far, 90-min timeout) and whether the 03:17 UTC cron fires
+   ([ci.md](knowledge/ci.md)).
 3. Isaac: the gate runs the scripted policy on 100 fixed seeds and blocked its registered demo
    (#63, #65, [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)).
    Optional: gripper_closed 10 (about -15 pp on dev, with rescues) as a second registered demo,

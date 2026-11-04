@@ -83,6 +83,22 @@
   NOT CERTIFIED for an altered copy. Read the raw fields with `gh attestation verify ... --bundle
   ... --predicate-type <gate-verdict-v2 URL> --format json`; without `--predicate-type`, gh looks
   for SLSA provenance and finds none in the verdict bundle. _(verified 2026-11-04, gh 2.88.1)_
+- **First nightly certificate**: `nightly.yml` dispatch run 41779993747 on `011536d` (merge of
+  #73), every job green. Fulcio certificate: `buildSignerURI` `certify.yml@refs/heads/main`,
+  `buildConfigURI` `nightly.yml@refs/heads/main`, `github-hosted`. `certificate verify
+  <run>.json --reference <run>.reference.json` gave VERIFIED (259/500 PASS) through the API and
+  with `--bundle` and no `gh` login; an altered candidate gave NOT CERTIFIED and an altered file
+  passed as `--reference` gave MISMATCH. When the two arms agree on every seed, `candidate.json`
+  and `reference.json` are byte-identical (the files carry no commit), so the subject list holds
+  one digest twice; the reference commit rests only on the signed record. _(verified 2026-11-04)_
+- **Verify byte-exact files: `core.autocrlf` breaks certificates.** On Windows with a global
+  `core.autocrlf=true`, `git clone -b history` rewrites `results/*.json` with CRLF, the sha256
+  changes and a genuine file gives NOT CERTIFIED. Download the raw files
+  (`https://raw.githubusercontent.com/<owner>/<repo>/history/results/...` or the Pages copies), or
+  clone with `git -c core.autocrlf=false clone ...`. The verifier never normalizes line endings
+  (the digest must stay exact); it adds a CRLF hint to NOT CERTIFIED instead. `save_results`
+  writes LF on every OS too: before, a results file written on Windows (the SO-101 runner, a
+  local run) had CRLF and different bytes from the same results on Linux. _(verified 2026-11-04)_
 - **The history's repo settings were applied on 2026-11-03** through the REST API by the
   orchestrator session, with Andrés's explicit OK: Pages `build_type=workflow`; the orphan
   `history` branch seeded with `[]`; the ruleset "history (append-only)" (id 26424151, deletion +
@@ -209,6 +225,12 @@
   above zero: the gate's fixed seeds may be harder than average. One night only; the series will
   tell.
   _(verified 2026-11-03)_
+- **Second night** (dispatch run 41779993747 on `011536d`, the 03:17 UTC cron of 2026-11-04 never
+  fired; seeds 253500–253999, AMD EPYC 7763, 4 CPUs): evaluate job 43.5 min (reference 1325 s,
+  candidate 1262 s), twice night 1's 22 min on an EPYC 9V45, against a 90-min timeout. Watch it;
+  no change for now. Paired: 259 both, 0 discordant, PASS. Unpaired: 259/500 = 51.8% against the
+  committed 53.0%, interval [-0.074, 0.050]: night 1's +8.8 pp did not repeat.
+  _(verified 2026-11-04)_
 - **Triage of a nightly BLOCK**: an alert, never a merge block. Do not rerun the same seeds: CPU
   PushT is deterministic within a runner, so a rerun only reproduces it. Look at the discordant
   seeds in the two results files, then wait for the next nights' fresh seeds or dispatch more
