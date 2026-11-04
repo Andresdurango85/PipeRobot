@@ -106,7 +106,7 @@ def _uses(data: dict[str | bool, Any]) -> list[str]:
 def test_actions_are_pinned_with_version_comments(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     for uses in _uses(_load(path)):
-        if uses.startswith("./"):
+        if uses.startswith(("./", "$/")):  # same-repo references run at the caller's commit
             continue
         assert re.fullmatch(r"[\w.-]+/[\w.-]+(?:/[\w./-]+)?@[0-9a-fA-F]{40}", uses)
         assert re.search(
@@ -309,31 +309,54 @@ def test_completed_hook_refuses_unsafe_paths(tmp_path: Path, case: str, powershe
 def test_history_signing_boundary() -> None:
     jobs = _load(ROOT / ".github/workflows/history.yml")["jobs"]
     assert jobs["evaluate"]["permissions"] == {"contents": "read"}
-    attest = jobs["attest"]
-    assert attest["needs"] == "evaluate"
-    assert attest["if"] == "github.ref == 'refs/heads/main'"
-    assert attest["runs-on"] == "ubuntu-latest"
-    assert attest["permissions"] == {
-        "contents": "read",
+    caller = jobs["certify"]
+    assert caller["uses"] == "$/.github/workflows/certify.yml"
+    assert caller["needs"] == "evaluate"
+    assert caller["if"] == "github.ref == 'refs/heads/main'"
+    assert caller["with"] == {"series": "main", "artifact": "history-evaluation"}
+    assert caller["permissions"] == {
+        "contents": "write",
         "id-token": "write",
         "attestations": "write",
+        "pages": "write",
     }
-    for step in attest["steps"]:
-        assert "${{" not in step.get("run", "")
-        assert "artifact-metadata" not in step.get("with", {})
+    data = _load(ROOT / ".github/workflows/certify.yml")
+    assert data.get("on", data.get(True)) == {
+        "workflow_call": {
+            "inputs": {
+                "series": {"type": "string", "required": True},
+                "artifact": {"type": "string", "required": True},
+            }
+        }
+    }
+    assert data["permissions"] == {}
+    permissions = {
+        "attest": {"contents": "read", "id-token": "write", "attestations": "write"},
+        "append": {"contents": "write"},
+        "deploy": {"contents": "read", "pages": "write", "id-token": "write"},
+    }
+    assert set(data["jobs"]) == set(permissions)
+    for name, job in data["jobs"].items():
+        assert job["permissions"] == permissions[name]
+        assert job["runs-on"] == "ubuntu-24.04"
+        assert job["if"] == "github.ref == 'refs/heads/main'"
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+            assert "artifact-metadata" not in step.get("with", {})
+    attest = data["jobs"]["attest"]
     verdict = next(step for step in attest["steps"] if step.get("id") == "verdict")
     assert verdict["with"] == {
-        "subject-path": "out/results.json",
+        "subject-path": "${{ steps.record.outputs.subjects }}",
         "predicate-type": "${{ steps.record.outputs.type }}",
         "predicate-path": "out/record.json",
     }
     provenance = next(step for step in attest["steps"] if step.get("id") == "provenance")
     assert provenance["with"]["subject-path"].splitlines() == [
-        "out/results.json",
+        "${{ steps.record.outputs.subjects }}",
         "out/record.json",
     ]
-    append = jobs["append"]
-    assert append["needs"] == ["evaluate", "attest"]
+    append = data["jobs"]["append"]
+    assert append["needs"] == "attest"
     assert "concurrency" not in append
     downloads = [
         step["with"]["name"]
@@ -347,7 +370,21 @@ def test_history_signing_boundary() -> None:
         if step.get("name") == "Append evaluation to history"
     )
     assert "--record out/record.json" in script
-    assert script.count("--attach") == 2
+    for destination in (
+        "results/$GITHUB_RUN_ID.$GITHUB_RUN_ATTEMPT.json",
+        "results/$GITHUB_RUN_ID.$GITHUB_RUN_ATTEMPT.reference.json",
+        "bundles/$GITHUB_RUN_ID.$GITHUB_RUN_ATTEMPT.jsonl",
+    ):
+        assert destination in script
+    assert data["jobs"]["deploy"]["needs"] == "append"
+    assert data["jobs"]["deploy"]["concurrency"] == {"group": "pages", "cancel-in-progress": False}
+
+
+@pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
+def test_certify_callers_use_relative_path(path: Path) -> None:
+    for uses in _uses(_load(path)):
+        if "certify.yml" in uses:
+            assert uses == "$/.github/workflows/certify.yml"
 
 
 def test_nightly_hosted_read_only_jobs() -> None:

@@ -531,7 +531,9 @@ def _series(
             f"{record.interval.lower:.1%} to {record.interval.upper:.1%}",
             _escape(record.verdict.value),
             _escape(record.platform)
-            + (f" · {_escape(record.runner_image)}" if record.runner_image is not None else ""),
+            + (
+                f" \u00b7 {_escape(record.runner_image)}" if record.runner_image is not None else ""
+            ),
             _link(record.run_url, f"#{record.run_id}.{record.run_attempt}"),
         ]
         if record.paired is not None:
@@ -542,9 +544,16 @@ def _series(
             )
         if evidence is not None:
             identity = f"{record.run_id}.{record.run_attempt}"
+            label = "candidate" if record.series == "nightly" else "results"
+            reference = (
+                f'<a href="results/{identity}.reference.json">reference</a> '
+                if record.series == "nightly"
+                else ""
+            )
             cells.append(
-                f'<a href="results/{identity}.json">results</a> '
-                f'<a href="bundles/{identity}.jsonl">bundle</a>'
+                f'<a href="results/{identity}.json">{label}</a> '
+                + reference
+                + f'<a href="bundles/{identity}.jsonl">bundle</a>'
                 if evidence(record)
                 else "not signed"
             )
@@ -602,6 +611,13 @@ def render_html(
             f"<p>Equivalent GitHub CLI verification:</p><pre>{_escape(command)}</pre>",
             "</section>",
         ]
+        if any(record.series == "nightly" and evidence(record) for record in history):
+            lines[-1:-1] = [
+                "<p>For a nightly point, download candidate, reference and bundle as "
+                "candidate.json, reference.json and bundle.jsonl.</p>",
+                "<pre>python -m piperobot.reports.certificate verify candidate.json "
+                "--reference reference.json --bundle bundle.jsonl</pre>",
+            ]
     return "\n".join([*lines, "</body></html>", ""])
 
 
@@ -672,8 +688,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--schema",
         type=int,
         choices=(1, 2),
-        default=1,
-        help="Default is 1 until certify.yml signs schema 2",
+        default=2,
+        help="Record schema version (default: 2)",
     )
     record_parser.add_argument("--series", choices=("main", "nightly"), default="main")
     record_parser.add_argument("--paired-reference", type=Path)
@@ -763,7 +779,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     identity = f"{record.run_id}.{record.run_attempt}"
                     return all(
                         (args.evidence_dir / directory / f"{identity}.{suffix}").is_file()
-                        for directory, suffix in (("results", "json"), ("bundles", "jsonl"))
+                        for directory, suffix in (
+                            ("results", "json"),
+                            ("bundles", "jsonl"),
+                            *(
+                                (("results", "reference.json"),)
+                                if record.series == "nightly"
+                                else ()
+                            ),
+                        )
                     )
 
             page = render_html(load_history(args.history), evidence=evidence)

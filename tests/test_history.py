@@ -453,10 +453,12 @@ def test_record_cli_roundtrip(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     identity = ["--run-id", "1", "--run-attempt", "2"]
     assert main(["record", "--output", str(output), *building, *identity]) == 0
     record = HistoryRecord.from_dict(json.loads(output.read_text(encoding="utf-8")))
+    assert record.schema == 2
+    assert record.series == "main"
     assert output.read_bytes().endswith(b"\n")
     assert b"\r\n" not in output.read_bytes()
     assert main(["append", "--history", str(history), "--new", *building, *identity]) == 0
-    assert load_history(history) == [record]
+    assert load_history(history) == [replace(record, schema=1)]
     history.unlink()
     args = ["append", "--history", str(history), "--record", str(output), "--new"]
     assert main([*args, *identity]) == 0
@@ -922,8 +924,51 @@ def test_runner_image_normalization_and_platform() -> None:
     record = HistoryRecord.from_dict(data)
     assert record.runner_image == "ubuntu24 <image>&"
     assert HistoryRecord.from_dict(record.to_dict()) == record
-    assert f"<td>{html.escape(record.platform)} · ubuntu24 &lt;image&gt;&amp;</td>" in render_html(
-        [record]
+    assert (
+        f"<td>{html.escape(record.platform)} \u00b7 ubuntu24 &lt;image&gt;&amp;</td>"
+        in render_html([record])
     )
     data["runner_image"] = "a" * 200
     assert HistoryRecord.from_dict(data).runner_image == "a" * 200
+
+
+@pytest.mark.parametrize("missing", ["candidate", "reference", "bundle", None])
+def test_nightly_evidence(tmp_path: Path, missing: str | None) -> None:
+    record = nightly()
+    history, output = tmp_path / "history.json", tmp_path / "index.html"
+    save_history([record], history, previous=[])
+    for label, name in {
+        "candidate": "results/3.1.json",
+        "reference": "results/3.1.reference.json",
+        "bundle": "bundles/3.1.jsonl",
+    }.items():
+        if label != missing:
+            path = tmp_path / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text("evidence", encoding="ascii")
+    assert (
+        main(
+            [
+                "render",
+                "--history",
+                str(history),
+                "--output",
+                str(output),
+                "--evidence-dir",
+                str(tmp_path),
+            ]
+        )
+        == 0
+    )
+    page = output.read_text(encoding="utf-8")
+    if missing is not None:
+        assert "<td>not signed</td>" in page
+        assert "Verify a point" not in page
+    else:
+        for label, name in {
+            "candidate": "results/3.1.json",
+            "reference": "results/3.1.reference.json",
+            "bundle": "bundles/3.1.jsonl",
+        }.items():
+            assert f'<a href="{name}">{label}</a>' in page
+        assert "verify candidate.json --reference reference.json --bundle bundle.jsonl" in page

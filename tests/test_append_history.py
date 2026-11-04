@@ -180,10 +180,16 @@ def test_attachments(local_repo: tuple[Path, dict[str, str], Path], tmp_path: Pa
         f"{results.as_posix()}=results/1.1.json",
         "--attach",
         f"{bundle.as_posix()}=bundles/1.1.jsonl",
+        "--attach",
+        f"{results.as_posix()}=results/1.1.reference.json",
     )
     result = _append(env, results, 1, *args)
     assert result.returncode == 0, result.stdout + result.stderr
     assert _git(remote, env, "show", "history:results/1.1.json") == results.read_text().strip()
+    assert (
+        _git(remote, env, "show", "history:results/1.1.reference.json")
+        == results.read_text().strip()
+    )
     assert _git(remote, env, "show", "history:bundles/1.1.jsonl") == "bundle bytes"
     assert _git(remote, env, "log", "-1", "--format=%s", "history") == (
         f"History: run 1.1 ({'b' * 40})"
@@ -206,7 +212,16 @@ def test_attachments(local_repo: tuple[Path, dict[str, str], Path], tmp_path: Pa
     assert not (remote / "push-attempted").exists()
 
 
-@pytest.mark.parametrize("destination", ["../x", "results/evil.sh"])
+@pytest.mark.parametrize(
+    "destination",
+    [
+        "../x",
+        "results/evil.sh",
+        "bundles/1.1.reference.json",
+        "results/1.1.reference.jsonl",
+        "results/1.1.other.json",
+    ],
+)
 def test_bad_attachment(local_repo: tuple[Path, dict[str, str], Path], destination: str) -> None:
     remote, env, results = local_repo
     head = _git(remote, env, "rev-parse", "history")

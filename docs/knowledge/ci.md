@@ -59,6 +59,21 @@
   and `bundles/<run>.<attempt>.jsonl`, and the page links them. First run: 41579899042 on the merge
   of #39, all three jobs green, one record (29/50, PASS) at
   <https://andresdurango85.github.io/PipeRobot/>. _(verified 2026-11-03)_
+- **`certify.yml`** ([ADR 0031](../decisions/0031-history-schema-2-and-certify-trusted-builder.md)):
+  a reusable workflow (`on: workflow_call`, inputs `series` and `artifact`), the only signer of
+  v2 certificates. `history.yml`'s `attest`, `append` and `deploy` jobs moved into it unchanged
+  in substance; `history.yml` keeps `evaluate` and calls it with `series: main`. Its jobs write the
+  schema-2 record from the caller's artifact (main: `results.json`; nightly: `candidate.json` and
+  `reference.json`), sign it, append it with its evidence (`results/<run>.<attempt>.json`,
+  `.reference.json` for nightly, `bundles/<run>.<attempt>.jsonl`) and deploy the page. Every job
+  runs only on `refs/heads/main` on `ubuntu-24.04`; top-level `permissions: {}`, the caller grants
+  the union and each job narrows it. _(2026-11-03)_
+- **Call `certify.yml` as `uses: $/.github/workflows/certify.yml`**, not `./`. zizmor 1.32's
+  `self-repository` audit flags `./` reusable-workflow calls; `$/` is GitHub's newer same-repo
+  syntax and, like `./`, runs the workflow file from the caller's own commit, so a branch still
+  cannot pick another `certify.yml`. ADR 0031 writes `./`; the guarantee is the same.
+  `tests/test_workflows.py` requires exactly `$/...` and exempts `./` and `$/` from SHA pins.
+  _(verified 2026-11-03, zizmor 1.32.0)_
 - **The history's repo settings were applied on 2026-11-03** through the REST API by the
   orchestrator session, with Andrés's explicit OK: Pages `build_type=workflow`; the orphan
   `history` branch seeded with `[]`; the ruleset "history (append-only)" (id 26424151, deletion +
