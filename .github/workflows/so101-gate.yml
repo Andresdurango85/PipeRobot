@@ -1,6 +1,6 @@
 name: so101-gate
 
-# Push-only trust boundary: the hosted report job alone holds a write token.
+# Push-only trust boundary: only hosted reporting jobs hold write tokens.
 # Every push produces so101-gate-verdict; the relevant-path list lives in
 # .github/scripts/so101_gate.py.
 on:
@@ -311,6 +311,304 @@ jobs:
           path: out/baseline/
           if-no-files-found: error
           retention-days: 30
+
+  video-select:
+    needs: [changes, evaluate]
+    if: >-
+      github.repository == 'Andresdurango85/PipeRobot' &&
+      github.actor != 'dependabot[bot]' &&
+      needs.changes.outputs.relevant == 'true' &&
+      needs.changes.outputs.dependabot != 'true' &&
+      needs.evaluate.result == 'success' &&
+      (github.event_name == 'push' || inputs.mode == 'gate') &&
+      github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      seed_list: ${{ steps.selection.outputs.seed_list }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: so101-gate
+          path: out/
+      - name: Select video seeds
+        run: |
+          reference=()
+          if [[ -f "$BASELINE-episodes.json" ]]; then
+            reference=(--reference "$BASELINE-episodes.json")
+          fi
+          uv run --no-sync python -m piperobot.reports.video_seeds "${reference[@]}" \
+            --candidate out/results.json --output out/video-selection.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: so101-video-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: out/video-selection.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Publish validated seed list
+        id: selection
+        run: |
+          seeds=$(uv run --no-sync python -c \
+            'import json; print(json.load(open("out/video-selection.json"))["seed_list"])')
+          if [[ -n "$seeds" && ! "$seeds" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+            echo '::error::invalid video seed list'
+            exit 1
+          fi
+          echo "seed_list=$seeds" >> "$GITHUB_OUTPUT"
+
+
+  video:
+    needs: [changes, evaluate, video-select]
+    if: >-
+      github.repository == 'Andresdurango85/PipeRobot' &&
+      github.actor != 'dependabot[bot]' &&
+      needs.changes.outputs.relevant == 'true' &&
+      needs.changes.outputs.dependabot != 'true' &&
+      needs.evaluate.result == 'success' &&
+      needs.video-select.result == 'success' && needs.video-select.outputs.seed_list != '' &&
+      (github.event_name == 'push' || inputs.mode == 'gate') &&
+      github.ref != 'refs/heads/main'
+    runs-on: [self-hosted, Windows, gpu]
+    continue-on-error: true
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: powershell
+    env:
+      ISAACLAB_COMMIT: 44044b0963001962abe5701133427e37b003fffe
+      OMNI_KIT_ACCEPT_EULA: "YES"
+      PYTHONUNBUFFERED: "1"
+      TASK: robots/so101/envs/vials_to_rack_task_randomized.json
+      POLICY: robots/so101/policies/scripted_pick_place.json
+      # 19 GiB: the camera worker's cold commit peak (14.9 GiB) + 25%, rounded up
+      COMMIT_FOR_VIDEO_MB: "19456"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+          cache-local-path: ${{ runner.tool_cache }}/uv-cache
+      - name: Paths
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TOOL_CACHE 'isaaclab-3.0'
+          $paths = [ordered]@{
+            ISAAC_SRC = "$root\IsaacLab"
+            ISAAC_PY = "$root\venv\Scripts\python.exe"
+            PIPEROBOT_CACHE = "$env:RUNNER_TOOL_CACHE\piperobot-cache"
+            WORK = "$env:RUNNER_TEMP\so101-video"
+            OUT = "$env:GITHUB_WORKSPACE\out"
+          }
+          foreach ($entry in $paths.GetEnumerator()) {
+            "$($entry.Key)=$($entry.Value)" |
+              Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          }
+          New-Item -ItemType Directory -Force -Path $paths.OUT, $paths.WORK | Out-Null
+      - run: uv sync --locked --group so101-data
+      - name: Recording environment guard
+        id: guard
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $head = ''
+          if (Test-Path "$env:ISAAC_SRC\.git") {
+            $head = git -C $env:ISAAC_SRC rev-parse HEAD
+            if ($LASTEXITCODE -ne 0) { $head = '' }
+          }
+          $ready = (Test-Path $env:ISAAC_PY) -and $head -eq $env:ISAACLAB_COMMIT
+          "ready=$($ready.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if (-not $ready) { Write-Host '::warning::recording environment missing or unpinned' }
+          exit 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: so101-gate
+          path: out/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: so101-video-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: out/
+      - name: Memory preflight
+        id: memory
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $free = [math]::Floor((Get-CimInstance Win32_OperatingSystem).FreeVirtualMemory / 1024)
+          $needed = [int]$env:COMMIT_FOR_VIDEO_MB
+          if ($free -lt $needed) {
+            Write-Host ("::warning::not enough host memory to record videos " +
+              "(free commit $free MiB, needs $needed MiB)")
+            @{ free_mib = $free; needed_mib = $needed } | ConvertTo-Json |
+              Out-File -Encoding utf8 out/video-skip.json
+          } else {
+            'ready=true' >> $env:GITHUB_OUTPUT
+          }
+      - name: Record judged seeds
+        if: steps.guard.outputs.ready == 'true' && steps.memory.outputs.ready == 'true'
+        env:
+          SEEDS_TO_RECORD: ${{ needs.video-select.outputs.seed_list }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:SEEDS_TO_RECORD -notmatch '^[0-9]+(,[0-9]+)*$') {
+            throw 'Invalid video seed list'
+          }
+          uv run --no-sync python -m piperobot.adapters.isaaclab.evaluate `
+            --task $env:TASK --policy $env:POLICY --seeds $env:SEEDS_TO_RECORD --workers 1 `
+            --isaac-python $env:ISAAC_PY --workdir $env:WORK `
+            --output out\video\results.json --device cuda:0 --record-dir out\video\frames
+      - name: Verify recorded episodes
+        id: verify
+        if: steps.memory.outputs.ready == 'true'
+        run: |
+          uv run --no-sync python -m piperobot.reports.video_manifest `
+            --selection out/video-selection.json --judged out/episodes_detail.json `
+            --recorded out/video/episodes_detail.json --frames-dir out/video/frames `
+            --output out/manifest.json
+      - name: Warn on incomplete recording
+        if: failure()
+        run: Write-Host '::warning::recording did not finish; the verdict is unaffected'
+      - name: Upload verified frames and recording status
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: so101-frames-${{ github.run_id }}-${{ github.run_attempt }}
+          # Frames are uploaded only after manifest verification succeeds.
+          path: |
+            out/manifest.json
+            out/video-skip.json
+            ${{ steps.verify.outcome == 'success' && 'out/video/frames/' || '' }}
+          if-no-files-found: ignore
+          retention-days: 1
+
+  video-report:
+    needs: [changes, evaluate, report, video-select, video]
+    if: >-
+      always() && needs.evaluate.result == 'success' &&
+      needs.video-select.result == 'success' &&
+      (github.event_name == 'push' || inputs.mode == 'gate') &&
+      github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      FRAMES: out/video/frames
+      MP4_OUT: out/mp4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          name: so101-frames-${{ github.run_id }}-${{ github.run_attempt }}
+          path: out/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: so101-video-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: out/
+      - name: FFmpeg version
+        if: needs.video-select.outputs.seed_list != ''
+        run: |
+          if command -v ffmpeg >/dev/null; then
+            echo 'FFmpeg: preinstalled' >> "$GITHUB_STEP_SUMMARY"
+          else
+            sudo apt-get update && sudo apt-get install -y ffmpeg
+            echo 'FFmpeg: installed with apt' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          ffmpeg -version
+      - name: Encode verified frames
+        if: needs.video-select.outputs.seed_list != ''
+        id: encode
+        continue-on-error: true
+        run: |
+          mkdir -p "$MP4_OUT"
+          shopt -s nullglob
+          for dir in "$FRAMES"/*; do
+            [[ -d "$dir" && -f "$dir/frame_0000.jpg" ]] || continue
+            seed=$(basename "$dir")
+            [[ "$seed" =~ ^[0-9]+$ ]] || continue
+            ffmpeg -y -framerate 30 -i "$dir/frame_%04d.jpg" -c:v libx264 \
+              -pix_fmt yuv420p -movflags +faststart "$MP4_OUT/$seed.mp4"
+            stat --printf='%n: %s bytes\n' "$MP4_OUT/$seed.mp4" >> "$GITHUB_STEP_SUMMARY"
+          done
+          files=("$MP4_OUT"/*.mp4)
+          if (( ${#files[@]} )); then echo 'has_videos=true' >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        id: videos
+        if: steps.encode.outputs.has_videos == 'true'
+        with:
+          name: so101-videos-${{ github.run_id }}-${{ github.run_attempt }}
+          path: out/mp4/
+          retention-days: 7
+      - name: Render video comment
+        if: always()
+        env:
+          VIDEO_RESULT: ${{ needs.video.result }}
+          COMMIT: ${{ github.sha }}
+          RUN_URL: >-
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ARTIFACT_URL: ${{ steps.videos.outputs.artifact-url }}
+        run: |
+          mkdir -p out
+          if [[ ! -f out/video-selection.json ]]; then
+            printf '%s\n' '{"seeds": [], "reason": null}' > out/video-selection.json
+            VIDEO_RESULT=failure
+          fi
+          args=()
+          if [[ -f out/manifest.json ]]; then args+=(--manifest out/manifest.json); fi
+          if [[ -f out/video-skip.json ]]; then
+            memory=$(uv run --no-sync python -c '
+          import json
+          with open("out/video-skip.json", encoding="utf-8-sig") as source:
+              memory = json.load(source)
+          print(memory["free_mib"] / 1024, memory["needed_mib"] / 1024)
+          ')
+            read -r free needed <<< "$memory"
+            args+=(--memory-skip-free-gib "$free" --memory-needed-gib "$needed")
+          fi
+          uv run --no-sync python -m piperobot.reports.video_section \
+            --selection out/video-selection.json "${args[@]}" \
+            --job-result "$VIDEO_RESULT" --artifact-url "$ARTIFACT_URL" \
+            --commit "$COMMIT" --run-url "$RUN_URL" --output out/video-comment.md
+          cat out/video-comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upsert video comment on open PRs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if [[ ! -f out/video-comment.md ]]; then
+            echo '::warning::video comment could not be rendered'
+            exit 0
+          fi
+          if ! prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '.[] | select(.state == "open") | .number'); then
+            echo '::warning::could not find PRs for video comment'
+            exit 0
+          fi
+          for pr in $prs; do
+            uv run --no-sync python -m piperobot.reports.sticky_comment --pr "$pr" \
+              --marker '<!-- piperobot-gate:so101-videos -->' \
+              --body-file out/video-comment.md || echo '::warning::could not upsert video comment'
+          done
 
   so101-gate-verdict:
     needs: [changes, evaluate, report]

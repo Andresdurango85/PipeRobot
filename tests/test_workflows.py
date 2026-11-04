@@ -157,7 +157,7 @@ def test_runner_hook(
     }.items():
         if value is not None:
             env[key] = value
-    result = subprocess.run(  # noqa: S603 -- resolved PowerShell executable and fixed script, no shell.
+    result = subprocess.run(  # noqa: S603 - resolved PowerShell and fixed script
         [powershell, "-NoProfile", "-NonInteractive", "-File", str(HOOK)],
         env=env,
         capture_output=True,
@@ -827,4 +827,66 @@ def test_so101_required_verdict_job() -> None:
         assert guard in jobs["evaluate"]["if"]
     assert jobs["report"]["needs"] == "evaluate"
     assert "if" not in jobs["report"]
-    assert [name for name, job in jobs.items() if "self-hosted" in _labels(job)] == ["evaluate"]
+    assert {name for name, job in jobs.items() if "self-hosted" in _labels(job)} == {
+        "evaluate",
+        "video",
+    }
+
+
+def test_so101_optional_video_jobs() -> None:
+    jobs = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]
+    assert not {"video-select", "video", "video-report"} & set(jobs["so101-gate-verdict"]["needs"])
+    selection, video, report = jobs["video-select"], jobs["video"], jobs["video-report"]
+    assert selection["runs-on"] == "ubuntu-24.04"
+    assert selection["needs"] == ["changes", "evaluate"]
+    assert selection["timeout-minutes"] == 5
+    assert selection["permissions"] == {"contents": "read"}
+    assert "secrets" not in selection
+    assert "video-select" in video["needs"]
+    assert "needs.video-select.outputs.seed_list != ''" in video["if"]
+    assert "needs.video-select.result == 'success'" in video["if"]
+    assert report["needs"] == ["changes", "evaluate", "report", "video-select", "video"]
+    assert "needs.video-select.result == 'success'" in report["if"]
+    for job in (selection, video):
+        for guard in (
+            "github.repository == 'Andresdurango85/PipeRobot'",
+            "github.actor != 'dependabot[bot]'",
+            "needs.changes.outputs.relevant == 'true'",
+            "needs.changes.outputs.dependabot != 'true'",
+        ):
+            assert guard in job["if"]
+    for job in (selection, video, report):
+        assert "github.ref != 'refs/heads/main'" in job["if"]
+        assert "inputs.mode == 'gate'" in job["if"]
+        assert "github.event_name == 'push'" in job["if"]
+    assert not {"GH_TOKEN", "GITHUB_TOKEN"} & set(selection.get("env", {}))
+    for step in selection["steps"]:
+        assert not {"GH_TOKEN", "GITHUB_TOKEN"} & set(step.get("env", {}))
+        assert "secrets." not in str(step)
+    assert {
+        name
+        for name in ("video-select", "video", "video-report")
+        if jobs[name]["permissions"].get("pull-requests") == "write"
+    } == {"video-report"}
+    select_run = next(s["run"] for s in selection["steps"] if s.get("id") == "selection")
+    record = next(s for s in video["steps"] if s.get("name") == "Record judged seeds")
+    assert "^[0-9]+(,[0-9]+)*$" in select_run
+    assert "^[0-9]+(,[0-9]+)*$" in record["run"]
+    assert record["env"]["SEEDS_TO_RECORD"] == "${{ needs.video-select.outputs.seed_list }}"
+    assert not any(s.get("name") == "Select video seeds" for s in video["steps"])
+    for name in ("FFmpeg version", "Encode verified frames"):
+        step = next(s for s in report["steps"] if s.get("name") == name)
+        assert step["if"] == "needs.video-select.outputs.seed_list != ''"
+    assert video["continue-on-error"] is True
+    assert video["timeout-minutes"] == 15
+    assert "inputs.mode == 'gate'" in video["if"]
+    assert "github.event_name == 'push'" in video["if"]
+    assert report["if"].startswith("always() && needs.evaluate.result == 'success'")
+    assert video["env"]["COMMIT_FOR_VIDEO_MB"] == "19456"
+    for job, retention in ((selection, 1), (video, 1), (report, 7)):
+        for step in job["steps"]:
+            assert "${{" not in step.get("run", "")
+            if step.get("uses", "").startswith("actions/upload-artifact@"):
+                assert step["with"]["retention-days"] == retention
+                assert "github.run_id" in step["with"]["name"]
+                assert "github.run_attempt" in step["with"]["name"]
