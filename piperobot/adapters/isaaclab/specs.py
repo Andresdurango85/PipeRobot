@@ -25,8 +25,12 @@ def reject_constant(value: str) -> object:
 
 def read_object(path: Path) -> dict[str, object]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"), parse_constant=reject_constant)
+        contents = path.read_text(encoding="utf-8")
     except (OSError, ValueError) as exc:
+        raise ResultsError(f"Cannot read {path}: {exc}") from exc
+    try:
+        data = json.loads(contents, parse_constant=reject_constant)
+    except (ValueError, RecursionError) as exc:
         raise ResultsError(f"Cannot read {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ResultsError(f"{path}: expected a JSON object")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -25,6 +26,7 @@ from piperobot.reports.history import GATE_VERDICT_PREDICATE_TYPE, record_from_g
 from piperobot.results import EpisodeResult, EvalResults, save_results
 from piperobot.stats.gate import SuccessCount, decide
 
+DEEP = 100_000
 REPO = "Andresdurango85/PipeRobot"
 SIGNER = f"https://github.com/{REPO}/.github/workflows/history.yml@refs/heads/main"
 CRLF_HINT = (
@@ -498,3 +500,16 @@ def test_crlf_file_bundle_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert len(captured.err.splitlines()) == 1
     assert captured.err.startswith("NOT CERTIFIED:")
     assert "core.autocrlf" in captured.err
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"[" * DEEP + b"]" * DEEP, b'{"episodes":' + b"[" * DEEP + b"]" * DEEP + b"}"],
+    ids=["array", "episodes"],
+)
+def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
+    path = tmp_path / "input.json"
+    path.write_bytes(payload)
+    with pytest.raises(CertificateInputError, match=re.escape(str(path))) as excinfo:
+        module._bundle_types(path)
+    assert isinstance(excinfo.value.__cause__, RecursionError)

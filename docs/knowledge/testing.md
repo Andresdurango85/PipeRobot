@@ -151,6 +151,29 @@ testing of `piperobot/stats`.
   and "95%", so the golden file is unchanged. Observed drops keep one decimal on purpose.
   _(verified 2026-11-03)_
 
+## Untrusted JSON input (fixed 2026-11-05)
+
+The loaders that read files produced elsewhere (`load_results`, `load_history`, the certificate
+bundle reader, `specs.read_object`, the SO-101 video manifest) each promise one error type.
+A hand probe, done before adding fuzzing, found inputs that escaped it. Each one now has a
+regression test that failed on `c0bcccb`:
+
+- **`json.loads` raises `RecursionError`, not `ValueError`, on deep nesting.** Catch it right
+  around `json.loads`; never raise the recursion limit. CPython 3.12's C recursion limit depends
+  on the platform: 5000 nested brackets raise on Windows but not on Linux CI (the first CI run of
+  #84 failed on that). Tests use 100 000 levels and assert that the domain error's `__cause__` is
+  the `RecursionError`, so they test that path on every OS.
+- **`read_text` raises `UnicodeDecodeError` before `json.loads` runs**, so catching only
+  `json.JSONDecodeError` misses non-UTF-8 bytes. Catch `ValueError` (it covers both) at the read
+  and parse boundary.
+- **Python's `json` accepts `NaN` and `Infinity`**: `int(float("nan"))` raises `ValueError` and
+  `int(float("inf"))` raises `OverflowError`, so a numeric field needs an explicit check, not
+  just `int(...)`.
+- **Convert only at the parse boundary**: wrap the read, `json.loads` and explicit shape checks,
+  never a whole function in `except ValueError`, which would also hide our own bugs.
+  `video_manifest` gained `VideoInputError`; its CLI prints one `ERROR:` line and exits 2 (the
+  `video` job is `continue-on-error`, and the verdict never needs it).
+
 ## Rendered output (history page)
 
 - **Look at rendered HTML, not only at its source**: the golden file of

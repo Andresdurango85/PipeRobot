@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -17,6 +18,7 @@ from piperobot.adapters.isaaclab import evaluate
 from piperobot.adapters.isaaclab.specs import PolicySpec, TaskSpec, load_module
 from piperobot.results import ResultsError, load_results
 
+DEEP = 100_000
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = load_module("test_demo_policy", ROOT / "robots/so101/policies/demo_replay.py")
 TASK = load_module("test_tube_task", ROOT / "robots/so101/envs/vials_to_rack_task.py")
@@ -962,3 +964,18 @@ def test_workers_capped(worker_driver: Callable) -> None:
     code, _, _, metadata = worker_driver(5, "0,3,7", SeedRunner(lambda seed, attempt: True))
     assert code == 0
     assert metadata["workers"] == 3
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"[" * DEEP + b"]" * DEEP, b'{"episodes":' + b"[" * DEEP + b"]" * DEEP + b"}"],
+    ids=["array", "episodes"],
+)
+def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
+    from piperobot.adapters.isaaclab.specs import read_object
+
+    path = tmp_path / "input.json"
+    path.write_bytes(payload)
+    with pytest.raises(ResultsError, match=re.escape(str(path))) as excinfo:
+        read_object(path)
+    assert isinstance(excinfo.value.__cause__, RecursionError)

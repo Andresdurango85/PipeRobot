@@ -40,13 +40,22 @@ class EpisodeResult:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> EpisodeResult:
+        if not isinstance(data, Mapping):
+            raise ResultsError("episode must be an object")
         missing = {"seed", "success"} - data.keys()
         if missing:
             raise ResultsError(f"episode without {sorted(missing)}: {dict(data)}")
         if not isinstance(data["success"], bool):
             raise ResultsError(f"'success' must be true or false, got {data['success']!r}")
+        value = data["seed"]
+        if not isinstance(value, (int, float, str, bytes, bytearray)):
+            raise ResultsError("'seed' must be convertible to an integer")
+        try:
+            seed = int(value)
+        except (ValueError, OverflowError) as exc:
+            raise ResultsError(f"invalid 'seed': {exc}") from exc
         return cls(
-            seed=int(data["seed"]),
+            seed=seed,
             success=data["success"],
             scene=data.get("scene"),
             failure=data.get("failure"),
@@ -92,6 +101,8 @@ class EvalResults:
 
 
 def parse_results(data: Mapping[str, Any]) -> EvalResults:
+    if not isinstance(data, Mapping):
+        raise ResultsError("expected a JSON object")
     episodes = data.get("episodes")
     if not isinstance(episodes, Sequence) or isinstance(episodes, str):
         raise ResultsError("'episodes' must be a list")
@@ -104,12 +115,19 @@ def parse_results(data: Mapping[str, Any]) -> EvalResults:
 
 def load_results(path: Path) -> EvalResults:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        contents = path.read_text(encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        raise ResultsError(f"cannot read results from {path}: {exc}") from exc
+    try:
+        data = json.loads(contents)
+    except (ValueError, RecursionError) as exc:
         raise ResultsError(f"cannot read results from {path}: {exc}") from exc
     if not isinstance(data, Mapping):
         raise ResultsError(f"{path}: expected a JSON object")
-    return parse_results(data)
+    try:
+        return parse_results(data)
+    except ResultsError as exc:
+        raise ResultsError(f"{path}: {exc}") from exc
 
 
 def save_results(results: EvalResults, path: Path) -> None:
