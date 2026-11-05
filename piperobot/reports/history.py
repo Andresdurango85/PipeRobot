@@ -367,12 +367,16 @@ def record_from_gate(
 
 def load_history(path: Path, *, allow_missing: bool = False) -> list[HistoryRecord]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        contents = path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
         if allow_missing:
             return []
         raise HistoryError(f"{path}: {exc}") from exc
     except (OSError, ValueError) as exc:
+        raise HistoryError(f"{path}: {exc}") from exc
+    try:
+        data = json.loads(contents)
+    except (ValueError, RecursionError) as exc:
         raise HistoryError(f"{path}: {exc}") from exc
     if not isinstance(data, list):
         raise HistoryError(f"{path}: expected a JSON list")

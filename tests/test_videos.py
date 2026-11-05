@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
-from piperobot.reports.video_manifest import build_manifest
+from piperobot.reports.video_manifest import VideoInputError, build_manifest
 from piperobot.reports.video_manifest import main as manifest_main
 from piperobot.reports.video_section import NOTHING_SELECTED, VIDEO_MARKER, render_video_section
 from piperobot.reports.video_seeds import main as seeds_main
@@ -165,3 +166,63 @@ def test_section_cli(tmp_path: Path) -> None:
     ]
     assert main(args) == 0
     assert "No baseline." in output.read_text()
+
+
+@pytest.mark.parametrize(
+    ("selection", "judged", "recorded"),
+    [({}, [], []), ({"seeds": [1]}, [], []), ({"seeds": [{"seed": 1}]}, [1], [])],
+)
+def test_untrusted_manifest_shape(selection: object, judged: object, recorded: object) -> None:
+    with pytest.raises(VideoInputError):
+        build_manifest(cast(Any, selection), cast(Any, judged), cast(Any, recorded))
+
+
+@pytest.mark.parametrize(
+    ("selection", "judged"), [({}, []), ({"seeds": [1]}, []), ({"seeds": [{"seed": 1}]}, [1])]
+)
+def test_untrusted_manifest_cli(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], selection: object, judged: object
+) -> None:
+    paths = []
+    for name, data in (("selection", selection), ("judged", judged), ("recorded", [])):
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        paths.extend([f"--{name}", str(path)])
+    assert (
+        manifest_main(
+            [
+                *paths,
+                "--frames-dir",
+                str(tmp_path / "frames"),
+                "--output",
+                str(tmp_path / "manifest.json"),
+            ]
+        )
+        == 2
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("ERROR: ")
+    assert len(captured.err.splitlines()) == 1
+
+
+@pytest.mark.parametrize(
+    ("selection", "judged", "recorded"),
+    [
+        ([], [], []),
+        ({"seeds": {}}, [], []),
+        ({"seeds": [{}]}, [], []),
+        ({"seeds": []}, {}, []),
+        ({"seeds": []}, [], {}),
+        ({"seeds": []}, [{}], []),
+        ({"seeds": []}, [], [{}]),
+        ({"seeds": []}, [], [1]),
+        ({"seeds": []}, "bad", []),
+        ({"seeds": [{"seed": []}]}, [], []),
+    ],
+)
+def test_manifest_rejects_invalid_containers(
+    selection: object, judged: object, recorded: object
+) -> None:
+    with pytest.raises(VideoInputError):
+        build_manifest(cast(Any, selection), cast(Any, judged), cast(Any, recorded))

@@ -66,16 +66,23 @@ def _bundle_types(bundle: Path) -> dict[str, str]:
         contents = bundle.read_text(encoding="utf-8")
         try:
             document = json.loads(contents)
+        except RecursionError as exc:
+            raise CertificateInputError(f"invalid bundle: {bundle}: {exc}") from exc
         except ValueError:
             document = None
         lines = [contents] if isinstance(document, dict) else contents.splitlines()
         if not lines:
             raise ValueError("empty bundle")
         for line in lines:
-            entry = json.loads(line)
-            statement = json.loads(
-                base64.b64decode(entry["dsseEnvelope"]["payload"], validate=True)
-            )
+            try:
+                entry = json.loads(line)
+            except RecursionError as exc:
+                raise CertificateInputError(f"invalid bundle: {bundle}: {exc}") from exc
+            payload = base64.b64decode(entry["dsseEnvelope"]["payload"], validate=True)
+            try:
+                statement = json.loads(payload)
+            except RecursionError as exc:
+                raise CertificateInputError(f"invalid bundle: {bundle}: {exc}") from exc
             subjects = statement["subject"]
             if not isinstance(subjects, list) or not subjects:
                 raise ValueError("expected nonempty subject list")
@@ -86,8 +93,10 @@ def _bundle_types(bundle: Path) -> dict[str, str]:
                 kind = statement.get("predicateType")
                 if kind in (GATE_VERDICT_PREDICATE_TYPE, GATE_VERDICT_V2_PREDICATE_TYPE):
                     digests[digest] = kind
+    except CertificateInputError:
+        raise
     except (OSError, ValueError, TypeError, KeyError, binascii.Error) as exc:
-        raise CertificateInputError(f"invalid bundle: {exc}") from exc
+        raise CertificateInputError(f"invalid bundle: {bundle}: {exc}") from exc
     return digests
 
 

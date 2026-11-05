@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -73,3 +75,46 @@ def test_unreadable_file_is_a_results_error(tmp_path: Path) -> None:
         load_results(bad)
     with pytest.raises(ResultsError, match="cannot read"):
         load_results(tmp_path / "missing.json")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    ids=["array", "episodes"],
+)
+def test_untrusted_deep_results(tmp_path: Path, payload: bytes) -> None:
+    path = tmp_path / "results.json"
+    path.write_bytes(payload)
+    with pytest.raises(ResultsError, match=re.escape(str(path))):
+        load_results(path)
+
+
+def test_untrusted_results_encoding(tmp_path: Path) -> None:
+    path = tmp_path / "results.json"
+    path.write_bytes(b"\xff\xfe{")
+    with pytest.raises(ResultsError, match=re.escape(str(path))):
+        load_results(path)
+
+
+def test_untrusted_episode_shape(tmp_path: Path) -> None:
+    path = tmp_path / "results.json"
+    path.write_text('{"episodes": ["x"]}', encoding="utf-8")
+    with pytest.raises(ResultsError, match=re.escape(str(path))):
+        load_results(path)
+
+
+@pytest.mark.parametrize("seed", [float("nan"), float("inf"), [], {}, None, "bad"])
+@pytest.mark.parametrize("entry", ["load", "parse", "episode"])
+def test_untrusted_episode_seed(tmp_path: Path, seed: object, entry: str) -> None:
+    import json
+
+    episode = {"seed": seed, "success": True}
+    path = tmp_path / "results.json"
+    path.write_text(json.dumps(_data(episode)), encoding="utf-8")
+    actions: dict[str, Callable[[], object]] = {
+        "load": lambda: load_results(path),
+        "parse": lambda: parse_results(_data(episode)),
+        "episode": lambda: EpisodeResult.from_dict(episode),
+    }
+    with pytest.raises(ResultsError, match=re.escape(str(path)) if entry == "load" else "seed"):
+        actions[entry]()

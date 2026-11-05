@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -962,3 +963,17 @@ def test_workers_capped(worker_driver: Callable) -> None:
     code, _, _, metadata = worker_driver(5, "0,3,7", SeedRunner(lambda seed, attempt: True))
     assert code == 0
     assert metadata["workers"] == 3
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    ids=["array", "episodes"],
+)
+def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
+    from piperobot.adapters.isaaclab.specs import read_object
+
+    path = tmp_path / "input.json"
+    path.write_bytes(payload)
+    with pytest.raises(ResultsError, match=re.escape(str(path))):
+        read_object(path)

@@ -5,9 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-from collections.abc import Mapping, Sequence
+import sys
+from collections.abc import Hashable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
+
+
+class VideoInputError(ValueError):
+    """Video evidence input is missing or malformed."""
 
 
 def build_manifest(
@@ -15,6 +20,20 @@ def build_manifest(
     judged: Sequence[Mapping[str, Any]],
     recorded: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
+    if not isinstance(selection, Mapping) or not isinstance(selection.get("seeds"), list):
+        raise VideoInputError("selection must be an object with a seeds list")
+    for label, episodes in (
+        ("selection seeds", selection["seeds"]),
+        ("judged", judged),
+        ("recorded", recorded),
+    ):
+        if not isinstance(episodes, Sequence) or isinstance(episodes, (str, bytes, bytearray)):
+            raise VideoInputError(f"{label} must be a sequence of objects with seed")
+        for episode in episodes:
+            if not isinstance(episode, Mapping) or "seed" not in episode:
+                raise VideoInputError(f"{label} must contain objects with seed")
+            if not isinstance(episode["seed"], Hashable):
+                raise VideoInputError(f"{label}: seed must be hashable")
     original = {episode["seed"]: episode for episode in judged}
     reruns = {episode["seed"]: episode for episode in recorded}
     entries = []
@@ -44,11 +63,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     for name in ("selection", "judged", "recorded", "frames-dir", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
     args = parser.parse_args(argv)
-    manifest = build_manifest(
-        json.loads(args.selection.read_text(encoding="utf-8-sig")),
-        json.loads(args.judged.read_text(encoding="utf-8-sig")),
-        json.loads(args.recorded.read_text(encoding="utf-8-sig")),
-    )
+    inputs = []
+    for path in (args.selection, args.judged, args.recorded):
+        try:
+            contents = path.read_text(encoding="utf-8-sig")
+        except (OSError, ValueError) as exc:
+            print(f"ERROR: {path}: {' '.join(str(exc).splitlines())}", file=sys.stderr)
+            return 2
+        try:
+            inputs.append(json.loads(contents))
+        except (ValueError, RecursionError) as exc:
+            print(f"ERROR: {path}: {' '.join(str(exc).splitlines())}", file=sys.stderr)
+            return 2
+    try:
+        manifest = build_manifest(*inputs)
+    except VideoInputError as exc:
+        print(f"ERROR: {' '.join(str(exc).splitlines())}", file=sys.stderr)
+        return 2
     for entry in manifest["seeds"]:
         # Only integer seed directories under the supplied frames root may be removed.
         seed = entry["seed"]

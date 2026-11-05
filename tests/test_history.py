@@ -972,3 +972,15 @@ def test_nightly_evidence(tmp_path: Path, missing: str | None) -> None:
         }.items():
             assert f'<a href="{name}">{label}</a>' in page
         assert "verify candidate.json --reference reference.json --bundle bundle.jsonl" in page
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    ids=["array", "episodes"],
+)
+def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
+    path = tmp_path / "input.json"
+    path.write_bytes(payload)
+    with pytest.raises(HistoryError, match=re.escape(str(path))):
+        load_history(path)

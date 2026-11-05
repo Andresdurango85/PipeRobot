@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -498,3 +499,15 @@ def test_crlf_file_bundle_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert len(captured.err.splitlines()) == 1
     assert captured.err.startswith("NOT CERTIFIED:")
     assert "core.autocrlf" in captured.err
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    ids=["array", "episodes"],
+)
+def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
+    path = tmp_path / "input.json"
+    path.write_bytes(payload)
+    with pytest.raises(CertificateInputError, match=re.escape(str(path))):
+        module._bundle_types(path)
