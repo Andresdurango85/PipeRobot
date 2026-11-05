@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-04 (home PC)
+Last updated: 2026-11-05 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -23,6 +23,12 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-05: the numeric PushT jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`,
+  `readme` `linux`) run on `ubuntu-26.04`. The registered comparison
+  ([design and result](../robots/pusht/baselines/ubuntu-2604-comparison.md), run 41959796057)
+  found no image effect: same outcomes on the same VM for both userlands on four hosts, and
+  26.04 runs identical to `vqbet-episodes.json`, so the baseline stays. Outcomes split by host,
+  likely AVX-512 on AMD ([ci.md](knowledge/ci.md)). Scorecard publishes from 26.04.
 - 2026-11-04: SO-101 failed-episode videos. A registered check showed that a camera-on re-run
   reproduces the judged episode bit for bit (30/30 dev pairs), at about +20 s per failed seed
   and twice the Windows commit ([result](../robots/so101/envs/camera_record_check_result.json)).
@@ -34,9 +40,7 @@ Project Cangrejo, the `piperobot` package).
 - 2026-11-04: no job runs on `ubuntu-latest` any more
   ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)). `ci`, `dependency-review`,
   `mutation`, `scorecard` and `zizmor` run on `ubuntu-26.04`, ahead of the 2026-11-19 flip. The
-  numeric PushT jobs stay on `ubuntu-24.04` until a registered comparison, which is designed
-  (same-VM containers for both userlands, plus real runs grouped by CPU flags) and waits for
-  Andrés's decision. `certify.yml` and the SO-101 hosted jobs move later, each with its own run.
+  numeric PushT jobs followed on 2026-11-05 (above). `certify.yml` and the SO-101 hosted jobs move later, each with its own run.
 - 2026-11-04: `nightly.yml` calls `certify.yml` with series `nightly` on `main`, so every night
   becomes a signed point of the history's `nightly` series, BLOCK nights included
   ([ADR 0031](decisions/0031-history-schema-2-and-certify-trusted-builder.md),
@@ -167,8 +171,8 @@ Project Cangrejo, the `piperobot` package).
 2. After a week of nightlies, check the unpaired fresh-seed rate (+8.8 pp on night 1, -1.2 pp on
    night 2) and decide on a paired mode for pr-gate
    ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)). Watch the evaluate
-   time (22 and 43.5 min so far, 90-min timeout) and whether the 03:17 UTC cron fires
-   ([ci.md](knowledge/ci.md)).
+   time (22 and 43.5 min so far, 90-min timeout); the 03:17 UTC cron starts ~7 h 41 min late
+   ([ci.md](knowledge/ci.md)). The first 26.04 night is the next point of the series.
 3. Isaac: the gate runs the scripted policy on 100 fixed seeds and blocked its registered demo
    (#63, #65, [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)).
    Optional: gripper_closed 10 (about -15 pp on dev, with rescues) as a second registered demo,
@@ -187,10 +191,11 @@ Project Cangrejo, the `piperobot` package).
    re-run the camera on/off check after any Isaac or Kit upgrade. Before a GPU run, check free
    Windows commit as well as VRAM ([isaac.md](knowledge/isaac.md)). Watch for CUDA out-of-memory
    retries in 2-worker gate runs (2 of 3 used in demo #76's evaluate).
-8. Ubuntu 26.04 ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)): check that the
-   first `scorecard` run on `main` publishes on 26.04 (revert only that job if not). Andrés
-   decides whether to run the registered comparison for the numeric jobs. Later: `certify.yml`
-   in its own PR, the SO-101 hosted jobs with the next gate-relevant SO-101 change.
+8. Ubuntu 26.04 ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)): `certify.yml`
+   in its own PR (validated by the first `history.yml` run on `main`), the SO-101 hosted jobs
+   with the next gate-relevant SO-101 change. After this PR merges, name the first 26.04
+   nightly and history runs in [ci.md](knowledge/ci.md). `exp/ubuntu-2604-compare` stays on
+   the remote for good: it is the comparison's registration evidence.
 9. Next time [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) is touched,
    note that GitHub keeps one pending run per concurrency group: with three quick merges to
    `main`, the middle one's post-merge run is replaced and never evaluated on `main`.

@@ -121,6 +121,12 @@ The tutorial's code (`fracapuano/robot-learning-tutorial`, `snippets/`) predates
   (40621909121 and 41585590113) both ran on `ubuntu-24.04` image version 20261025.353.1. Their
   commits differ, but the later one matches the 7763 run of the earlier commit exactly, so a code
   effect is unlikely; the per-host hardware hypothesis stands. _(verified 2026-11-03, run logs)_
+- **AVX-512 is the likely split on AMD hosts**: in the registered 24.04 → 26.04 comparison
+  (run 41959796057), 18 evaluations of seeds 1000–1499 gave two vectors. The EPYC 7763 (no
+  `avx512*` flags) gave the committed 265/500; a 9V74 and a 9V45 (both with AVX-512, different
+  flags digests) gave 267/500, differing in exactly the 10 seeds above. The OS image changed
+  nothing on the same VM. Intel hosts do not fit the split (a Xeon 8370C gave 263/500), so it is
+  still a hypothesis ([ci.md](ci.md)). _(verified 2026-11-05)_
 - **On CUDA, `lerobot-eval` is not reproducible**: `lerobot/scripts/lerobot_eval.py:746-747`
   sets `torch.backends.cudnn.benchmark = True` and `torch.backends.cuda.matmul.allow_tf32 = True`
   unconditionally, and `set_seed` does not undo them. Two 50-episode runs on the same seeds gave
