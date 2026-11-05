@@ -472,6 +472,7 @@ NON_NUMERIC_HOSTED_JOBS = {
     "dependency-review.yml": ("dependency-review",),
     "mutation.yml": ("mutation",),
     "scorecard.yml": ("scorecard",),
+    "so101-gate.yml": ("changes", "report", "video-select", "video-report", "so101-gate-verdict"),
     "zizmor.yml": ("zizmor",),
 }
 
@@ -579,7 +580,7 @@ def test_so101_gate_trust_boundary() -> None:
     jobs = data["jobs"]
     assert jobs["evaluate"]["permissions"] == {"contents": "read"}
     assert jobs["report"]["permissions"] == {"contents": "read", "pull-requests": "write"}
-    assert jobs["report"]["runs-on"] == "ubuntu-24.04"
+    assert jobs["report"]["runs-on"] == CURRENT_IMAGE
     assert jobs["report"]["needs"] == "evaluate"
     uploads = [
         s["with"]["name"]
@@ -844,7 +845,7 @@ def test_so101_required_verdict_job() -> None:
     assert final["if"] == "always()"
     assert final["needs"] == ["changes", "evaluate", "report"]
     for job, action in ((final, "verdict"), (jobs["changes"], "changes")):
-        assert job["runs-on"] == "ubuntu-24.04"
+        assert job["runs-on"] == CURRENT_IMAGE
         assert job["permissions"] == {"contents": "read"}
         assert job["timeout-minutes"] == 5
         assert any(
@@ -872,7 +873,7 @@ def test_so101_optional_video_jobs() -> None:
     jobs = _load(ROOT / ".github/workflows/so101-gate.yml")["jobs"]
     assert not {"video-select", "video", "video-report"} & set(jobs["so101-gate-verdict"]["needs"])
     selection, video, report = jobs["video-select"], jobs["video"], jobs["video-report"]
-    assert selection["runs-on"] == "ubuntu-24.04"
+    assert selection["runs-on"] == CURRENT_IMAGE
     assert selection["needs"] == ["changes", "evaluate"]
     assert selection["timeout-minutes"] == 5
     assert selection["permissions"] == {"contents": "read"}
