@@ -338,7 +338,7 @@ def test_history_signing_boundary() -> None:
     assert set(data["jobs"]) == set(permissions)
     for name, job in data["jobs"].items():
         assert job["permissions"] == permissions[name]
-        assert job["runs-on"] == "ubuntu-24.04"
+        assert job["runs-on"] == CURRENT_IMAGE
         assert job["if"] == "github.ref == 'refs/heads/main'"
         for step in job["steps"]:
             assert "${{" not in step.get("run", "")
@@ -467,6 +467,7 @@ NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 CURRENT_IMAGE = "ubuntu-26.04"
 # Jobs follow green CI; PINNED_IMAGE moves only with a registered comparison (ADR 0039).
 NON_NUMERIC_HOSTED_JOBS = {
+    "certify.yml": ("attest", "append", "deploy"),
     "ci.yml": ("lint-and-test", "clean-install", "type-check"),
     "dependency-review.yml": ("dependency-review",),
     "mutation.yml": ("mutation",),

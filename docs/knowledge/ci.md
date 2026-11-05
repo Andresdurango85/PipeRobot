@@ -70,8 +70,14 @@
   schema-2 record from the caller's artifact (main: `results.json`; nightly: `candidate.json` and
   `reference.json`), sign it, append it with its evidence (`results/<run>.<attempt>.json`,
   `.reference.json` for nightly, `bundles/<run>.<attempt>.jsonl`) and deploy the page. Every job
-  runs only on `refs/heads/main` on `ubuntu-24.04`; top-level `permissions: {}`, the caller grants
-  the union and each job narrows it. _(2026-11-03)_
+  runs only on `refs/heads/main`, on `ubuntu-26.04` since 2026-11-05 (`ubuntu-24.04` before);
+  top-level `permissions: {}`, the caller grants the union and each job narrows it.
+  _(2026-11-03; image updated 2026-11-05)_
+- **`certify.yml` image moves cannot be tested on a branch**: every job has
+  `if: github.ref == 'refs/heads/main'`, so PR CI skips them all. The 26.04 move is validated by
+  the first run on `main` after the merge: `history.yml` on the merge push (`certify.yml` is in
+  its `paths`), checked end to end with `certificate verify` on the new record; the next PR names
+  that run. Rollback is a revert. _(2026-11-05)_
 - **Call `certify.yml` as `uses: $/.github/workflows/certify.yml`**, not `./`. zizmor 1.32's
   `self-repository` audit flags `./` reusable-workflow calls; `$/` is GitHub's newer same-repo
   syntax and, like `./`, runs the workflow file from the caller's own commit, so a branch still
@@ -487,9 +493,9 @@
   no job uses `ubuntu-latest` (`test_no_job_runs_on_a_moving_label`). `ubuntu-26.04`: `ci`
   (three jobs), `dependency-review`, `mutation`, `scorecard`, `zizmor`, and since 2026-11-05 the
   numeric jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`, `readme` `linux`;
-  `PINNED_IMAGE`), which move only after a registered comparison. `ubuntu-24.04`:
-  `certify.yml` and the hosted jobs of `so101-gate.yml`, which move with their own validating
-  run. `windows-2025`: `readme` `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101
+  `PINNED_IMAGE`), which move only after a registered comparison, and `certify.yml` (validated
+  on `main`, above). `ubuntu-24.04`: the hosted jobs of `so101-gate.yml`, which move with their
+  own gate run. `windows-2025`: `readme` `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101
   `video-report` job installs it with apt). Scorecard's publishing check accepts `ubuntu-NN.NN`
   from 22.04 up (`ossf/scorecard-infra`, `api/app/server/verify_workflow.go`); the first push run
   on `ubuntu-26.04` (42044757417) published 6.3 for `dc9ab2d`. _(2026-11-04; verified 2026-11-05)_
