@@ -917,5 +917,39 @@
     "paired": null,
     "cpu_flags_sha256": "9c39b836959294af15642451b3307a084bdf18b26aa8e3b4b2d37a09aff1a4b7",
     "runner_image": "ubuntu26 20261101.186.1"
+  },
+  {
+    "schema": 2,
+    "commit": "4b255a21e2d6637b8d5e63c1df3e8bec15702482",
+    "commit_date": "2026-11-05T15:02:36Z",
+    "evaluated_at": "2026-11-05T15:02:53Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/42050927677",
+    "run_id": 42050927677,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 27,
+    "trials": 50,
+    "confidence": 0.95,
+    "interval": [
+      0.4039887139915749,
+      0.6703034780777565
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.1327531482311236,
+      0.147470944853511
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "1000-1049",
+    "platform": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz, 4 CPUs",
+    "series": "main",
+    "paired": null,
+    "cpu_flags_sha256": "cfa72cab683fd623a3df983c6c3ccca18a39bab6f8976756582fe94f20a9d529",
+    "runner_image": "ubuntu26 20261101.186.1"
   }
 ]

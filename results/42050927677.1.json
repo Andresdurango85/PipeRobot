@@ -1,0 +1,229 @@
+{
+  "policy": "vqbet-pusht",
+  "evaluator": "lerobot-eval",
+  "episodes": [
+    {
+      "seed": 1000,
+      "success": false,
+      "failure": "not solved (max reward 0.02)"
+    },
+    {
+      "seed": 1001,
+      "success": false,
+      "failure": "not solved (max reward 0.19)"
+    },
+    {
+      "seed": 1002,
+      "success": false,
+      "failure": "not solved (max reward 0.45)"
+    },
+    {
+      "seed": 1003,
+      "success": true
+    },
+    {
+      "seed": 1004,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 1005,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 1006,
+      "success": false,
+      "failure": "not solved (max reward 0.15)"
+    },
+    {
+      "seed": 1007,
+      "success": true
+    },
+    {
+      "seed": 1008,
+      "success": false,
+      "failure": "not solved (max reward 0.44)"
+    },
+    {
+      "seed": 1009,
+      "success": false,
+      "failure": "not solved (max reward 0.28)"
+    },
+    {
+      "seed": 1010,
+      "success": true
+    },
+    {
+      "seed": 1011,
+      "success": true
+    },
+    {
+      "seed": 1012,
+      "success": false,
+      "failure": "not solved (max reward 0.26)"
+    },
+    {
+      "seed": 1013,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 1014,
+      "success": false,
+      "failure": "not solved (max reward 0.73)"
+    },
+    {
+      "seed": 1015,
+      "success": true
+    },
+    {
+      "seed": 1016,
+      "success": true
+    },
+    {
+      "seed": 1017,
+      "success": false,
+      "failure": "not solved (max reward 0.58)"
+    },
+    {
+      "seed": 1018,
+      "success": true
+    },
+    {
+      "seed": 1019,
+      "success": false,
+      "failure": "not solved (max reward 0.19)"
+    },
+    {
+      "seed": 1020,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 1021,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 1022,
+      "success": true
+    },
+    {
+      "seed": 1023,
+      "success": true
+    },
+    {
+      "seed": 1024,
+      "success": true
+    },
+    {
+      "seed": 1025,
+      "success": true
+    },
+    {
+      "seed": 1026,
+      "success": false,
+      "failure": "not solved (max reward 0.69)"
+    },
+    {
+      "seed": 1027,
+      "success": true
+    },
+    {
+      "seed": 1028,
+      "success": true
+    },
+    {
+      "seed": 1029,
+      "success": false,
+      "failure": "not solved (max reward 0.02)"
+    },
+    {
+      "seed": 1030,
+      "success": true
+    },
+    {
+      "seed": 1031,
+      "success": true
+    },
+    {
+      "seed": 1032,
+      "success": true
+    },
+    {
+      "seed": 1033,
+      "success": false,
+      "failure": "not solved (max reward 0.01)"
+    },
+    {
+      "seed": 1034,
+      "success": true
+    },
+    {
+      "seed": 1035,
+      "success": true
+    },
+    {
+      "seed": 1036,
+      "success": true
+    },
+    {
+      "seed": 1037,
+      "success": true
+    },
+    {
+      "seed": 1038,
+      "success": true
+    },
+    {
+      "seed": 1039,
+      "success": true
+    },
+    {
+      "seed": 1040,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 1041,
+      "success": false,
+      "failure": "not solved (max reward 0.53)"
+    },
+    {
+      "seed": 1042,
+      "success": true
+    },
+    {
+      "seed": 1043,
+      "success": true
+    },
+    {
+      "seed": 1044,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 1045,
+      "success": true
+    },
+    {
+      "seed": 1046,
+      "success": true
+    },
+    {
+      "seed": 1047,
+      "success": true
+    },
+    {
+      "seed": 1048,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 1049,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    }
+  ]
+}
