@@ -2,7 +2,7 @@
 
 Registered 2026-11-04, before any run, on branch `exp/ubuntu-2604-compare` (this file's first
 commit precedes the workflow that runs it). Andrés approved running it on 2026-11-04.
-Context: [ADR 0039](../../../docs/decisions/0039-explicit-hosted-runner-images.md),
+Context: ADR 0039 (PR #78),
 [ci.md](../../../docs/knowledge/ci.md), [lerobot.md](../../../docs/knowledge/lerobot.md).
 
 ## Question
