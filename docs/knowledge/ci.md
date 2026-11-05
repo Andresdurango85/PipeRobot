@@ -76,8 +76,14 @@
 - **`certify.yml` image moves cannot be tested on a branch**: every job has
   `if: github.ref == 'refs/heads/main'`, so PR CI skips them all. The 26.04 move is validated by
   the first run on `main` after the merge: `history.yml` on the merge push (`certify.yml` is in
-  its `paths`), checked end to end with `certificate verify` on the new record; the next PR names
-  that run. Rollback is a revert. _(2026-11-05)_
+  its `paths`), checked end to end with `certificate verify` on the new record. Rollback is a
+  revert. First run on 26.04: `history.yml` 42072603337 on `61d70b9` (merge of #81), all four
+  jobs green on `ubuntu-26.04`; record 29/50 PASS, EPYC 7763, `runner_image` `ubuntu26
+  20261101.186.1` (the caller's evaluate host, not certify's). `certificate verify` on the raw
+  `results/42072603337.1.json` gave VERIFIED with `--bundle` and no `gh` login and through the
+  API (signer `certify.yml@refs/heads/main`); one flipped episode gave NOT CERTIFIED. The first
+  26.04 `history.yml` record overall was run 42049206277 (`2b31943`, merge of #79), before
+  certify moved. _(verified 2026-11-05)_
 - **Call `certify.yml` as `uses: $/.github/workflows/certify.yml`**, not `./`. zizmor 1.32's
   `self-repository` audit flags `./` reusable-workflow calls; `$/` is GitHub's newer same-repo
   syntax and, like `./`, runs the workflow file from the caller's own commit, so a branch still
@@ -153,7 +159,9 @@
 - **`so101-gate.yml`** ([ADR 0035](../decisions/0035-so101-gate-on-the-self-hosted-runner.md)):
   the SO-101 gate. Runs on every branch push (and by hand, with `mode: gate | baseline`; a
   baseline run is never cancelled; on a branch a newer push cancels the older run, on `main`
-  runs queue). Job `changes` (hosted, ~10 s) decides whether the push is
+  runs queue, but GitHub keeps only one pending run per concurrency group: with three quick
+  merges to `main`, the middle one's pending run is replaced by the third and never evaluated on
+  `main`). Job `changes` (hosted, ~10 s) decides whether the push is
   gate-relevant: the whole branch against its merge-base with `main` (`before..sha` on `main`),
   matched against `PATHS` in `.github/scripts/so101_gate.py` (the SO-101 policy, scene,
   baselines and cache script, `piperobot/`, `pyproject.toml`, `uv.lock`, the workflow and that
@@ -167,7 +175,7 @@
   `$RUNNER_TOOL_CACHE\piperobot-cache`, picks 2 Isaac workers when the free VRAM allows
   (`VRAM_PER_WORKER_MB` each), else 1 with a warning (same seeds), evaluates the scripted
   policy on seeds 100000-100099 ([ADR 0036](../decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md))
-  and uploads the `so101-gate` artifact. Job `report` on `ubuntu-24.04` (the only job with
+  and uploads the `so101-gate` artifact. Job `report` on `ubuntu-26.04` (the only job with
   `pull-requests: write`): paired verdict against `$BASELINE-episodes.json`
   (`robots/so101/baselines/scripted-pick-place`),
   sticky comment `<!-- piperobot-gate:so101 -->` on the open PRs whose head is the commit,
@@ -494,8 +502,9 @@
   (three jobs), `dependency-review`, `mutation`, `scorecard`, `zizmor`, and since 2026-11-05 the
   numeric jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`, `readme` `linux`;
   `PINNED_IMAGE`), which move only after a registered comparison, and `certify.yml` (validated
-  on `main`, above). `ubuntu-24.04`: the hosted jobs of `so101-gate.yml`, which move with their
-  own gate run. `windows-2025`: `readme` `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101
+  on `main`, above), and since 2026-11-05 the five hosted jobs of `so101-gate.yml` (moved with
+  their own gate run, below). No job runs on `ubuntu-24.04` any more. `windows-2025`: `readme`
+  `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101
   `video-report` job installs it with apt). Scorecard's publishing check accepts `ubuntu-NN.NN`
   from 22.04 up (`ossf/scorecard-infra`, `api/app/server/verify_workflow.go`); the first push run
   on `ubuntu-26.04` (42044757417) published 6.3 for `dc9ab2d`. _(2026-11-04; verified 2026-11-05)_
