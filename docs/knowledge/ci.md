@@ -508,9 +508,13 @@
     `pr-gate`'s 50 seeds (1000-1049) it loses 1013 and 1044, 27/50 instead of 29/50. That is
     the 0-10 floor already known ([lerobot.md](lerobot.md)), now with a likely cause; it is not
     a regression.
-  - The flags digest over-splits hosts: the 9V74 and 9V45 digests differ (the 9V45 adds
-    `avx512_vp2intersect`, `avx_vnni`, `x2apic`) but their outcomes are identical. Group by the
-    AVX-512 flags, not by the digest alone.
+  - The flags digest over-splits hosts: the 9V74 (`60bd6102`) and 9V45 (`3a6ca04c`) digests
+    differ (the 9V45 adds `avx512_vp2intersect`, `avx_vnni`, `x2apic`) but their outcomes are
+    identical; the 7763 is `9c39b836`. Group by the AVX-512 flags, not by the digest alone.
+  - Those are `cpu_flags_digest` values (`piperobot.reports.history`), the same hash as
+    `cpu_flags_sha256` in `history.json`. `image-compare.yml` hashed the raw `/proc/cpuinfo`
+    line instead (`9e641570` / `c8543a3b` / `4aece38d` in the run's logs). Future comparisons
+    must use `cpu_flags_digest`. _(verified 2026-11-05)_
   - The run's artifacts expire on 2026-12-05; the design file keeps the per-job table.
   _(verified 2026-11-05)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`
