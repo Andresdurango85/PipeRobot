@@ -88,13 +88,19 @@ seeds listed in [lerobot.md](../../../docs/knowledge/lerobot.md).
 
 | Job | Host (flags digest) | N vs C24 | C24 vs C26 | vs `vqbet-episodes.json` |
 | --- | --- | --- | --- | --- |
-| same-vm 1 | EPYC 7763 (`9e641570`) | identical | identical | 0 discordant |
-| same-vm 2 | EPYC 9V74 (`c8543a3b`) | identical | identical | 10 (6 gained, 4 lost) |
-| same-vm 3 | EPYC 9V74 (`c8543a3b`) | identical | identical | 10 (6 gained, 4 lost) |
-| same-vm 4 | EPYC 9V45 (`4aece38d`) | identical | identical | 10 (6 gained, 4 lost) |
-| native-2404 1 | EPYC 7763 (`9e641570`) | | | 0 discordant |
-| native-2404 2, 3 | EPYC 9V74 (`c8543a3b`) | | | 10 (6 gained, 4 lost) |
-| native-2604 1, 2, 3 | EPYC 7763 (`9e641570`) | | | 0 discordant |
+| same-vm 1 | EPYC 7763 (`9c39b836`) | identical | identical | 0 discordant |
+| same-vm 2 | EPYC 9V74 (`60bd6102`) | identical | identical | 10 (6 gained, 4 lost) |
+| same-vm 3 | EPYC 9V74 (`60bd6102`) | identical | identical | 10 (6 gained, 4 lost) |
+| same-vm 4 | EPYC 9V45 (`3a6ca04c`) | identical | identical | 10 (6 gained, 4 lost) |
+| native-2404 1 | EPYC 7763 (`9c39b836`) | | | 0 discordant |
+| native-2404 2, 3 | EPYC 9V74 (`60bd6102`) | | | 10 (6 gained, 4 lost) |
+| native-2604 1, 2, 3 | EPYC 7763 (`9c39b836`) | | | 0 discordant |
+
+Host digests are `piperobot.reports.history.cpu_flags_digest` of each job's `cpu_flags.txt`,
+the same hash as `cpu_flags_sha256` in `history.json` (computed after the run). The workflow's
+info files hashed the raw `/proc/cpuinfo` line instead: `9e641570` / `c8543a3b` / `4aece38d`
+for the 7763 / 9V74 / 9V45, which is what the run's logs show. Future comparisons must use
+`cpu_flags_digest`.
 
 - Rule 0 (validity): met in all four arm-A jobs.
 - Rule 1: met. `C26` is identical to `C24` in every arm-A job, on three host types; every 26.04
