@@ -110,7 +110,9 @@ class PolicySpec:
     @classmethod
     def load(cls, path: Path) -> PolicySpec:
         data = read_object(path)
-        prepare = str(data.get("prepare", "Create the pinned file before evaluation."))
+        prepare = data.get("prepare", "Create the pinned file before evaluation.")
+        if not isinstance(prepare, str):
+            raise ResultsError(f"prepare: expected a string, got {type(prepare).__name__}")
         entries = data.get("files", [])
         if not isinstance(entries, list):
             raise ResultsError("files must be a list")

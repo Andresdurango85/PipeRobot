@@ -35,6 +35,8 @@ dev = [
     "types-pyyaml>=6.0",
     "zizmor>=1.32",
 ]
+# Coverage-guided parser fuzzing: Linux x86_64 wheels only, run by fuzz.yml.
+fuzz = ["atheris>=3.1.0; sys_platform == 'linux' and platform_machine == 'x86_64'"]
 # Mutation testing of piperobot/stats. mutmut 3 needs fork(): Linux only, run by mutation.yml.
 mutation = ["mutmut>=3.8.1"]
 # SO-101 cache preparation: the course dataset's parquet episodes, without torch (prepare_caches.py).
@@ -79,7 +81,7 @@ select = [
 
 [tool.mypy]
 # ADR 0025: check the package, tests and CI scripts strictly; robots/ is not checked yet.
-files = ["piperobot", "tests", ".github/scripts"]
+files = ["piperobot", "tests", ".github/scripts", "fuzz"]
 # These tests exercise robots/so101 code, which is not type-checked yet;
 # they join with robots/ later.
 exclude = '^tests/(test_so101_.*\.py|so101_loader\.py|test_dataset_stats\.py)$'
@@ -95,6 +97,11 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 # These test dependencies come only with the lerobot extra, absent from lint-and-test.
 module = ["PIL", "PIL.*", "numpy", "numpy.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Atheris is installed only on Linux x86_64 fuzz runners.
+module = ["atheris"]
 ignore_missing_imports = true
 
 # Linux mutation reporting: .github/workflows/mutation.yml.

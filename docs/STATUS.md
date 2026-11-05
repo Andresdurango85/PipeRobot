@@ -199,12 +199,17 @@ Project Cangrejo, the `piperobot` package).
    [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) can skip the middle of
    three quick merges ([ci.md](knowledge/ci.md), `so101-gate.yml` entry). Space gate-relevant
    merges, or dispatch a gate run on `main` after a burst.
-10. Scorecard 6.7 (Vulnerabilities 10 since `c0bcccb`, run 42089231563). Next: Fuzzing with
-    atheris on hosted runners (ADR 0040, its own PR), on top of the loader hardening
-    ([testing.md](knowledge/testing.md)). `osv-scanner.toml` expires on 2027-05-05 and changes
-    with every LeRobot upgrade.
+10. Scorecard 6.7 (Vulnerabilities 10 since `c0bcccb`, run 42089231563). After the `fuzz.yml`
+    merge ([ADR 0040](decisions/0040-fuzz-untrusted-parsers-with-atheris.md)), confirm Fuzzing
+    10 through the API and name the run in [ci.md](knowledge/ci.md); triage any crash from the
+    weekly fuzz run ([testing.md](knowledge/testing.md)). `osv-scanner.toml` expires on
+    2027-05-05 and changes with every LeRobot upgrade.
 
 ## Open questions for Andrés
+
+- Should a non-integer seed in `results.json` be rejected? `EpisodeResult.from_dict` turns `3.7`
+  into 3 and `true` into 1, and parses bytes: not a crash, but a silent truncation of the thing
+  that makes runs reproducible ([ADR 0040](decisions/0040-fuzz-untrusted-parsers-with-atheris.md)).
 
 - Does the simulated rack dataset come from the NVIDIA Sim-to-Real path we follow?
 

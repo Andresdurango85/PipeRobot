@@ -467,6 +467,7 @@ NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 CURRENT_IMAGE = "ubuntu-26.04"
 # Jobs follow green CI; PINNED_IMAGE moves only with a registered comparison (ADR 0039).
 NON_NUMERIC_HOSTED_JOBS = {
+    "fuzz.yml": ("fuzz",),
     "certify.yml": ("attest", "append", "deploy"),
     "ci.yml": ("lint-and-test", "clean-install", "type-check"),
     "dependency-review.yml": ("dependency-review",),
@@ -931,3 +932,28 @@ def test_so101_optional_video_jobs() -> None:
                 assert step["with"]["retention-days"] == retention
                 assert "github.run_id" in step["with"]["name"]
                 assert "github.run_attempt" in step["with"]["name"]
+
+
+def test_fuzz_workflow_boundaries() -> None:
+    data = _load(ROOT / ".github/workflows/fuzz.yml")
+    triggers = data.get("on", data.get(True))
+    assert isinstance(triggers, dict)
+    assert set(triggers) == {"pull_request", "schedule", "workflow_dispatch"}
+    assert set(triggers["pull_request"]["paths"]) == {
+        "piperobot/**",
+        "fuzz/**",
+        "uv.lock",
+        "pyproject.toml",
+        ".github/workflows/fuzz.yml",
+    }
+    assert triggers["schedule"] == [{"cron": "23 4 * * 2"}]
+    assert data["permissions"] == {}
+    job = data["jobs"]["fuzz"]
+    assert job["permissions"] == {"contents": "read"}
+    assert job["runs-on"] == CURRENT_IMAGE
+    assert "self-hosted" not in _labels(job)
+    assert job["strategy"]["fail-fast"] is False
+    harnesses = {p.stem.removeprefix("fuzz_") for p in (ROOT / "fuzz").glob("fuzz_*.py")}
+    assert sorted(job["strategy"]["matrix"]["target"]) == sorted(harnesses)
+    for step in job["steps"]:
+        assert "${{" not in step.get("run", "")

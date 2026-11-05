@@ -47,6 +47,7 @@ ADRs are **immutable** once accepted. To change a decision, write a new ADR and 
 | [0037](0037-so101-gate-verdict-is-a-required-check.md) | The SO-101 gate verdict is a required check, produced on every push | Accepted |
 | [0038](0038-so101-failed-episode-videos.md) | SO-101 failed-episode videos: a camera re-run after the verdict | Accepted |
 | [0039](0039-explicit-hosted-runner-images.md) | No job runs on `ubuntu-latest`; hosted images move explicitly | Accepted |
+| [0040](0040-fuzz-untrusted-parsers-with-atheris.md) | Fuzz the untrusted-input parsers with atheris on hosted runners | Accepted |
 
 ## Template
 

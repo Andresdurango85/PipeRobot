@@ -643,6 +643,25 @@ def test_invalid_paired(field: str, value: object) -> None:
         PairedRecord.from_dict(data)
 
 
+@pytest.mark.parametrize("field", ["successes", "trials", "paired-verdict"])
+def test_deep_history_error_values(field: str) -> None:
+    nested: list[object] = []
+    for _ in range(5000):
+        nested = [nested]
+    if field == "paired-verdict":
+        record = nightly().paired
+        assert record is not None
+        data = record.to_dict()
+        data["verdict"] = nested
+        with pytest.raises(HistoryError, match="paired verdict must be a string"):
+            PairedRecord.from_dict(data)
+    else:
+        data = _record().to_dict()
+        data["baseline"][field] = nested
+        with pytest.raises(HistoryError, match=f"baseline {field} must be an int"):
+            HistoryRecord.from_dict(data)
+
+
 def test_paired_and_flags() -> None:
     ref = EvalResults("p", "e", tuple(EpisodeResult(i, True) for i in range(4)))
     cand = EvalResults("p", "e", tuple(EpisodeResult(i, i < 2) for i in range(4)))

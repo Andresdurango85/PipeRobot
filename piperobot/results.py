@@ -44,9 +44,13 @@ class EpisodeResult:
             raise ResultsError("episode must be an object")
         missing = {"seed", "success"} - data.keys()
         if missing:
-            raise ResultsError(f"episode without {sorted(missing)}: {dict(data)}")
+            raise ResultsError(
+                f"episode without {sorted(missing)} (keys: {sorted(str(k) for k in data)})"
+            )
         if not isinstance(data["success"], bool):
-            raise ResultsError(f"'success' must be true or false, got {data['success']!r}")
+            raise ResultsError(
+                f"'success' must be true or false, got {type(data['success']).__name__}"
+            )
         value = data["seed"]
         if not isinstance(value, (int, float, str, bytes, bytearray)):
             raise ResultsError("'seed' must be convertible to an integer")
