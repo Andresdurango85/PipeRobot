@@ -1,0 +1,240 @@
+# Branch-only registered comparison; never merged.
+# Design: robots/pusht/baselines/ubuntu-2604-comparison.md
+name: image-compare
+
+on:
+  push:
+    branches: [exp/ubuntu-2604-compare]
+    paths: [.github/workflows/image-compare.yml]
+
+permissions: {}
+concurrency:
+  group: image-compare
+  cancel-in-progress: false
+
+jobs:
+  same-vm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions: {contents: read}
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [1, 2, 3, 4]
+    env:
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      EPISODES: "500"
+      SEED: "1000"
+      POLICY: robots/pusht/policies/vqbet.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+      - name: Prepare recording function
+        run: |
+          mkdir -p out
+          grep -m 1 '^flags[[:space:]]*:' /proc/cpuinfo > out/cpu_flags.txt
+          cat > "$RUNNER_TEMP/record.sh" <<'BASH'
+          record_info() {
+            {
+              echo "arm=$1"
+              echo "image=$ImageOS $ImageVersion"
+              echo "cpu_model=$(grep -m 1 '^model name[[:space:]]*:' /proc/cpuinfo | cut -d: -f2-)"
+              echo "cpu_flags_sha256=$(grep -m 1 '^flags[[:space:]]*:' /proc/cpuinfo | sha256sum | cut -d ' ' -f1)"
+              echo "glibc=$(ldd --version | head -n 1)"
+              echo "python=$(uv run python -VV)"
+              echo "platform=$(uv run python -m piperobot.platform_info)"
+              echo "wall_seconds=$((SECONDS - start))"
+            } > "out/$1.info.txt"
+          }
+          BASH
+      - name: Evaluate N
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-N
+        run: |
+          source "$RUNNER_TEMP/record.sh"
+          uv sync --locked --extra lerobot --group sim-pusht
+          start=$SECONDS
+          uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" \
+            --work-dir work/N --episodes "$EPISODES" --seed "$SEED" --output out/N.json
+          record_info N
+          cat out/N.info.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Evaluate C24
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/w -w /w \
+            -v "$(command -v uv)":/usr/local/bin/uv:ro \
+            -v "$RUNNER_TEMP/record.sh":/record.sh:ro \
+            -e EPISODES -e SEED -e POLICY -e HF_HUB_DISABLE_PROGRESS_BARS \
+            -e ImageOS -e ImageVersion \
+            -e UV_PROJECT_ENVIRONMENT=/opt/venv -e UV_LINK_MODE=copy \
+            -e UV_CACHE_DIR=/root/.cache/uv -e DEBIAN_FRONTEND=noninteractive \
+            -e UV_PYTHON_PREFERENCE=only-system \
+            ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852 \
+            bash -euo pipefail -c '
+              source /record.sh
+              apt-get update && apt-get install -y --no-install-recommends \
+                ca-certificates libgl1 libglib2.0-0t64 python3
+              uv sync --locked --extra lerobot --group sim-pusht
+              start=$SECONDS
+              uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" \
+                --work-dir work/C24 --episodes "$EPISODES" --seed "$SEED" --output out/C24.json
+              record_info C24
+            '
+          cat out/C24.info.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Evaluate C26
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/w -w /w \
+            -v "$(command -v uv)":/usr/local/bin/uv:ro \
+            -v "$RUNNER_TEMP/record.sh":/record.sh:ro \
+            -e EPISODES -e SEED -e POLICY -e HF_HUB_DISABLE_PROGRESS_BARS \
+            -e ImageOS -e ImageVersion \
+            -e UV_PROJECT_ENVIRONMENT=/opt/venv -e UV_LINK_MODE=copy \
+            -e UV_CACHE_DIR=/root/.cache/uv -e DEBIAN_FRONTEND=noninteractive \
+            -e UV_PYTHON_PREFERENCE=only-managed \
+            ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c \
+            bash -euo pipefail -c '
+              source /record.sh
+              apt-get update && apt-get install -y --no-install-recommends \
+                ca-certificates libgl1 libglib2.0-0t64
+              uv sync --locked --extra lerobot --group sim-pusht
+              start=$SECONDS
+              uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" \
+                --work-dir work/C26 --episodes "$EPISODES" --seed "$SEED" --output out/C26.json
+              record_info C26
+            '
+          cat out/C26.info.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore output ownership
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" out work
+      - name: Informational paired comparisons
+        if: always()
+        env:
+          UV_PROJECT_ENVIRONMENT: .venv-N
+        run: |
+          uv run --no-sync python -m piperobot.stats.paired --alpha 0.025 \
+            --reference out/N.json --candidate out/C24.json \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          uv run --no-sync python -m piperobot.stats.paired --alpha 0.025 \
+            --reference out/C24.json --candidate out/C26.json \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          uv run --no-sync python -m piperobot.stats.paired --alpha 0.025 \
+            --reference out/C26.json --candidate out/C24.json \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: same-vm-${{ matrix.replica }}
+          path: out/
+          retention-days: 30
+
+  native-2404:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions: {contents: read}
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [1, 2, 3]
+    env:
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      EPISODES: "500"
+      SEED: "1000"
+      POLICY: robots/pusht/policies/vqbet.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+      - name: Evaluate native-2404
+        run: |
+          mkdir -p out
+          grep -m 1 '^flags[[:space:]]*:' /proc/cpuinfo > out/cpu_flags.txt
+          uv sync --locked --extra lerobot --group sim-pusht
+          start=$SECONDS
+          uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" \
+            --work-dir work/native --episodes "$EPISODES" --seed "$SEED" --output out/native.json
+          {
+            echo "arm=native-2404"
+            echo "image=$ImageOS $ImageVersion"
+            echo "cpu_model=$(grep -m 1 '^model name[[:space:]]*:' /proc/cpuinfo | cut -d: -f2-)"
+            echo "cpu_flags_sha256=$(sha256sum out/cpu_flags.txt | cut -d ' ' -f1)"
+            echo "glibc=$(ldd --version | head -n 1)"
+            echo "python=$(uv run python -VV)"
+            echo "platform=$(uv run python -m piperobot.platform_info)"
+            echo "wall_seconds=$((SECONDS - start))"
+          } > out/native-2404.info.txt
+          cat out/native-2404.info.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Informational paired comparison with committed reference
+        if: always()
+        run: |
+          uv run --no-sync python -m piperobot.stats.paired --alpha 0.025 \
+            --reference robots/pusht/baselines/vqbet-episodes.json --candidate out/native.json \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-2404-${{ matrix.replica }}
+          path: out/
+          retention-days: 30
+
+  native-2604:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
+    permissions: {contents: read}
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: [1, 2, 3]
+    env:
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      EPISODES: "500"
+      SEED: "1000"
+      POLICY: robots/pusht/policies/vqbet.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+      - name: Evaluate native-2604
+        run: |
+          mkdir -p out
+          grep -m 1 '^flags[[:space:]]*:' /proc/cpuinfo > out/cpu_flags.txt
+          uv sync --locked --extra lerobot --group sim-pusht
+          start=$SECONDS
+          uv run python -m piperobot.adapters.lerobot.evaluate --policy "$POLICY" \
+            --work-dir work/native --episodes "$EPISODES" --seed "$SEED" --output out/native.json
+          {
+            echo "arm=native-2604"
+            echo "image=$ImageOS $ImageVersion"
+            echo "cpu_model=$(grep -m 1 '^model name[[:space:]]*:' /proc/cpuinfo | cut -d: -f2-)"
+            echo "cpu_flags_sha256=$(sha256sum out/cpu_flags.txt | cut -d ' ' -f1)"
+            echo "glibc=$(ldd --version | head -n 1)"
+            echo "python=$(uv run python -VV)"
+            echo "platform=$(uv run python -m piperobot.platform_info)"
+            echo "wall_seconds=$((SECONDS - start))"
+          } > out/native-2604.info.txt
+          cat out/native-2604.info.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Informational paired comparison with committed reference
+        if: always()
+        run: |
+          uv run --no-sync python -m piperobot.stats.paired --alpha 0.025 \
+            --reference robots/pusht/baselines/vqbet-episodes.json --candidate out/native.json \
+            2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-2604-${{ matrix.replica }}
+          path: out/
+          retention-days: 30
