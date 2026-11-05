@@ -159,6 +159,14 @@ wheels = [
 ]
 
 [[package]]
+name = "atheris"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0a/88/fd6ad595dafa9c7ce56dbfcaff0c7244988dac3af86c771166c6516ccf6b/atheris-3.1.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ec5e11f21a4c197fe91f7aea2b2de88e623c73a21fc07b105ac6329a1588457b", size = 36875908, upload-time = "2026-06-17T00:04:01.104Z" },
+]
+
+[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1179,6 +1187,9 @@ dev = [
     { name = "types-pyyaml" },
     { name = "zizmor" },
 ]
+fuzz = [
+    { name = "atheris", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
 mutation = [
     { name = "mutmut" },
 ]
@@ -1214,6 +1225,7 @@ dev = [
     { name = "types-pyyaml", specifier = ">=6.0" },
     { name = "zizmor", specifier = ">=1.32" },
 ]
+fuzz = [{ name = "atheris", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", specifier = ">=3.1.0" }]
 mutation = [{ name = "mutmut", specifier = ">=3.8.1" }]
 sim-pusht = [{ name = "lerobot", extras = ["dataset", "evaluation", "pusht"], specifier = ">=0.6.1,<0.7" }]
 so101 = [{ name = "lerobot", extras = ["feetech", "hardware", "viz", "training"], specifier = ">=0.6.1,<0.7" }]

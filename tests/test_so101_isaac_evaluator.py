@@ -73,6 +73,18 @@ def test_specs(specs: tuple[Path, Path]) -> None:
     assert PolicySpec.load(policy).module == policy.parent / "policy.py"
 
 
+def test_deep_policy_prepare(specs: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+    from piperobot.adapters.isaaclab import specs as spec_module
+
+    nested: list[object] = []
+    for _ in range(5000):
+        nested = [nested]
+    # Exercise validation directly, independently of the platform's JSON depth limit.
+    monkeypatch.setattr(spec_module, "read_object", lambda path: {"prepare": nested})
+    with pytest.raises(ResultsError, match="prepare: expected a string, got list"):
+        PolicySpec.load(specs[1])
+
+
 def test_policy_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("POLICY_CACHE", str(tmp_path))
     path = tmp_path / "episodes.json"

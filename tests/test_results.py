@@ -69,6 +69,27 @@ def test_invalid_results_are_rejected(data: dict[str, Any], message: str) -> Non
         parse_results(data)
 
 
+@pytest.mark.parametrize("entry", ["episode", "parse"])
+@pytest.mark.parametrize("missing_success", [True, False], ids=["missing-success", "non-bool"])
+def test_deep_episode_values_raise_results_error(entry: str, missing_success: bool) -> None:
+    nested: list[object] = []
+    for _ in range(5000):
+        nested = [nested]
+    episode = {"seed": 0, "extra": nested} if missing_success else {"seed": 0, "success": nested}
+    message = (
+        "episode without ['success'] (keys: ['extra', 'seed'])"
+        if missing_success
+        else "'success' must be true or false, got list"
+    )
+    action = (
+        (lambda: EpisodeResult.from_dict(episode))
+        if entry == "episode"
+        else (lambda: parse_results(_data(episode)))
+    )
+    with pytest.raises(ResultsError, match=re.escape(message)):
+        action()
+
+
 def test_unreadable_file_is_a_results_error(tmp_path: Path) -> None:
     bad = tmp_path / "results.json"
     bad.write_text("{not json", encoding="utf-8")

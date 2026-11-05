@@ -109,6 +109,8 @@ class PairedRecord:
         ):
             raise HistoryError("difference_interval must be an ordered finite pair in [-1, 1]")
         values["difference_interval"] = Interval(*pair)
+        if not isinstance(values["verdict"], str):
+            raise HistoryError("paired verdict must be a string")
         try:
             values["verdict"] = Verdict(values["verdict"])
         except (TypeError, ValueError) as exc:
@@ -285,6 +287,9 @@ class HistoryRecord:
             baseline = values["baseline"]
             if not isinstance(baseline, dict) or set(baseline) != {"successes", "trials"}:
                 raise ValueError("baseline must contain successes and trials")
+            for name in ("successes", "trials"):
+                if type(baseline[name]) is not int:
+                    raise HistoryError(f"baseline {name} must be an int")
             values["baseline"] = SuccessCount(**baseline)
             values["verdict"] = Verdict(values["verdict"])
         except (TypeError, ValueError) as exc:

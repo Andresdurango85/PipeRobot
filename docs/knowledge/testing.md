@@ -174,6 +174,31 @@ regression test that failed on `c0bcccb`:
   `video_manifest` gained `VideoInputError`; its CLI prints one `ERROR:` line and exits 2 (the
   `video` job is `continue-on-error`, and the verdict never needs it).
 
+## Fuzzing (atheris)
+
+- **Layout** ([ADR 0040](../decisions/0040-fuzz-untrusted-parsers-with-atheris.md)):
+  - `fuzz/targets.py` holds one plain function per parser. It accepts only that parser's
+    documented error, so anything else escapes as a crash.
+  - `fuzz/fuzz_<target>.py` wraps each target for atheris (literal `import atheris`, which
+    `tests/test_fuzz_targets.py` checks).
+  - `fuzz/fuzz_history_fields.py` drives a Hypothesis `@given` through
+    `.hypothesis.fuzz_one_input`.
+  - Seeds live in `fuzz/corpus/<target>/` (under 64 KiB in total).
+- **Run one locally (Linux x86_64 or WSL only, no Windows wheel)**: `uv sync --group fuzz`, then
+  `uv run python fuzz/fuzz_results.py <empty dir> fuzz/corpus/results -max_total_time=60`. The
+  first directory receives new inputs, so the committed corpus stays untouched. On Windows,
+  `uv run pytest tests/test_fuzz_targets.py` runs every target over its corpus and some hostile
+  inputs, without atheris.
+- **A crash**:
+  - If it is a documented exception type, fix the harness.
+  - Otherwise, turn the reproducer from the run's artifact into a regression test, show it
+    fails, then fix the parser at the parse boundary.
+- **Error messages must not `repr` untrusted values.** `f"... got {value!r}"` or
+  `{dict(data)}` on a deeply nested value raises `RecursionError` while the error is being built,
+  and on Linux `json.loads` accepts nesting deeper than `repr` can render. Writing the harnesses
+  found five such messages (results, history, the isaaclab policy spec). Messages now name the
+  field and the value's type. _(2026-11-05)_
+
 ## Rendered output (history page)
 
 - **Look at rendered HTML, not only at its source**: the golden file of

@@ -125,8 +125,9 @@
   Token-Permissions, Dangerous-Workflow, SAST, CI-Tests, Security-Policy,
   Dependency-Update-Tool, Binary-Artifacts, License. Low, and why: Code-Review 0 (no approving
   reviews, [ADR 0018](../decisions/0018-no-required-review-for-the-owner.md)), Maintained 0 (repo
-  younger than 90 days), CII-Best-Practices 0 (no OpenSSF badge), Fuzzing 0 (Hypothesis is not
-  detected as fuzzing), Contributors 0 (one person), Branch-Protection 3, Vulnerabilities 5 (the
+  younger than 90 days), CII-Best-Practices 0 (no OpenSSF badge), Fuzzing 0 (for Python,
+  Scorecard counts only `import atheris` or a ClusterFuzzLite Dockerfile, not Hypothesis: see the
+  fuzzing entry below), Contributors 0 (one person), Branch-Protection 3, Vulnerabilities 5 (the
   advisories accepted in [ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)).
   Packaging and Signed-Releases do not apply (no releases). Results:
   `curl https://api.scorecard.dev/projects/github.com/Andresdurango85/PipeRobot`.
@@ -150,7 +151,27 @@
   keeps its ids equal to the ADR's and its keys valid. Update the file with every LeRobot
   upgrade (ADR 0012, Decision 3) and when the date passes: re-query OSV, re-check reachability,
   then move the date or drop the entry. OSV-Scanner itself was not run locally; Scorecard
-  rescores only on push to `main`. _(verified 2026-11-05 from source)_
+  rescores only on push to `main`. Confirmed after the merge: `scorecard.yml` run 42089231563 on
+  `c0bcccb` published Vulnerabilities 10 ("0 existing vulnerabilities detected"), overall 6.7.
+  _(verified 2026-11-05 from source and the API)_
+- **Scorecard's Fuzzing check is binary, with two triggers** (v5.6.0, `checks/raw/fuzzing.go`):
+  - a `.clusterfuzzlite/Dockerfile` with a non-comment line;
+  - the literal regex `import atheris` in a `*.py` file of a prominent language (lines of code
+    at least a quarter of the per-language average; ours is Python, 705k lines, against HTML's
+    23k).
+
+  `from atheris import ...` and Hypothesis do not count.
+  [ADR 0040](../decisions/0040-fuzz-untrusted-parsers-with-atheris.md) picks atheris on hosted
+  runners: OSS-Fuzz's `base-builder` (which ClusterFuzzLite uses) compiles Python 3.11.13, and
+  we require 3.12. The workflow is `fuzz.yml`:
+  - It runs on `pull_request` (parser paths), weekly on Tuesdays at 04:23 UTC, and by hand.
+  - It uses `ubuntu-26.04` with one matrix job per `fuzz/fuzz_*.py`: 60 s each on a PR, 600 s on
+    the schedule.
+  - It needs `uv sync --locked --group fuzz`. atheris 3.1.0 has only manylinux x86_64 wheels, so
+    the group carries a Linux x86_64 marker.
+  - A crash uploads `fuzz-crashes-<target>-<attempt>`.
+
+  Scorecard reads the score from the files, not from runs. _(verified 2026-11-05 from source)_
 - ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
   CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
 - **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**
