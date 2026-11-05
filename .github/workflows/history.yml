@@ -11,7 +11,7 @@ permissions: {}
 
 jobs:
   evaluate:
-    runs-on: ubuntu-24.04 # pinned: its results are compared across runs (ci.md)
+    runs-on: ubuntu-26.04 # pinned: its results are compared across runs (ci.md)
     timeout-minutes: 30
     permissions:
       contents: read

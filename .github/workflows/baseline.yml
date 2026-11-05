@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   baseline:
-    runs-on: ubuntu-24.04 # pinned: must match pr-gate's image (ci.md)
+    runs-on: ubuntu-26.04 # pinned: must match pr-gate's image (ci.md)
     timeout-minutes: 120
     env:
       POLICY: robots/pusht/policies/vqbet.json

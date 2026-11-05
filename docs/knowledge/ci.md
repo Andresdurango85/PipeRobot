@@ -11,7 +11,7 @@
   summary) → sticky comment → gate verdict (fails on BLOCK) → artifact `pr-gate-<PR>` with
   results, report and the videos of the first 10 episodes
   ([ADR 0014](../decisions/0014-mock-evaluator-and-pr-gate-workflow.md),
-  [ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). Runs on `ubuntu-24.04`
+  [ADR 0017](../decisions/0017-pr-gate-pusht-on-github-runners.md)). Runs on `ubuntu-26.04`
   (pinned, [ADR 0039](../decisions/0039-explicit-hosted-runner-images.md)) with CPU-only torch until the evaluator needs the GPU runner. Fork PRs get no comment (read-only
   token); the report is still in the job summary.
 - **`baseline.yml`**: manual (`workflow_dispatch`) run of N episodes on the same runner type, to
@@ -24,6 +24,10 @@
   2026-11-02 ([ADR 0027](../decisions/0027-self-hosted-runner-push-only-and-pinned-actions.md)).
   First run 3 min 3 s (CUDA torch downloaded), warm re-run 2 min 5 s: install 16 s, evaluation
   83 s. _(verified 2026-11-01, run 41345428882, attempts 1 and 2)_
+- **A push that only touches a doc under `robots/pusht/` still runs `gpu-smoke`** on the home
+  PC: the path filter has no file-type exclusion. Pushing the comparison design file to a branch
+  ran it once (run 41959014289, 3 min). Expect it, or keep such pushes local until the PR.
+  _(verified 2026-11-04)_
 - **`isaac-render.yml`**: on push to `ci/isaac-render` or by hand (never on pull requests), on
   the self-hosted GPU runner: installs Isaac Lab at the pinned commit into the runner's tool cache,
   then runs `robots/so101/tools/isaac_render_check.py` as an empty stage and as one RTX camera
@@ -180,7 +184,7 @@
   registered demo PR #65 with gripper_closed 12 BLOCK (run 41728156209: 20/100, b = 59, c = 1,
   p = 5.3e-17), two workers, 36 min of evaluation although 80 seeds ran the full horizon.
   _(verified 2026-11-03)_
-- **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-24.04` and
+- **`readme.yml`**: runs the README's 30-minute path as written, on `ubuntu-26.04` and
   `windows-2025`, from a fresh checkout with an empty `UV_CACHE_DIR` and `HF_HOME` (the first
   policy download counts), timing each command; the Linux job fails above 30 minutes. A fenced
   block preceded by `<!-- readme-test -->` is executed, one command per line, from the
@@ -208,11 +212,11 @@
   `pwsh`/`powershell` or `git` skips those tests locally but fails them when `CI=true`
   (`tests/binaries.py`), so a runner image change cannot drop them silently.
 - **`nightly.yml`** ([ADR 0032](../decisions/0032-nightly-paired-run-on-rotating-seeds.md)):
-  daily at 03:17 UTC and by hand, on `ubuntu-24.04`. One job evaluates the reference
-  (`vqbet.json`'s `commit`, its own lock) and then `main` on the same 500 fresh seeds
-  (`python -m piperobot.seeds`: first seed `100000 + episodes × days since 2026-01-01`) and
-  uploads `nightly-evaluation` (both results, both commits, platform, UTC time, raw CPU flags
-  line, runner image). A second job, without torch, runs `piperobot.stats.paired` and the unpaired gate for the
+  daily at 03:17 UTC and by hand, on `ubuntu-26.04` (`ubuntu-24.04` until 2026-11-05). One job
+  evaluates the reference (`vqbet.json`'s `commit`, its own lock) and then `main` on the same
+  500 fresh seeds (`python -m piperobot.seeds`: first seed
+  `100000 + episodes × days since 2026-01-01`) and uploads `nightly-evaluation` (both results,
+  both commits, platform, UTC time, raw CPU flags line, runner image). A second job, without torch, runs `piperobot.stats.paired` and the unpaired gate for the
   summary and fails on a paired BLOCK. `workflow_dispatch` only works once a workflow is on the
   default branch, so the pre-merge measurement used a temporary `push` trigger on the PR branch.
   A third job, `certify`, calls `certify.yml` with series `nightly` on `main` only. It needs
@@ -231,6 +235,10 @@
   no change for now. Paired: 259 both, 0 discordant, PASS. Unpaired: 259/500 = 51.8% against the
   committed 53.0%, interval [-0.074, 0.050]: night 1's +8.8 pp did not repeat.
   _(verified 2026-11-04)_
+- **The 03:17 UTC cron starts about 7 h 41 min late**: the scheduled runs of 2026-11-04
+  (41817751006) and 2026-11-05 (42015111937) were both created at 10:58 UTC. GitHub delays
+  scheduled workflows under load; a night's result arrives late morning UTC, not overnight.
+  _(verified 2026-11-05)_
 - **Triage of a nightly BLOCK**: an alert, never a merge block. Do not rerun the same seeds: CPU
   PushT is deterministic within a runner, so a rerun only reproduces it. Look at the discordant
   seeds in the two results files, then wait for the next nights' fresh seeds or dispatch more
@@ -474,16 +482,37 @@
   - The OS change and the CPU change come together here, so the 26.04 effect cannot be
     isolated. It is within the 6-10 near-miss episodes that any two platforms differ by. The
     pinned jobs stay on `ubuntu-24.04`; moving them is a separate decision (procedure above).
-    _(verified 2026-11-03)_
+    _(verified 2026-11-03; decided by the registered comparison below)_
 - **Which hosted image each job uses** ([ADR 0039](../decisions/0039-explicit-hosted-runner-images.md)):
   no job uses `ubuntu-latest` (`test_no_job_runs_on_a_moving_label`). `ubuntu-26.04`: `ci`
-  (three jobs), `dependency-review`, `mutation`, `scorecard`, `zizmor`. `ubuntu-24.04`: the
-  numeric jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`, `readme` `linux`), which
-  move only after a registered comparison, plus `certify.yml` and the hosted jobs of
-  `so101-gate.yml`, which move with their own validating run. `windows-2025`: `readme`
-  `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101 `video-report` job installs it
-  with apt). Scorecard's publishing check accepts `ubuntu-NN.NN` from 22.04 up
-  (`ossf/scorecard-infra`, `api/app/server/verify_workflow.go`). _(2026-11-04)_
+  (three jobs), `dependency-review`, `mutation`, `scorecard`, `zizmor`, and since 2026-11-05 the
+  numeric jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`, `readme` `linux`;
+  `PINNED_IMAGE`), which move only after a registered comparison. `ubuntu-24.04`:
+  `certify.yml` and the hosted jobs of `so101-gate.yml`, which move with their own validating
+  run. `windows-2025`: `readme` `windows`. Neither Ubuntu image ships `ffmpeg` (the SO-101
+  `video-report` job installs it with apt). Scorecard's publishing check accepts `ubuntu-NN.NN`
+  from 22.04 up (`ossf/scorecard-infra`, `api/app/server/verify_workflow.go`); the first push run
+  on `ubuntu-26.04` (42044757417) published 6.3 for `dc9ab2d`. _(2026-11-04; verified 2026-11-05)_
+- **Registered 24.04 → 26.04 comparison for the numeric jobs: no effect, baseline kept**
+  ([design and result](../../robots/pusht/baselines/ubuntu-2604-comparison.md), run
+  41959796057, 2026-11-05). On the same VM, a 24.04 and a 26.04 container gave the same 500
+  PushT outcomes as the runner itself on four VMs (EPYC 7763, 9V74 twice, 9V45), and three
+  native 26.04 runs matched `vqbet-episodes.json` exactly, so the pins moved and `vqbet.json`
+  stayed. What the run also showed:
+  - The 18 evaluations produced two outcome vectors, split by host, never by image: the EPYC
+    7763 (no `avx512*` flags) gives the committed 265/500, the 9V74 and 9V45 (AVX-512) give
+    267/500, 10 discordant. Hypothesis from one run (N = 18 evaluations, 2 vectors), AMD hosts
+    only: the probe's Intel Xeon 8370C, also AVX-512, gave a third vector (263/500).
+  - Consequence for the unpaired comparisons with the committed vector: on an AVX-512 AMD host
+    an unchanged policy sits 10 of 500 episodes away (seeds 1000-1499) and still PASSes; on
+    `pr-gate`'s 50 seeds (1000-1049) it loses 1013 and 1044, 27/50 instead of 29/50. That is
+    the 0-10 floor already known ([lerobot.md](lerobot.md)), now with a likely cause; it is not
+    a regression.
+  - The flags digest over-splits hosts: the 9V74 and 9V45 digests differ (the 9V45 adds
+    `avx512_vp2intersect`, `avx_vnni`, `x2apic`) but their outcomes are identical. Group by the
+    AVX-512 flags, not by the digest alone.
+  - The run's artifacts expire on 2026-12-05; the design file keeps the per-job table.
+  _(verified 2026-11-05)_
 - **The golden-file test needs LF endings everywhere**, enforced by `.gitattributes`
   ([ADR 0007](../decisions/0007-lf-line-endings.md)). _(verified 2026-10-26)_
 - **Editing the sticky PR comment needs `pull-requests: write`** in the workflow permissions

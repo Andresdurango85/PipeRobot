@@ -407,7 +407,7 @@ def test_nightly_hosted_read_only_jobs() -> None:
     for job in data["jobs"].values():
         if "steps" not in job:
             continue
-        assert job["runs-on"] == "ubuntu-24.04"
+        assert job["runs-on"] == PINNED_IMAGE
         assert job["permissions"] == {"contents": "read"}
         for step in job["steps"]:
             assert "${{" not in step.get("run", "")
@@ -460,12 +460,12 @@ def test_nightly_artifact_contract() -> None:
 
 # Workflows whose torch results are compared across runs (with the committed baseline). They pin
 # the hosted image: a new OS brings new system libraries (libm) that can flip near-miss episodes.
-PINNED_IMAGE = "ubuntu-24.04"
+PINNED_IMAGE = "ubuntu-26.04"
 NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 
 
 CURRENT_IMAGE = "ubuntu-26.04"
-# Jobs follow green CI; numerics keep PINNED_IMAGE until the registered comparison (ADR 0039).
+# Jobs follow green CI; PINNED_IMAGE moves only with a registered comparison (ADR 0039).
 NON_NUMERIC_HOSTED_JOBS = {
     "ci.yml": ("lint-and-test", "clean-install", "type-check"),
     "dependency-review.yml": ("dependency-review",),

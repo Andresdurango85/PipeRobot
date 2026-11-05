@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   evaluate:
-    runs-on: ubuntu-24.04 # pinned like pr-gate; moving images is deliberate (ci.md)
+    runs-on: ubuntu-26.04 # pinned like pr-gate; moving images is deliberate (ci.md)
     timeout-minutes: 90
     permissions:
       contents: read
@@ -116,7 +116,7 @@ jobs:
 
   verdict:
     needs: evaluate
-    runs-on: ubuntu-24.04 # pinned like pr-gate; moving images is deliberate (ci.md)
+    runs-on: ubuntu-26.04 # pinned like pr-gate; moving images is deliberate (ci.md)
     timeout-minutes: 10
     permissions:
       contents: read
