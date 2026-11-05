@@ -3,7 +3,8 @@
 Registered before any run, on branch `exp/ubuntu-2604-compare`: this file's first commit
 `88950bf` (2026-11-05 02:59 UTC) precedes the workflow `76840b3` (03:07 UTC) and the run's first
 job (03:09 UTC). Only the Result section was written after the run. Andrés approved running it
-on 2026-11-04 (local time).
+on 2026-11-04 (local time). The branch is kept on the remote as the evidence of this
+registration: never delete or merge it.
 Context: [ADR 0039](../../../docs/decisions/0039-explicit-hosted-runner-images.md),
 [ci.md](../../../docs/knowledge/ci.md), [lerobot.md](../../../docs/knowledge/lerobot.md).
 

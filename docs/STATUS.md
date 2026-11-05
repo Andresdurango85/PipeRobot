@@ -193,9 +193,9 @@ Project Cangrejo, the `piperobot` package).
    retries in 2-worker gate runs (2 of 3 used in demo #76's evaluate).
 8. Ubuntu 26.04 ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)): `certify.yml`
    in its own PR (validated by the first `history.yml` run on `main`), the SO-101 hosted jobs
-   with the next gate-relevant SO-101 change. After this PR merges, delete the
-   `exp/ubuntu-2604-compare` branch and name the first 26.04 nightly and history runs in
-   [ci.md](knowledge/ci.md).
+   with the next gate-relevant SO-101 change. After this PR merges, name the first 26.04
+   nightly and history runs in [ci.md](knowledge/ci.md). `exp/ubuntu-2604-compare` stays on
+   the remote for good: it is the comparison's registration evidence.
 9. Next time [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) is touched,
    note that GitHub keeps one pending run per concurrency group: with three quick merges to
    `main`, the middle one's post-merge run is replaced and never evaluated on `main`.
