@@ -131,6 +131,26 @@
   Packaging and Signed-Releases do not apply (no releases). Results:
   `curl https://api.scorecard.dev/projects/github.com/Andresdurango85/PipeRobot`.
   _(verified 2026-11-03)_
+- **Scorecard's Vulnerabilities check honours `osv-scanner.toml`.** Scorecard v5.6.0
+  (`clients/osv.go`, pinned through scorecard-action v2.5.0) runs OSV-Scanner v2.5.1's
+  `osvscanner.DoScan` recursively over the downloaded repo, with no config override, so
+  OSV-Scanner's own rules apply (`internal/config/manager.go`, `pkg/osvscanner/filter.go`):
+  - It uses the `osv-scanner.toml` in the scanned lockfile's own directory (repo root, next to
+    `uv.lock`); child directories do not inherit it.
+  - An `[[IgnoredVulns]]` id hides its whole alias group, so a GHSA id also hides its PYSEC and
+    CVE aliases.
+  - `ignoreUntil` and `reason` are optional; without `ignoreUntil` the ignore never expires.
+  - A file with an unknown key is rejected and silently replaced with the empty default.
+  - Dependabot dismissals do not count.
+
+  An OSV `querybatch` over `uv.lock`'s 124 registry packages on 2026-11-05 found exactly ADR
+  0012's five advisories (each GHSA with its PYSEC alias; torch both as `2.11.0` and
+  `2.11.0+cpu`), Scorecard's "5 existing vulnerabilities". `osv-scanner.toml` ignores them with
+  a reason linking ADR 0012 and `ignoreUntil = 2027-05-05`; `tests/test_osv_scanner_config.py`
+  keeps its ids equal to the ADR's and its keys valid. Update the file with every LeRobot
+  upgrade (ADR 0012, Decision 3) and when the date passes: re-query OSV, re-check reachability,
+  then move the date or drop the entry. OSV-Scanner itself was not run locally; Scorecard
+  rescores only on push to `main`. _(verified 2026-11-05 from source)_
 - ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
   CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
 - **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**

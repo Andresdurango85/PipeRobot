@@ -199,6 +199,10 @@ Project Cangrejo, the `piperobot` package).
    [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) can skip the middle of
    three quick merges ([ci.md](knowledge/ci.md), `so101-gate.yml` entry). Space gate-relevant
    merges, or dispatch a gate run on `main` after a burst.
+10. Scorecard 6.3: after the `osv-scanner.toml` merge, confirm Vulnerabilities 10 through the
+    API and name the run in [ci.md](knowledge/ci.md); then Fuzzing (ClusterFuzzLite, plan and a
+    new ADR first). `osv-scanner.toml` expires on 2027-05-05 and changes with every LeRobot
+    upgrade.
 
 ## Open questions for Andrés
 

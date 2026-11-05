@@ -1,0 +1,28 @@
+# OSV-Scanner reads this file next to uv.lock; the list mirrors ADR 0012.
+# Each entry expires to bring it back for review.
+# Revisit every entry with every LeRobot upgrade.
+
+[[IgnoredVulns]]
+id = "GHSA-27vj-qcqg-25rc"
+ignoreUntil = 2027-05-05
+reason = "fsspec: ReferenceFileSystem is unused. Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
+
+[[IgnoredVulns]]
+id = "GHSA-379c-qx7v-6h59"
+ignoreUntil = 2027-05-05
+reason = "datasets: LeRobot loads parquet, never folder builders. Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
+
+[[IgnoredVulns]]
+id = "GHSA-h35f-9h28-mq5c"
+ignoreUntil = 2027-05-05
+reason = "setuptools: we build no packages (package = false). Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
+
+[[IgnoredVulns]]
+id = "GHSA-xmj3-9gf7-h52w"
+ignoreUntil = 2027-05-05
+reason = "setuptools: we build no packages (package = false). Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
+
+[[IgnoredVulns]]
+id = "GHSA-rrmf-rvhw-rf47"
+ignoreUntil = 2027-05-05
+reason = "torch: LeRobot does not call torch.jit.script. Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
