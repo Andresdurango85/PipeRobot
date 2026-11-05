@@ -35,6 +35,8 @@ from piperobot.results import EpisodeResult, EvalResults, load_results, save_res
 from piperobot.stats.gate import SuccessCount, decide
 from piperobot.stats.paired import PairedCounts, decide_paired
 
+DEEP = 100_000
+
 
 def _record(
     index: int = 1, successes: int = 45, trials: int = 50, baseline_successes: int = 45
@@ -976,11 +978,12 @@ def test_nightly_evidence(tmp_path: Path, missing: str | None) -> None:
 
 @pytest.mark.parametrize(
     "payload",
-    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    [b"[" * DEEP + b"]" * DEEP, b'{"episodes":' + b"[" * DEEP + b"]" * DEEP + b"}"],
     ids=["array", "episodes"],
 )
 def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
     path = tmp_path / "input.json"
     path.write_bytes(payload)
-    with pytest.raises(HistoryError, match=re.escape(str(path))):
+    with pytest.raises(HistoryError, match=re.escape(str(path))) as excinfo:
         load_history(path)
+    assert isinstance(excinfo.value.__cause__, RecursionError)

@@ -158,9 +158,11 @@ bundle reader, `specs.read_object`, the SO-101 video manifest) each promise one 
 A hand probe, done before adding fuzzing, found inputs that escaped it. Each one now has a
 regression test that failed on `c0bcccb`:
 
-- **`json.loads` raises `RecursionError`, not `ValueError`, on deep nesting** (`"[" * 5000`;
-  CPython's limit is about 1000 levels). Catch it right around `json.loads`; never raise the
-  recursion limit.
+- **`json.loads` raises `RecursionError`, not `ValueError`, on deep nesting.** Catch it right
+  around `json.loads`; never raise the recursion limit. CPython 3.12's C recursion limit depends
+  on the platform: 5000 nested brackets raise on Windows but not on Linux CI (the first CI run of
+  #84 failed on that). Tests use 100 000 levels and assert that the domain error's `__cause__` is
+  the `RecursionError`, so they test that path on every OS.
 - **`read_text` raises `UnicodeDecodeError` before `json.loads` runs**, so catching only
   `json.JSONDecodeError` misses non-UTF-8 bytes. Catch `ValueError` (it covers both) at the read
   and parse boundary.

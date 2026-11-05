@@ -18,6 +18,7 @@ from piperobot.adapters.isaaclab import evaluate
 from piperobot.adapters.isaaclab.specs import PolicySpec, TaskSpec, load_module
 from piperobot.results import ResultsError, load_results
 
+DEEP = 100_000
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = load_module("test_demo_policy", ROOT / "robots/so101/policies/demo_replay.py")
 TASK = load_module("test_tube_task", ROOT / "robots/so101/envs/vials_to_rack_task.py")
@@ -967,7 +968,7 @@ def test_workers_capped(worker_driver: Callable) -> None:
 
 @pytest.mark.parametrize(
     "payload",
-    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    [b"[" * DEEP + b"]" * DEEP, b'{"episodes":' + b"[" * DEEP + b"]" * DEEP + b"}"],
     ids=["array", "episodes"],
 )
 def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
@@ -975,5 +976,6 @@ def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
 
     path = tmp_path / "input.json"
     path.write_bytes(payload)
-    with pytest.raises(ResultsError, match=re.escape(str(path))):
+    with pytest.raises(ResultsError, match=re.escape(str(path))) as excinfo:
         read_object(path)
+    assert isinstance(excinfo.value.__cause__, RecursionError)

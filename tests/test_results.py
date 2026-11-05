@@ -16,6 +16,8 @@ from piperobot.results import (
     save_results,
 )
 
+DEEP = 100_000
+
 
 def _data(*episodes: dict[str, Any]) -> dict[str, Any]:
     return {"policy": "p", "evaluator": "mock", "episodes": list(episodes)}
@@ -79,14 +81,15 @@ def test_unreadable_file_is_a_results_error(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "payload",
-    [b"[" * 5000 + b"]" * 5000, b'{"episodes":' + b"[" * 5000 + b"]" * 5000 + b"}"],
+    [b"[" * DEEP + b"]" * DEEP, b'{"episodes":' + b"[" * DEEP + b"]" * DEEP + b"}"],
     ids=["array", "episodes"],
 )
 def test_untrusted_deep_results(tmp_path: Path, payload: bytes) -> None:
     path = tmp_path / "results.json"
     path.write_bytes(payload)
-    with pytest.raises(ResultsError, match=re.escape(str(path))):
+    with pytest.raises(ResultsError, match=re.escape(str(path))) as excinfo:
         load_results(path)
+    assert isinstance(excinfo.value.__cause__, RecursionError)
 
 
 def test_untrusted_results_encoding(tmp_path: Path) -> None:
