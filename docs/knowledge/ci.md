@@ -171,7 +171,11 @@
     the group carries a Linux x86_64 marker.
   - A crash uploads `fuzz-crashes-<target>-<attempt>`.
 
-  Scorecard reads the score from the files, not from runs. _(verified 2026-11-05 from source)_
+  Scorecard reads the score from the files, not from runs. Confirmed after the merge of #85:
+  `scorecard.yml` run 42114724255 on `a3e4150` published Fuzzing 10, overall 7.3 (the API's
+  `date` 2026-11-05T21:40:25Z). The merge push changed `uv.lock`, so it also ran `history.yml`
+  (42114724291) and `so101-gate.yml` (42114724349, evaluate ~40 min); both green.
+  _(verified 2026-11-05 from source; score and runs verified 2026-11-06)_
 - ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
   CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
 - **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**
@@ -294,6 +298,13 @@
   (41817751006) and 2026-11-05 (42015111937) were both created at 10:58 UTC. GitHub delays
   scheduled workflows under load; a night's result arrives late morning UTC, not overnight.
   _(verified 2026-11-05)_
+- **First night on `ubuntu-26.04`**: scheduled run 42206404058 on `a3e4150`, created 10:55:59 UTC
+  on 2026-11-06; all five jobs (`evaluate`, `verdict`, `certify` `attest`/`append`/`deploy`) green
+  on `ubuntu-26.04`. Seeds 254500–254999, AMD EPYC 7763; evaluate job 43 min (reference 1286 s,
+  candidate 1271 s), like night 2 on the same CPU. Paired against reference `34eabdd`: 285 both, 0
+  discordant, p=1, PASS. Unpaired: 285/500 = 57.0% against the committed 53.0%, interval
+  [-0.022, 0.101]. Its schema-2 record in the `nightly` series carries `runner_image` `ubuntu26
+  20261101.186.1`. _(verified 2026-11-06)_
 - **Triage of a nightly BLOCK**: an alert, never a merge block. Do not rerun the same seeds: CPU
   PushT is deterministic within a runner, so a rerun only reproduces it. Look at the discordant
   seeds in the two results files, then wait for the next nights' fresh seeds or dispatch more
@@ -448,7 +459,10 @@
   `apt-get install ffmpeg` (6.1.1-3ubuntu5, about 20 s), as the step summary shows. Not verified:
   what `needs.video.result` reads when a job with job-level `continue-on-error` fails; the video
   comment's renderer handles `success` and `failure` alike. _(verified 2026-11-04, run
-  41896631821)_
+  41896631821)_ Not yet exercised on `ubuntu-26.04` (the `so101-gate.yml` move, #82): the ffmpeg
+  steps run only when `seed_list` is not empty, and no gate run since has lost an episode (#85's
+  run 42103743678 lost none; push runs skip the video jobs). The first run with a lost episode
+  verifies the apt install on 26.04. _(2026-11-06)_
 
 ## Gotchas
 

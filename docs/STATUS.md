@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-05 (home PC)
+Last updated: 2026-11-06 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -171,9 +171,10 @@ Project Cangrejo, the `piperobot` package).
 1. Start the crab's v0 in Onshape, in its private repo.
 2. After a week of nightlies, check the unpaired fresh-seed rate (+8.8 pp on night 1, -1.2 pp on
    night 2) and decide on a paired mode for pr-gate
-   ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)). Watch the evaluate
-   time (22 and 43.5 min so far, 90-min timeout); the 03:17 UTC cron starts ~7 h 41 min late
-   ([ci.md](knowledge/ci.md)). The first 26.04 night is the next point of the series.
+   ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)); the first 26.04 night
+   (run 42206404058) gave +4.0 pp, interval [-0.022, 0.101]. Watch the evaluate time (22, 43.5
+   and 43 min so far, 90-min timeout); the 03:17 UTC cron starts ~7 h 41 min late
+   ([ci.md](knowledge/ci.md)).
 3. Isaac: the gate runs the scripted policy on 100 fixed seeds and blocked its registered demo
    (#63, #65, [ADR 0036](decisions/0036-so101-gate-scripted-policy-on-100-fixed-seeds.md)).
    Optional: gripper_closed 10 (about -15 pp on dev, with rescues) as a second registered demo,
@@ -192,17 +193,19 @@ Project Cangrejo, the `piperobot` package).
    re-run the camera on/off check after any Isaac or Kit upgrade. Before a GPU run, check free
    Windows commit as well as VRAM ([isaac.md](knowledge/isaac.md)). Watch for CUDA out-of-memory
    retries in 2-worker gate runs (2 of 3 used in demo #76's evaluate).
-8. Ubuntu 26.04 ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)): name the first
-   26.04 nightly run in [ci.md](knowledge/ci.md). `exp/ubuntu-2604-compare` stays on the remote
-   for good: it is the comparison's registration evidence.
+8. Ubuntu 26.04 ([ADR 0039](decisions/0039-explicit-hosted-runner-images.md)): every job has
+   moved and the first 26.04 night is green ([ci.md](knowledge/ci.md)). Left: the SO-101
+   `video-report` ffmpeg install on 26.04, first exercised by a gate run that loses an episode.
+   `exp/ubuntu-2604-compare` stays on the remote for good: it is the comparison's registration
+   evidence.
 9. GitHub keeps one pending run per concurrency group, so the SO-101 gate's "main queues" in
    [ADR 0037](decisions/0037-so101-gate-verdict-is-a-required-check.md) can skip the middle of
    three quick merges ([ci.md](knowledge/ci.md), `so101-gate.yml` entry). Space gate-relevant
    merges, or dispatch a gate run on `main` after a burst.
-10. Scorecard 6.7 (Vulnerabilities 10 since `c0bcccb`, run 42089231563). After the `fuzz.yml`
-    merge ([ADR 0040](decisions/0040-fuzz-untrusted-parsers-with-atheris.md)), confirm Fuzzing
-    10 through the API and name the run in [ci.md](knowledge/ci.md); triage any crash from the
-    weekly fuzz run ([testing.md](knowledge/testing.md)). `osv-scanner.toml` expires on
+10. Scorecard 7.3 (Vulnerabilities 10 since `c0bcccb`, Fuzzing 10 since `a3e4150`, run
+    42114724255; [ci.md](knowledge/ci.md)). Triage any crash from the weekly fuzz run under
+    [ADR 0040](decisions/0040-fuzz-untrusted-parsers-with-atheris.md)'s policy
+    ([testing.md](knowledge/testing.md)). `osv-scanner.toml` expires on
     2027-05-05 and changes with every LeRobot upgrade.
 
 ## Open questions for Andrés
