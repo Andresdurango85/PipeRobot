@@ -1053,5 +1053,52 @@
     "paired": null,
     "cpu_flags_sha256": "9c39b836959294af15642451b3307a084bdf18b26aa8e3b4b2d37a09aff1a4b7",
     "runner_image": "ubuntu26 20261101.186.1"
+  },
+  {
+    "schema": 2,
+    "commit": "a3e4150e916deec0f713392e5c3e6cebefbd0215",
+    "commit_date": "2026-11-05T21:40:09Z",
+    "evaluated_at": "2026-11-06T10:56:13Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/42206404058",
+    "run_id": 42206404058,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 285,
+    "trials": 500,
+    "confidence": 0.95,
+    "interval": [
+      0.5262342399257419,
+      0.6126983524096407
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.021602217193125856,
+      0.101175269335366
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "254500-254999",
+    "platform": "AMD EPYC 7763 64-Core Processor, 4 CPUs",
+    "series": "nightly",
+    "paired": {
+      "reference_commit": "34eabdd837a6d70e3825c31f596d4ab6b8e76249",
+      "both": 285,
+      "reference_only": 0,
+      "candidate_only": 0,
+      "neither": 215,
+      "p_value": 1.0,
+      "alpha": 0.025,
+      "difference_interval": [
+        -0.0010674076646171938,
+        0.0010674076646171938
+      ],
+      "verdict": "pass"
+    },
+    "cpu_flags_sha256": "9c39b836959294af15642451b3307a084bdf18b26aa8e3b4b2d37a09aff1a4b7",
+    "runner_image": "ubuntu26 20261101.186.1"
   }
 ]
