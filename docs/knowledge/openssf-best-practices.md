@@ -1,8 +1,8 @@
 # OpenSSF Best Practices badge: passing-level answer sheet
 
 Answers for the [OpenSSF Best Practices](https://www.bestpractices.dev/) "passing" form, one row
-per criterion, ready to paste. The maintainer fills in the form himself with his personal GitHub
-account; nothing here is submitted automatically.
+per criterion, ready to paste. The maintainer fills in the form with the maintainer's personal
+GitHub account; nothing here is submitted automatically.
 
 - **Source**: the live criteria list at <https://www.bestpractices.dev/en/criteria/0> (with
   details) and the badge's own
