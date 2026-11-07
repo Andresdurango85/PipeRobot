@@ -144,7 +144,7 @@ trains in simulation, so it can start before any hardware exists. Its skills, in
 4. Grasp and lift, later refined with demonstrations.
 
 Driving the base is not learned: the omni wheels use classical kinematics. The RL runs on the
-home PC's GPU as a queue of user processes that pauses whenever CI needs the GPU.
+home PC's GPU as a queue of short user jobs, and no job starts while CI needs the GPU.
 
 ## Privacy and the network
 

@@ -51,16 +51,23 @@ Isaac Lab 3.0 already runs natively on this PC
   service. The runner service stays dedicated to trusted CI jobs
   ([ADR 0020](0020-self-hosted-gpu-runner.md)).
 
-**A queue runner that yields to the gate.** Training jobs run from a queue, one at a time. Before
-each job, and at every checkpoint, the runner checks three conditions:
+**A queue runner that yields to the gate.** Training jobs run from a queue, one at a time.
+Before starting each job, the runner checks three conditions:
 
 - a `PAUSE` file exists;
 - a `Runner.Worker` process is alive, which means a CI job holds the runner;
 - free VRAM or free commit charge is below its floor.
 
-When any condition holds, the runner saves a checkpoint, stops the job, and waits. It resumes
-from that checkpoint once all three clear. The gate always wins the GPU. The floor values are
-measured on this PC and recorded in [isaac.md](../knowledge/isaac.md).
+While any condition holds, the runner starts nothing and checks again periodically. It never
+interrupts a running job. Instead, every job is time-boxed, by a maximum number of training
+iterations and by a wall-clock timeout covering its training and its evaluations. A job that
+hits the timeout is killed (its own process tree only) and marked as timed out, and the queue
+moves on.
+
+So once `PAUSE` is created or a CI job starts, the gate waits at most one job. The time box is
+kept short enough for that wait to be acceptable. The floors and the time box are settings of
+the runner; their values, and the measurements behind them, are recorded in
+[isaac.md](../knowledge/isaac.md).
 
 **Judged by the task, never by the reward.**
 
@@ -96,9 +103,10 @@ code stays generic ([ADR 0015](0015-generic-core-vs-robot-specific.md)).
 
 - Crab skills can start learning before any crab hardware exists. Reach, approach and dock
   results arrive first.
-- The GPU is shared under a strict rule: when CI needs it, training pauses. A training weekend
-  can therefore lose hours to gate runs; the queue resumes from checkpoints, so nothing is
-  repeated.
+- The GPU is shared under a strict rule: no training job starts while CI needs it. A gate run
+  can still wait for the training job already running, up to its time box; a required check
+  that slow is the price of not preempting. Jobs must therefore stay short. Long training is
+  split into several queued jobs.
 - Every RL result is a gate verdict on task success, so a policy that games its reward is
   blocked like any other regression.
 - Reward functions and success tests are two artifacts to review per task, not one.
