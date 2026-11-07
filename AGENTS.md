@@ -88,7 +88,7 @@ The repo is the only memory shared by both machines and every agent
 | --- | --- | --- |
 | Rules and project context | `AGENTS.md` (this file) | Stable; change rarely |
 | Current state, next steps, hand-off | [`docs/STATUS.md`](docs/STATUS.md) | Rewritten every session |
-| Decisions and their reasons | [`docs/decisions/`](docs/decisions/README.md) (ADRs) | Immutable; superseded by a new ADR |
+| Decisions and their reasons | [`docs/decisions/`](docs/decisions/README.md) (ADRs) | Immutable; superseded by a new ADR (only a dated outcome may be appended) |
 | Verified facts, gotchas, how-tos | [`docs/knowledge/`](docs/knowledge/README.md) | Living; dated entries |
 | Course notes | [`docs/learning/`](docs/learning/README.md) | Andrés's notes |
 | Raw outputs (eval JSON, logs, videos) | CI artifacts, Hugging Face Hub | Ephemeral; never in memory |

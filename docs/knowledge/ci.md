@@ -240,9 +240,11 @@
   refs/tags/v0.1.0 | gzip -n -9`, run locally with git 2.53.0.windows.3 and gzip 1.14, gives
   the same sha256, so the tarball is reproducible across these tool versions.
 
-  Signed-Releases is still -1: the `scorecard.yml` run on the merge push scored `60f7d44` at
-  16:03:50Z, a minute before the release existed. The next push to `main` rescores.
-  _(verified 2026-11-07)_
+  Signed-Releases was still -1 after the release's own merge push: the `scorecard.yml` run
+  scored `60f7d44` at 16:03:50Z, a minute before the release existed. The next push rescored:
+  run 42390508012 on `9caac15` gave Signed-Releases 10 ("1 out of the last 1 releases have a
+  total of 2 signed artifacts"), Token-Permissions 10, overall 7.5 (API date
+  2026-11-07T16:17:13Z). _(verified 2026-11-07)_
 - **Release tags are protected by two rulesets on `refs/tags/v*`** (created by the orchestrator
   session with Andrés's OK):
   - 26762784, "release tags (immutable)": deletion, update and non-fast-forward, no bypass
@@ -401,7 +403,12 @@
   current checkout's `prek.exe` into it. Installed from a worktree, every other worktree's
   commits break (`exec: prek: not found`) once that worktree's venv is removed. Install from the
   main checkout: `C:\Users\nuevo\PipeRobot\.venv\Scripts\prek.exe install`.
-  _(verified 2026-11-03, prek 0.5.7)_
+  _(verified 2026-11-03, prek 0.5.7)_ It happened again on 2026-11-06/07: the hooks pointed at
+  a removed `PipeRobot-anita-videos` worktree, so commits and pushes failed with
+  `prek: not found` until sessions ran `uv run git ...` instead (that puts the venv's `prek` on
+  PATH, so the hooks still run). Reinstalled from the main checkout on 2026-11-07. Worker
+  sessions must never run `prek install` in a worktree; check with
+  `grep '^PREK=' .git/hooks/pre-push`. _(verified 2026-11-07)_
 - **zizmor runs offline in the hooks** (on commit when `.github/` or the hook config changes,
   and on push always), because hooks must work without a token; CI adds the online audits.
   _(2026-11-02, ADR 0027)_
