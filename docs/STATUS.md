@@ -49,29 +49,34 @@ Older items: git history and ADRs 0001–0039.
    Reports go to the private repo. The machine paths for `PIPEROBOT_RETRO_*` go in
    `CLAUDE.local.md` ([harness.md](knowledge/harness.md)). Phase 2, a schedule plus a watchdog,
    needs its own ADR.
-2. **In progress (Carla):** reject non-integer seeds in `results.json` (`3.7`, `true`, `"42"`),
+2. **This weekend (Anita, Carla):** the crab's RL run, about 36 h of GPU
+   ([ADR 0043](decisions/0043-reinforcement-learning-track-for-the-crab.md)). The code and
+   results go in the private crab repo. Check that the queue runner pauses for every SO-101
+   gate run, and that candidate checkpoints are judged by task success through the gate. Record
+   the verified RL commands, versions and VRAM/commit floors in [isaac.md](knowledge/isaac.md).
+3. **In progress (Carla):** reject non-integer seeds in `results.json` (`3.7`, `true`, `"42"`),
    Andrés's decision on ADR 0040's open question.
-3. Andrés: fill in the OpenSSF badge form from the answer sheet (decisions 2 and 4 are his),
+4. Andrés: fill in the OpenSSF badge form from the answer sheet (decisions 2 and 4 are his),
    then add the README badge with the project id.
-4. Andrés: the real-arm test (20 attempts) once the electronics arrive; then the crab's v0 in
+5. Andrés: the real-arm test (20 attempts) once the electronics arrive; then the crab's v0 in
    Onshape, in its private repo.
-5. Nightly: after a week, check the unpaired fresh-seed rate (+8.8, -1.2, +4.0 pp so far) and
+6. Nightly: after a week, check the unpaired fresh-seed rate (+8.8, -1.2, +4.0 pp so far) and
    decide on a paired pr-gate ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md));
    evaluate takes 22–43 min (90-min timeout); the cron starts ~7 h 41 min late
    ([ci.md](knowledge/ci.md)).
-6. SO-101 gate: it exceeds the 30-min budget with 1 worker. Decide whether to accept that or
+7. SO-101 gate: it exceeds the 30-min budget with 1 worker. Decide whether to accept that or
    shorten it. Unverified: the `video-report` ffmpeg install on 26.04 (first gate run that loses
    an episode). Before GPU runs, check free commit as well as VRAM, and watch for CUDA OOM
    retries with 2 workers ([isaac.md](knowledge/isaac.md)).
-7. Three quick gate-relevant merges can skip the middle one's run on `main` (one pending run
+8. Three quick gate-relevant merges can skip the middle one's run on `main` (one pending run
    per concurrency group, [ci.md](knowledge/ci.md)): space them, or dispatch a gate afterwards.
-8. Scorecard upkeep: triage weekly fuzz crashes under ADR 0040's policy; `osv-scanner.toml`
+9. Scorecard upkeep: triage weekly fuzz crashes under ADR 0040's policy; `osv-scanner.toml`
    expires 2027-05-05 and changes with every LeRobot upgrade. Optional: branch coverage
    (`test_most`), a results reference page, a structure-aware results harness.
-9. Isaac (optional): a second registered demo (gripper_closed 10); the wrist_flex-at-limit
+10. Isaac (optional): a second registered demo (gripper_closed 10); the wrist_flex-at-limit
    failure mode; re-run the camera on/off check after any Isaac or Kit upgrade.
-10. A first ACT policy from the simulated rack dataset ([datasets.md](knowledge/datasets.md)).
-11. CI: check Monday's Dependabot runs; ask Andrés about `zizmor` as a required check; put
+11. A first ACT policy from the simulated rack dataset ([datasets.md](knowledge/datasets.md)).
+12. CI: check Monday's Dependabot runs; ask Andrés about `zizmor` as a required check; put
     `robots/` under mypy strict; after ~4 clean weekly mutation runs, fail on a NEW survivor
     ([testing.md](knowledge/testing.md)).
 
