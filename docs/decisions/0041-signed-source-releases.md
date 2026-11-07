@@ -101,7 +101,12 @@ build no packages". A release must not add a setuptools sdist or wheel.
 
 - **Every release needs**: a notes file, a matching `pyproject.toml` version, and an annotated
   tag pushed by the maintainer. A failed check stops the run before anything is signed or
-  published; fix the cause and re-run it with `workflow_dispatch`.
+  published.
+- **Re-running a failed release**: `workflow_dispatch` runs `release.yml` from `main` but checks
+  out the tag for everything else, so it fixes a workflow bug, a transient failure, or a check
+  that failed because `main` had not yet received the tagged commit. A wrong version, missing
+  notes or a bug in `release_preflight.py` needs a new commit and a new tag. A lightweight tag
+  is rejected: delete it and push an annotated one (`git tag -a`).
 - **Score**: Signed-Releases goes from -1 to 10, read from the API after the first release.
   Later releases must keep their signature assets, or one unsigned release pulls the mean down.
 - **Verification**: the tarball can be verified two ways, offline with the attached bundle and

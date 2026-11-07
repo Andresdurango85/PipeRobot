@@ -198,7 +198,9 @@
   - Jobs: `build` (`release_preflight.py check-tag` fails closed), `attest`, `publish` (the only
     `contents: write`) and `verify` (bundle and attestation API).
   - Hosted `ubuntu-26.04`, no caches. Notes come from `docs/releases/<tag>.md`.
-  - A failed run publishes nothing; re-run it with `workflow_dispatch` once fixed. _(2026-11-06)_
+  - A failed run publishes nothing. `workflow_dispatch` re-runs it with `release.yml` from
+    `main`, but the preflight script and notes come from the tag, so a bug there needs a new
+    tag. _(2026-11-06)_
 - ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
   CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
 - **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**
