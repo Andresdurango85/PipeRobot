@@ -173,6 +173,16 @@ regression test that failed on `c0bcccb`:
   never a whole function in `except ValueError`, which would also hide our own bugs.
   `video_manifest` gained `VideoInputError`; its CLI prints one `ERROR:` line and exits 2 (the
   `video` job is `continue-on-error`, and the verdict never needs it).
+- **A seed must be a JSON integer.** `EpisodeResult.from_dict` now rejects any seed that is not
+  a JSON integer
+  (`type(value) is int`): `3.7`, `3.0`, `true`, `"42"` and bytes used to be converted with
+  `int()` (`3.7` became 3, `true` became 1); now they raise `ResultsError` naming the type.
+  This resolves the open question in
+  [ADR 0040](../decisions/0040-fuzz-untrusted-parsers-with-atheris.md). `3.0` is rejected on
+  purpose, as for baselines: our writers (`save_results`, the PushT and Isaac evaluators) emit
+  ints, every committed seed and all 36 `results/*.json` files on the `history` branch (6300
+  seeds) are ints, so a float means a hand edit or a foreign writer. Its regression tests
+  failed on `9caac15`. _(2026-11-07)_
 
 ## Fuzzing (atheris)
 
