@@ -4,6 +4,14 @@ One file per decision: why we chose something, what else we considered, and what
 ADRs are **immutable** once accepted. To change a decision, write a new ADR and mark the old one
 `Superseded by NNNN`. `tests/test_docs.py` checks the format and that this index is complete.
 
+One exception: when a measurement the ADR registered (a demo, an acceptance run, a comparison)
+finishes, its result may be appended as the last section, `## Outcome (YYYY-MM-DD)`, after
+Consequences. An outcome reports what happened and links the evidence; it never changes the
+Context, Decision, Alternatives or Consequences. If the outcome changes the decision, write a new
+ADR. Anything else (a later fact, a gotcha, a stale reason) goes to `docs/knowledge/` or
+`docs/STATUS.md`, never into the ADR. ADRs 0036 and 0038 got result sections before this rule
+(2026-11-07), in other places; they stay as they are.
+
 ## Index
 
 | ADR | Decision | Status |
