@@ -154,6 +154,28 @@
   rescores only on push to `main`. Confirmed after the merge: `scorecard.yml` run 42089231563 on
   `c0bcccb` published Vulnerabilities 10 ("0 existing vulnerabilities detected"), overall 6.7.
   _(verified 2026-11-05 from source and the API)_
+- **The two setuptools advisories stay unreachable, but not because "we build no packages".**
+  [ADR 0012](../decisions/0012-dependency-vulnerability-triage.md) gave that reason
+  (`package = false`) on 2026-10-26; since `3fe8eae` (2026-11-01) `uv sync` builds and installs
+  `piperobot` itself, editable (`uv.lock`: `source = { editable = "." }`). The ADR stays as
+  written; the accurate reason is where setuptools code runs:
+  - `piperobot` is built by `uv_build` (`[build-system]` in `pyproject.toml`), which has no
+    dependencies (`requires_dist` is empty on PyPI for `uv-build` 0.10.8 and 0.13.7), so no
+    setuptools.
+  - setuptools 81.0.0 is in `uv.lock` only as a dependency of torch 2.11 (both platform
+    markers), held under 82 by LeRobot's cap. The fixes (83.0.0 for GHSA-h35f-9h28-mq5c, 84.1.0
+    for GHSA-xmj3-9gf7-h52w) are both past the cap.
+  - Two locked packages have no wheels: `evdev` 2.0.0 (via pynput, Linux only) and
+    `feetech-servo-sdk` 1.0.0 (LeRobot's `feetech` extra, through our `so101` group). uv builds
+    them with setuptools in an isolated build environment. Neither uses `setup_requires`.
+  - GHSA-h35f-9h28-mq5c is in setuptools' `sdist` command (MANIFEST.in exclusions on macOS
+    filesystems); building a wheel from an sdist does not run it, and releases are
+    `git archive` tarballs ([ADR 0041](../decisions/0041-signed-source-releases.md)).
+    GHSA-xmj3-9gf7-h52w is in `Wheel.install_as_egg` (legacy egg installs on Windows); uv
+    installs every wheel itself.
+
+  `osv-scanner.toml`'s two setuptools reasons now say this. _(verified 2026-11-07 from
+  `uv.lock`, PyPI metadata, the two sdists' build files and the GitHub advisories)_
 - **Scorecard's Fuzzing check is binary, with two triggers** (v5.6.0, `checks/raw/fuzzing.go`):
   - a `.clusterfuzzlite/Dockerfile` with a non-comment line;
   - the literal regex `import atheris` in a `*.py` file of a prominent language (lines of code
@@ -201,6 +223,37 @@
   - A failed run publishes nothing. `workflow_dispatch` re-runs it with `release.yml` from
     `main`, but the preflight script and notes come from the tag, so a bug there needs a new
     tag. _(2026-11-06)_
+- **First release, `v0.1.0`**:
+  <https://github.com/Andresdurango85/PipeRobot/releases/tag/v0.1.0>.
+  - The annotated tag `0aecdef` points to `60f7d44` (the merge of #88).
+  - `release.yml` run 42389421459 (push): `build`, `attest`, `publish` and `verify` all green.
+  - Tarball sha256: `bad6ce9183113c3caaa242ae2858eed497c2648e09d4810bea1e3d8e65927496`.
+
+  Verified locally on Windows from `gh release download v0.1.0`, all with exit code 0 and with
+  `--signer-workflow Andresdurango85/PipeRobot/.github/workflows/release.yml`:
+  - `gh attestation verify` against the attached `.sigstore.json` bundle, and again through the
+    attestation API;
+  - `release_preflight.py check-envelope` on the downloaded pair.
+
+  The certificate names `refs/tags/v0.1.0`, commit `60f7d44`, run 42389421459 attempt 1, and a
+  Rekor entry at 2026-11-07T16:04:37Z. `git archive --format=tar --prefix=piperobot-v0.1.0/
+  refs/tags/v0.1.0 | gzip -n -9`, run locally with git 2.53.0.windows.3 and gzip 1.14, gives
+  the same sha256, so the tarball is reproducible across these tool versions.
+
+  Signed-Releases is still -1: the `scorecard.yml` run on the merge push scored `60f7d44` at
+  16:03:50Z, a minute before the release existed. The next push to `main` rescores.
+  _(verified 2026-11-07)_
+- **Release tags are protected by two rulesets on `refs/tags/v*`** (created by the orchestrator
+  session with Andrés's OK):
+  - 26762784, "release tags (immutable)": deletion, update and non-fast-forward, no bypass
+    actors;
+  - 26762786, "release tags (maintainer creates)": creation, bypassed only by the repository
+    admin role (`RepositoryRole` 5).
+
+  So only the maintainer can create a `v*` tag, and nobody can move or delete one. GitHub's
+  immutable releases stay off (`gh api repos/<owner>/<repo>/immutable-releases` gives
+  `"enabled": false`): Andrés declined them for now. Re-check with
+  `gh api repos/<owner>/<repo>/rulesets/<id>`. _(verified 2026-11-07)_
 - ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
   CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
 - **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**

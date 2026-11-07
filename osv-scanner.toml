@@ -15,12 +15,12 @@ reason = "datasets: LeRobot loads parquet, never folder builders. Accepted in AD
 [[IgnoredVulns]]
 id = "GHSA-h35f-9h28-mq5c"
 ignoreUntil = 2027-05-05
-reason = "setuptools: we build no packages (package = false). Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
+reason = "setuptools: only its sdist command is affected; nothing here creates an sdist (piperobot is built by uv_build, releases by git archive). Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
 
 [[IgnoredVulns]]
 id = "GHSA-xmj3-9gf7-h52w"
 ignoreUntil = 2027-05-05
-reason = "setuptools: we build no packages (package = false). Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
+reason = "setuptools: only its legacy Wheel.install_as_egg is affected; uv installs every wheel itself. Accepted in ADR 0012: https://github.com/Andresdurango85/PipeRobot/blob/main/docs/decisions/0012-dependency-vulnerability-triage.md"
 
 [[IgnoredVulns]]
 id = "GHSA-rrmf-rvhw-rf47"
