@@ -176,6 +176,29 @@
   `date` 2026-11-05T21:40:25Z). The merge push changed `uv.lock`, so it also ran `history.yml`
   (42114724291) and `so101-gate.yml` (42114724349, evaluate ~40 min); both green.
   _(verified 2026-11-05 from source; score and runs verified 2026-11-06)_
+- **Scorecard's Signed-Releases check reads asset names only** (v5.6.0,
+  `probes/releasesAreSigned`, `probes/releasesHaveProvenance`,
+  `checks/evaluation/signed_releases.go`):
+  - It inspects the 5 most recent releases and skips those without uploaded assets. GitHub's
+    automatic "Source code" archives are not assets.
+  - No release with assets gives -1 (inconclusive, not counted).
+  - Per release: 10 for an asset ending in `.intoto.jsonl`, else 8 for `.asc`, `.minisig`,
+    `.sig`, `.sign`, `.sigstore` or `.sigstore.json`, else 0. The check's score is the floor of
+    the mean.
+
+  So one unsigned release would cost the overall score about half a point.
+  `actions/attest` v4.2.2 writes its Sigstore bundle (DSSE envelope plus certificate and
+  transparency-log entry) to `bundle-path`. `gh release create` with assets creates a draft,
+  uploads the assets, then publishes. _(verified 2026-11-06 from source: scorecard v5.6.0,
+  actions/attest v4.2.2, cli/cli `pkg/cmd/release/create`)_
+- **`release.yml`** ([ADR 0041](../decisions/0041-signed-source-releases.md)): on an annotated
+  `v*` tag push, or `workflow_dispatch` with a `tag`, it publishes a GitHub Release with three
+  assets. They are a `git archive` tarball, its Sigstore bundle (`.sigstore.json`) and the
+  bundle's DSSE envelope (`.intoto.jsonl`).
+  - Jobs: `build` (`release_preflight.py check-tag` fails closed), `attest`, `publish` (the only
+    `contents: write`) and `verify` (bundle and attestation API).
+  - Hosted `ubuntu-26.04`, no caches. Notes come from `docs/releases/<tag>.md`.
+  - A failed run publishes nothing; re-run it with `workflow_dispatch` once fixed. _(2026-11-06)_
 - ~~Known issue: Dependabot's `uv` update job fails on `torch` and `torchvision`; likely the
   CPU-index source for torch on Linux.~~ _(2026-11-03; the guess about the cause was wrong)_
 - **Dependabot's `uv` job failed because it tried to widen our torch pins past LeRobot's cap.**

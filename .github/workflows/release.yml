@@ -1,0 +1,136 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        required: true
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate annotated release tag
+        run: |
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          git fetch --force origin refs/heads/main:refs/remotes/origin/main
+          python3 .github/scripts/release_preflight.py check-tag --tag "$TAG"
+      - name: Build deterministic source archive
+        run: |
+          mkdir dist
+          git archive --format=tar --prefix="piperobot-$TAG/" "refs/tags/$TAG" | gzip -n -9 > "dist/piperobot-$TAG.tar.gz"
+          sha256sum "dist/piperobot-$TAG.tar.gz"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-source
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  attest:
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-source
+          path: dist/
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        id: provenance
+        with:
+          subject-path: dist/piperobot-${{ env.TAG }}.tar.gz
+      - name: Export and verify attestation
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="dist/piperobot-$TAG.tar.gz"
+          cp "$BUNDLE" "$archive.sigstore.json"
+          python3 .github/scripts/release_preflight.py envelope --bundle "$archive.sigstore.json" --output "$archive.intoto.jsonl"
+          gh attestation verify "$archive" --bundle "$archive.sigstore.json" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-signed
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: attest
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-signed
+          path: dist/
+      - name: Publish source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="dist/piperobot-$TAG.tar.gz"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "PipeRobot $TAG" --notes-file "docs/releases/$TAG.md" "$archive" "$archive.sigstore.json" "$archive.intoto.jsonl"
+
+  verify:
+    needs: publish
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Verify published assets and API attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir downloaded
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir downloaded
+          archive="downloaded/piperobot-$TAG.tar.gz"
+          gh attestation verify "$archive" --bundle "$archive.sigstore.json" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          python3 .github/scripts/release_preflight.py check-envelope --bundle "$archive.sigstore.json" --envelope "$archive.intoto.jsonl"
