@@ -81,7 +81,7 @@ select = [
 
 [tool.mypy]
 # ADR 0025: check the package, tests and CI scripts strictly; robots/ is not checked yet.
-files = ["piperobot", "tests", ".github/scripts", "fuzz"]
+files = ["piperobot", "tests", ".github/scripts", "fuzz", ".claude/skills"]
 # These tests exercise robots/so101 code, which is not type-checked yet;
 # they join with robots/ later.
 exclude = '^tests/(test_so101_.*\.py|so101_loader\.py|test_dataset_stats\.py)$'

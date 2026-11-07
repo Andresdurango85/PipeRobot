@@ -23,3 +23,4 @@ out" goes, so nobody (human or agent) pays that hour twice.
 | [isaac.md](isaac.md) | Isaac Sim, Isaac Lab, Isaac Lab-Arena: platforms and NVIDIA's SO-101 course |
 | [testing.md](testing.md) | Testing the gate's own code: mypy, property-based and mutation tests |
 | [openssf-best-practices.md](openssf-best-practices.md) | OpenSSF Best Practices badge: passing-level answers, evidence and open decisions |
+| [harness.md](harness.md) | Claude Code transcripts, Codex session logs, and the retro collector's assumptions |
