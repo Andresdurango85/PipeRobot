@@ -467,6 +467,7 @@ NUMERIC_WORKFLOWS = ("pr-gate.yml", "baseline.yml", "nightly.yml")
 CURRENT_IMAGE = "ubuntu-26.04"
 # Jobs follow green CI; PINNED_IMAGE moves only with a registered comparison (ADR 0039).
 NON_NUMERIC_HOSTED_JOBS = {
+    "release.yml": ("build", "attest", "publish", "verify"),
     "fuzz.yml": ("fuzz",),
     "certify.yml": ("attest", "append", "deploy"),
     "ci.yml": ("lint-and-test", "clean-install", "type-check"),
@@ -957,3 +958,82 @@ def test_fuzz_workflow_boundaries() -> None:
     assert sorted(job["strategy"]["matrix"]["target"]) == sorted(harnesses)
     for step in job["steps"]:
         assert "${{" not in step.get("run", "")
+
+
+def test_release_workflow_boundaries() -> None:
+    data = _load(ROOT / ".github/workflows/release.yml")
+    triggers = data.get("on", data.get(True))
+    assert triggers == {
+        "push": {"tags": ["v*"]},
+        "workflow_dispatch": {"inputs": {"tag": {"type": "string", "required": True}}},
+    }
+    assert data["permissions"] == {}
+    assert data["defaults"]["run"]["shell"] == "bash"
+    assert data["concurrency"]["cancel-in-progress"] is False
+    assert "inputs.tag" in data["concurrency"]["group"]
+    assert "github.ref_name" in data["concurrency"]["group"]
+    assert data["env"]["TAG"] == (
+        "${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+    )
+    jobs = data["jobs"]
+    assert set(jobs) == {"build", "attest", "publish", "verify"}
+    expected = {
+        "build": {"contents": "read"},
+        "attest": {"contents": "read", "id-token": "write", "attestations": "write"},
+        "publish": {"contents": "write"},
+        "verify": {"contents": "read", "attestations": "read"},
+    }
+    allowed = {
+        "actions/checkout",
+        "actions/upload-artifact",
+        "actions/download-artifact",
+        "actions/attest",
+    }
+    existing_actions = set(_uses(_load(ROOT / ".github/workflows/certify.yml")))
+    scripts = {}
+    previous = None
+    for name, job in jobs.items():
+        assert job["permissions"] == expected[name]
+        assert job.get("needs") == previous
+        previous = name
+        assert job["runs-on"] == CURRENT_IMAGE
+        assert "self-hosted" not in _labels(job)
+        scripts[name] = "\n".join(step.get("run", "") for step in job["steps"])
+        assert "${{" not in scripts[name]
+        assert "cache" not in str(job).lower()
+        assert "setup-uv" not in str(job)
+        for step in job["steps"]:
+            if "uses" in step:
+                assert step["uses"].split("@")[0] in allowed
+                assert step["uses"] in existing_actions
+                assert "cache" not in str(step).lower()
+            if step.get("uses", "").startswith("actions/checkout@"):
+                assert step["with"]["ref"] == "${{ env.TAG }}"
+                assert step["with"]["persist-credentials"] is False
+    build = scripts["build"]
+    assert build.index("release_preflight.py check-tag") < build.index("git archive")
+    assert 'git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"' in build
+    assert "refs/heads/main:refs/remotes/origin/main" in build
+    assert "gzip -n -9" in build
+    assert "sha256sum" in build
+    assert jobs["build"]["steps"][0]["with"]["fetch-depth"] == 0
+    attest = next(
+        s for s in jobs["attest"]["steps"] if s.get("uses", "").startswith("actions/attest@")
+    )
+    assert attest["with"] == {"subject-path": "dist/piperobot-${{ env.TAG }}.tar.gz"}
+    assert "release_preflight.py envelope" in scripts["attest"]
+    assert "gh attestation verify" in scripts["attest"]
+    assert "--verify-tag" in scripts["publish"]
+    assert '--notes-file "docs/releases/$TAG.md"' in scripts["publish"]
+    verifications = [
+        line for line in scripts["verify"].splitlines() if "gh attestation verify" in line
+    ]
+    assert len(verifications) == 2
+    assert sum("--bundle" in line for line in verifications) == 1
+    attest_verifications = [
+        line for line in scripts["attest"].splitlines() if "gh attestation verify" in line
+    ]
+    for line in [*verifications, *attest_verifications]:
+        assert '--repo "$GITHUB_REPOSITORY"' in line
+        assert '--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"' in line
+    assert "release_preflight.py check-envelope" in scripts["verify"]

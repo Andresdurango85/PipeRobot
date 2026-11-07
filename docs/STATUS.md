@@ -207,6 +207,11 @@ Project Cangrejo, the `piperobot` package).
     [ADR 0040](decisions/0040-fuzz-untrusted-parsers-with-atheris.md)'s policy
     ([testing.md](knowledge/testing.md)). `osv-scanner.toml` expires on
     2027-05-05 and changes with every LeRobot upgrade.
+11. First release `v0.1.0`, signed ([ADR 0041](decisions/0041-signed-source-releases.md)): after
+    `release.yml` merges, the maintainer pushes the annotated tag; then verify the assets, name
+    the run in [ci.md](knowledge/ci.md), mark the release rows Met in the
+    [badge answer sheet](knowledge/openssf-best-practices.md), and confirm Signed-Releases 10.
+    Proposed to Andrés: a tag ruleset for `v*` and immutable releases.
 
 ## Open questions for Andrés
 
