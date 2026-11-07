@@ -731,3 +731,29 @@
   ```
 
   _(verified 2026-11-02, Codex CLI 0.166)_
+- **Sandbox-owned folders also land at the worktree root**, when a brief does not say where temp
+  files go. Codex's own test runs left `.test-release-*` (2026-11-06) and `.pytest-cache-29c`,
+  `.pytest-tmp-29c`, `.pytest-tmp-29c-full` (2026-11-07) there. Your own user cannot open them,
+  and whole-repo tools then break:
+  - `ruff format --check .` panics ("Expected a ruff source file");
+  - zizmor's directory walk fails;
+  - git warns "could not open directory".
+
+  The sandbox-run delete above removes them too. Test git repos inside them hold read-only
+  object files, so clear the read-only bit on error:
+
+  ```powershell
+  codex sandbox -c 'sandbox_mode="workspace-write"' -- <python.exe> -c "import glob, os, shutil, stat; h = lambda f, p, e: (os.chmod(p, stat.S_IWRITE), f(p)); [shutil.rmtree(p, onexc=h) for p in glob.glob('.pytest-*') + glob.glob(r'.venv\pytest-*')]"
+  ```
+
+  It cleaned all three worktrees involved, including a `.venv\pytest-focused` left on
+  2026-11-03, with no admin rights. _(verified 2026-11-07, Codex CLI 0.166)_
+- **Every Codex brief says where temp files go and cleans them at the end** (retro proposal
+  R-2026-11-07-2). Put these lines in the brief:
+  - run pytest only as `pytest -p no:cacheprovider --basetemp=.venv\pytest-tmp`;
+  - create no files or folders at the worktree root other than the ones the brief asks for;
+  - as the last step, delete `.venv\pytest-tmp` and any other temp folder you created, from
+    inside the sandbox.
+
+  Before `git worktree remove`, run the sandbox delete above for anything left over; never
+  remove a worktree that still holds sandbox-owned folders. _(2026-11-07)_
