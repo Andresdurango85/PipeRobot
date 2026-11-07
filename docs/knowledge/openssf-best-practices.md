@@ -20,26 +20,26 @@ GitHub account; nothing here is submitted automatically.
 ## Open decisions for Andrés
 
 These need a statement or a choice only the maintainer can make. Every other row is a fact
-checked against the repository on 2026-11-06.
+checked against the repository on 2026-11-06; the release rows were updated on 2026-11-07.
 
-1. **Releases** (`version_unique`, `release_notes`; also `version_semver`, `version_tags`). The
-   repository has no tags and no releases; `pyproject.toml` says `0.1.0`, never published.
-   - **Option A, no release**: `version_unique` Met by commit IDs (the details allow them, and
-     every certificate and history record names its commit), `release_notes` N/A. The form
-     allows N/A only for results "not intended for reuse in multiple locations" that use
-     continuous delivery. The `piperobot` package is meant to be reused by a second robot's
-     repository ([ADR 0019](../decisions/0019-core-adapters-robots-layout.md)), so this N/A is a
-     stretch and a reviewer may reject it.
-   - **Option B, a first release** (proposed, not done): tag `v0.1.0` on `main` and publish a
-     GitHub Release whose notes are a short hand-written summary (not `git log`). Then
-     `version_unique`, `version_semver`, `version_tags` and `release_notes` are all Met.
-     Later releases need notes too, so it is a small standing commitment.
+1. **Releases** (`version_unique`, `release_notes`; also `version_semver`, `version_tags`).
+   **Decided: option B.** `v0.1.0` was published on 2026-11-07 as a signed GitHub Release with
+   hand-written notes (https://github.com/Andresdurango85/PipeRobot/releases/tag/v0.1.0), by `release.yml`
+   ([ADR 0041](../decisions/0041-signed-source-releases.md)). The four rows are Met. Later
+   releases need notes too, and the workflow refuses a tag without them.
+   - The option not taken, A: `version_unique` Met by commit IDs and `release_notes` N/A. The
+     form allows that N/A only for results not meant for reuse, and the `piperobot` package is
+     meant to be reused by a second robot's repository
+     ([ADR 0019](../decisions/0019-core-adapters-robots-layout.md)).
+   - **Immutable releases** (a repository setting that locks a published release's assets and
+     tag): declined for now. The `v*` tags are protected by rulesets instead: only the maintainer
+     creates them, and nobody moves or deletes them.
 2. **Secure-development knowledge** (`know_secure_design`, `know_common_errors`). Both are
    statements about the primary developer, so only Andrés can answer them. The rows below give
    a draft built from what the repository shows; confirm or rewrite it.
-3. **Private vulnerability-report contact** (`vulnerability_report_private`). GitHub's private
-   vulnerability reporting is enabled and `SECURITY.md` points to it; that is enough for Met.
-   An e-mail address as a second channel is optional, and it would be public.
+3. **Private vulnerability-report contact** (`vulnerability_report_private`). **Decided: no
+   e-mail; GitHub's private vulnerability reporting only.** It is enabled and `SECURITY.md`
+   points to it; that is enough for Met.
 4. **Accepted dependency advisories** (`vulnerabilities_fixed_60_days`). Five advisories in
    the optional `lerobot` extra's dependencies are dismissed as unreachable
    ([ADR 0012](../decisions/0012-dependency-vulnerability-triage.md)), one of them high
@@ -75,11 +75,11 @@ own outside ADR 0014 and a docstring. A short `docs/reference/results.md` would 
 | `repo_track` | MUST | Met | Git records every change with its author and date. | `https://github.com/Andresdurango85/PipeRobot/commits/main` |
 | `repo_interim` | MUST | Met | Every change lands through a public pull request; all interim commits are in the repository. | `https://github.com/Andresdurango85/PipeRobot/pulls?q=is%3Apr` |
 | `repo_distributed` | SUGGESTED | Met | Git. | |
-| `version_unique` | MUST | Decision 1 | Option A: every evaluation, certificate and history record is identified by its git commit ID. Option B: release `v0.1.0`. | |
-| `version_semver` | SUGGESTED | Unmet (Met with option B) | No releases yet; `pyproject.toml` uses SemVer (`0.1.0`). | `B/pyproject.toml` |
-| `version_tags` | SUGGESTED | Unmet (Met with option B) | No release tags yet. | |
-| `release_notes` | MUST | Decision 1 | Option A: N/A (weak, see above). Option B: the GitHub Release notes of `v0.1.0`. | |
-| `release_notes_vulns` | MUST | N/A | No releases and no publicly known vulnerability in the project's own code. | |
+| `version_unique` | MUST | Met (decision 1) | Each release has a unique version: the tag `vX.Y.Z` must equal `pyproject.toml`'s version at the tagged commit, or the release workflow refuses it. The first release is `v0.1.0`. | `https://github.com/Andresdurango85/PipeRobot/releases/tag/v0.1.0` |
+| `version_semver` | SUGGESTED | Met | Releases use Semantic Versioning (`v0.1.0`); the release workflow accepts only `vMAJOR.MINOR.PATCH` tags. | `https://github.com/Andresdurango85/PipeRobot/releases/tag/v0.1.0` |
+| `version_tags` | SUGGESTED | Met | Each release is an annotated git tag (`v0.1.0`), protected by rulesets against moves and deletion. | `https://github.com/Andresdurango85/PipeRobot/tags` |
+| `release_notes` | MUST | Met (decision 1) | Every release has hand-written notes summarizing its major changes, committed as `docs/releases/<tag>.md` and published as the GitHub Release text. | `https://github.com/Andresdurango85/PipeRobot/releases/tag/v0.1.0` |
+| `release_notes_vulns` | MUST | N/A | No release has fixed a publicly known vulnerability: none is known in the project's own code, and `v0.1.0`'s notes say so. | `B/docs/releases/v0.1.0.md` |
 
 ## Reporting
 

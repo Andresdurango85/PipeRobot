@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-06 (home PC)
+Last updated: 2026-11-07 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -23,6 +23,13 @@ Older items are in git history and the ADRs (0001–0019: memory, tooling, stati
 security gates, hooks, mock gate, core boundary, PushT evaluator and gate, no required review,
 Project Cangrejo, the `piperobot` package).
 
+- 2026-11-07: first release, `v0.1.0`, signed
+  ([ADR 0041](decisions/0041-signed-source-releases.md)): `release.yml` run 42389421459 published
+  the `git archive` tarball with its Sigstore bundle and DSSE envelope. It was verified locally
+  offline and through the attestation API, and the tarball rebuilt byte for byte on Windows.
+  Two rulesets protect `v*` tags (only the maintainer creates them; none can move or be
+  deleted); immutable releases declined for now ([ci.md](knowledge/ci.md)). The badge sheet's
+  release rows are Met.
 - 2026-11-05: the numeric PushT jobs (`pr-gate`, `baseline`, `nightly`, `history` `evaluate`,
   `readme` `linux`) run on `ubuntu-26.04`. The registered comparison
   ([design and result](../robots/pusht/baselines/ubuntu-2604-comparison.md), run 41959796057)
@@ -207,11 +214,10 @@ Project Cangrejo, the `piperobot` package).
     [ADR 0040](decisions/0040-fuzz-untrusted-parsers-with-atheris.md)'s policy
     ([testing.md](knowledge/testing.md)). `osv-scanner.toml` expires on
     2027-05-05 and changes with every LeRobot upgrade.
-11. First release `v0.1.0`, signed ([ADR 0041](decisions/0041-signed-source-releases.md)): after
-    `release.yml` merges, the maintainer pushes the annotated tag; then verify the assets, name
-    the run in [ci.md](knowledge/ci.md), mark the release rows Met in the
-    [badge answer sheet](knowledge/openssf-best-practices.md), and confirm Signed-Releases 10.
-    Proposed to Andrés: a tag ruleset for `v*` and immutable releases.
+11. After this follow-up merges, read Signed-Releases (expected 10) and Token-Permissions (10)
+    from the Scorecard API; record them in [ci.md](knowledge/ci.md). Then the OpenSSF badge form
+    with the [answer sheet](knowledge/openssf-best-practices.md) (decisions 2 and 4 are
+    Andrés's), and the README badge once the project has an id.
 
 ## Open questions for Andrés
 
