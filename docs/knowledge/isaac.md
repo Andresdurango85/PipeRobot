@@ -409,6 +409,21 @@ tasks, commands and results live in its private repo; general Isaac Lab RL facts
   with that overhead included. _(verified 2026-11-07)_
 - **`play.py --video` must not be combined with `--viz none`.** Without `--viz`, `play.py`
   creates a headless Kit visualizer by itself. _(verified 2026-11-07)_
+- **`--video` (in `play.py` or `train.py`) needs the Isaac Lab clone's `video` extra**, or it
+  dies at launch with `ModuleNotFoundError`. That extra is moviepy 1.0.3 and imageio-ffmpeg 0.6.0,
+  the versions in the clone's `uv.lock`. Install them from the clone, so its `[tool.uv]`
+  overrides apply:
+  `uv pip install --python <isaaclab-venv>/Scripts/python.exe "moviepy==1.0.3" "imageio-ffmpeg==0.6.0"`.
+  It also pulls in proglog 0.1.12. `uv pip check` on that venv lists 6 version mismatches that
+  were there before and are unrelated:
+  - numpy 2.5.1 against isaacsim-kernel's 2.3.1 and numba's `<2.5`;
+  - fsspec, pywin32 and urllib3;
+  - a missing onnxruntime-gpu.
+
+  _(verified 2026-11-07)_
+- **Evaluating an `rsl_rl` inference policy: call `env.reset()` inside `torch.inference_mode()`
+  too**, not only the policy step. Otherwise the second episode's reset raises "Inplace update
+  to inference tensor outside InferenceMode" (from the command metrics). _(verified 2026-11-07)_
 - **RL cost on the RTX 5060 Ti 16 GB** (seed 1, desktop apps closed, ~12.5 GB VRAM free at
   rest):
 
@@ -423,6 +438,12 @@ tasks, commands and results live in its private repo; general Isaac Lab RL facts
   Reach's time per iteration stays flat from 512 to 2048 envs: at that size it is bound by CPU
   and Python, not the GPU, so more envs give more samples for free. A job at these sizes adds
   about 0.5–2.2 GB of VRAM and ~2 GB of commit charge.
+
+  At 4096 envs, the tasks' default:
+  - Reach: 100 iterations in 1 min 40 s, startup included;
+  - Lift: 1.7 s per iteration, using about 3.9 GB of VRAM, with 8.5 GB still free.
+
+  Both leave the 5 GB below, so the weekend runs use 4096 envs.
 
   The SO-101 gate can start while a training job is running ([ADR
   0043](../decisions/0043-reinforcement-learning-track-for-the-crab.md): no preemption), so the
