@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -42,7 +43,11 @@ def test_save_and_load_round_trip(tmp_path: Path) -> None:
     results = EvalResults(
         policy="p",
         evaluator="mock",
-        episodes=(EpisodeResult(0, True), EpisodeResult(1, False, "rack_left", "tube dropped")),
+        episodes=(
+            EpisodeResult(0, True),
+            EpisodeResult(1, False, "rack_left", "tube dropped"),
+            EpisodeResult(2**100, True),
+        ),
     )
     path = tmp_path / "nested" / "results.json"
 
@@ -125,6 +130,51 @@ def test_untrusted_episode_shape(tmp_path: Path) -> None:
     path.write_text('{"episodes": ["x"]}', encoding="utf-8")
     with pytest.raises(ResultsError, match=re.escape(str(path))):
         load_results(path)
+
+
+@pytest.mark.parametrize(
+    ("value", "type_name"),
+    [
+        (3.7, "float"),
+        (3.0, "float"),
+        (True, "bool"),
+        ("42", "str"),
+        (None, "NoneType"),
+        ([], "list"),
+    ],
+)
+@pytest.mark.parametrize("entry", ["load", "parse", "episode"])
+def test_non_integer_episode_seed(
+    tmp_path: Path, value: object, type_name: str, entry: str
+) -> None:
+    episode = {"seed": value, "success": True}
+    path = tmp_path / "results.json"
+    path.write_text(json.dumps(_data(episode)), encoding="utf-8")
+    actions: dict[str, Callable[[], object]] = {
+        "load": lambda: load_results(path),
+        "parse": lambda: parse_results(_data(episode)),
+        "episode": lambda: EpisodeResult.from_dict(episode),
+    }
+    with pytest.raises(
+        ResultsError, match=re.escape(f"'seed' must be an integer, got {type_name}")
+    ):
+        actions[entry]()
+
+
+@pytest.mark.parametrize(
+    ("value", "type_name"), [(b"42", "bytes"), (bytearray(b"42"), "bytearray")]
+)
+@pytest.mark.parametrize("entry", ["parse", "episode"])
+def test_bytes_episode_seed(value: bytes | bytearray, type_name: str, entry: str) -> None:
+    episode = {"seed": value, "success": True}
+    actions: dict[str, Callable[[], object]] = {
+        "parse": lambda: parse_results(_data(episode)),
+        "episode": lambda: EpisodeResult.from_dict(episode),
+    }
+    with pytest.raises(
+        ResultsError, match=re.escape(f"'seed' must be an integer, got {type_name}")
+    ):
+        actions[entry]()
 
 
 @pytest.mark.parametrize("seed", [float("nan"), float("inf"), [], {}, None, "bad"])

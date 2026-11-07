@@ -34,6 +34,7 @@ HOSTILE = [
     b"{",
     b"{}",
     b'{"episodes":[{"seed":0,"success":NaN}]}',
+    b'{"episodes":[{"seed":3.7,"success":true}]}',
 ]
 
 

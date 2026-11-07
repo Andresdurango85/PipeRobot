@@ -15,6 +15,7 @@ Any evaluator (the mock today, Isaac Lab-Arena later) writes one JSON file:
 ``seed`` and ``success`` are required per episode; ``scene``, ``failure`` and ``video_url`` are
 optional. Seeds must be unique: each one identifies a reproducible episode. On real hardware,
 where nothing is seeded, the seed is the attempt number, a label only (ADR 0022).
+``seed`` must be a JSON integer, not a float such as ``3.0``, a bool or a string.
 """
 
 from __future__ import annotations
@@ -52,14 +53,10 @@ class EpisodeResult:
                 f"'success' must be true or false, got {type(data['success']).__name__}"
             )
         value = data["seed"]
-        if not isinstance(value, (int, float, str, bytes, bytearray)):
-            raise ResultsError("'seed' must be convertible to an integer")
-        try:
-            seed = int(value)
-        except (ValueError, OverflowError) as exc:
-            raise ResultsError(f"invalid 'seed': {exc}") from exc
+        if type(value) is not int:
+            raise ResultsError(f"'seed' must be an integer, got {type(value).__name__}")
         return cls(
-            seed=seed,
+            seed=value,
             success=data["success"],
             scene=data.get("scene"),
             failure=data.get("failure"),
