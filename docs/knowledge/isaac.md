@@ -363,3 +363,19 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   hold a tube 1.9 cm too high on its first run. _(verified 2026-11-02)_
 - **Cost**: Kit launch plus the static checks take under 1 min, and the 75 reconstructed demos
   (no rendering) ~7.5 min, on the RTX 5060 Ti. _(verified 2026-11-02)_
+
+## Reinforcement learning (crab RL track)
+
+[ADR 0043](../decisions/0043-reinforcement-learning-track-for-the-crab.md). The crab's own
+tasks, commands and results live in its private repo; general Isaac Lab RL facts go here.
+
+- **Isaac Lab 3.0 has one RL entry point for every library**:
+  `scripts/reinforcement_learning/train.py` (and `play.py`, `train_multigpu.py`) calls
+  `isaaclab_rl.entrypoints.run_train_cli`. Per-library backends sit in
+  `isaaclab_rl/entrypoints/backends/` (`train_rsl_rl.py`, `train_skrl.py`, `train_rl_games.py`,
+  `train_sb3.py`, `train_torchrl.py`, `train_rlinf.py`). The per-library
+  `scripts/reinforcement_learning/rsl_rl/` folders of older tutorials do not exist in 3.0.
+  _(verified 2026-11-07 in the clone at `release/3.0.0` `44044b0963`)_
+- **`rsl-rl-lib` 5.5.1 is already in the home PC's Isaac Lab 3.0 environment**: it came with
+  the environment's install on 2026-11-01. The entry points require at least 5.0.1
+  (`RSL_RL_MIN_VERSION` in `isaaclab_rl/rsl_rl/utils.py`). _(verified 2026-11-07)_

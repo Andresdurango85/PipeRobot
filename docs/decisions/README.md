@@ -58,6 +58,7 @@ ADR. Anything else (a later fact, a gotcha, a stale reason) goes to `docs/knowle
 | [0040](0040-fuzz-untrusted-parsers-with-atheris.md) | Fuzz the untrusted-input parsers with atheris on hosted runners | Accepted |
 | [0041](0041-signed-source-releases.md) | Signed source releases from a tag-triggered workflow | Accepted |
 | [0042](0042-daily-retrospective-report-only.md) | Daily retrospective, phase 1: report only | Accepted |
+| [0043](0043-reinforcement-learning-track-for-the-crab.md) | Reinforcement learning for the crab's reach, approach, dock and grasp skills, judged by the gate | Accepted |
 
 ## Template
 
