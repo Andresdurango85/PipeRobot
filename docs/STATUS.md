@@ -19,6 +19,9 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Done recently
 
+- 2026-11-07: retro output-signal excerpts redact the full text before locating and slicing
+  the signal, preserving token and reminder removal at excerpt boundaries (brief 29d).
+
 Older items: git history and ADRs 0001–0039.
 
 - 2026-11-07: first signed release `v0.1.0` (`git archive` tarball + Sigstore bundle + DSSE
@@ -40,9 +43,12 @@ Older items: git history and ADRs 0001–0039.
 
 ## Next
 
-1. **In progress (Berta):** the daily retrospective, phase 1. A `/retro` skill and a collector
-   in this repo, reports in the private repo, run by hand for 3–4 days, report only (ADR 0042
-   in its PR). Phase 2, a schedule plus a watchdog, needs its own ADR.
+1. The daily retrospective, phase 1
+   ([ADR 0042](decisions/0042-daily-retrospective-report-only.md)): run `/retro` by hand for 3–4
+   days, report only; the first run covers 2026-11-05..2026-11-07 (the acceptance check).
+   Reports go to the private repo. The machine paths for `PIPEROBOT_RETRO_*` go in
+   `CLAUDE.local.md` ([harness.md](knowledge/harness.md)). Phase 2, a schedule plus a watchdog,
+   needs its own ADR.
 2. **In progress (Carla):** reject non-integer seeds in `results.json` (`3.7`, `true`, `"42"`),
    Andrés's decision on ADR 0040's open question.
 3. Andrés: fill in the OpenSSF badge form from the answer sheet (decisions 2 and 4 are his),
