@@ -409,6 +409,19 @@
   PATH, so the hooks still run). Reinstalled from the main checkout on 2026-11-07. Worker
   sessions must never run `prek install` in a worktree; check with
   `grep '^PREK=' .git/hooks/pre-push`. _(verified 2026-11-07)_
+- **Hook check before a worker or Codex brief** (retro proposal R-2026-11-07-1). Run this from
+  the worktree the brief will use; if it prints anything, reinstall the hooks from the main
+  checkout first. It checks that the `PREK=` path in the shared `pre-push` hook still exists,
+  and an empty or missing line also fails. The handoff skill runs the same check.
+
+  ```powershell
+  $hook = Join-Path (git rev-parse --git-common-dir) 'hooks/pre-push'
+  $prek = (Select-String -Path $hook -Pattern '^PREK="(.*)"$').Matches[0].Groups[1].Value
+  if (-not (Test-Path -PathType Leaf $prek)) { "hooks point at a missing prek: $prek" }
+  ```
+
+  _(verified 2026-11-07 in Windows PowerShell 5.1 and Git Bash, against an existing and a
+  missing path; prek 0.5.7)_
 - **zizmor runs offline in the hooks** (on commit when `.github/` or the hook config changes,
   and on push always), because hooks must work without a token; CI adds the online audits.
   _(2026-11-02, ADR 0027)_
