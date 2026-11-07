@@ -119,8 +119,14 @@ battery swap would not add runtime but would make a flat battery a 10-second fix
 6. Teleoperation:
    - wheels with a keyboard or a gamepad;
    - arms with two small printed leader arms of the same shape.
-7. Train with ACT, the same policy family as the SO-101.
-8. Every policy goes through the gate before it touches the real robot.
+7. Train each skill with the method that fits it
+   ([ADR 0043](../decisions/0043-reinforcement-learning-track-for-the-crab.md)):
+   - in simulation, reinforcement learning (Isaac Lab, PPO) for reaching, approaching and
+     docking, and a first pass at grasping; this needs no hardware, so it can run during v0;
+   - with the real robot, ACT (the same policy family as the SO-101) from teleoperated
+     demonstrations, for pick and place and to refine grasping.
+8. Every policy goes through the gate before it touches the real robot. An RL policy is judged
+   by task success on fixed seeds, never by its training reward.
 
 ## Tasks to train, in order
 
@@ -128,6 +134,17 @@ battery swap would not add runtime but would make a flat battery a 10-second fix
 2. Search for an object with the eyes and approach it (rules and vision first, a policy later).
 3. Bring the object to a person.
 4. Return to the charging dock on its own.
+
+**The RL track** ([ADR 0043](../decisions/0043-reinforcement-learning-track-for-the-crab.md))
+trains in simulation, so it can start before any hardware exists. Its skills, in order:
+
+1. Reach a target point with each arm.
+2. Approach an object or the dock with the base and the eyes.
+3. Dock: line up and make contact.
+4. Grasp and lift, later refined with demonstrations.
+
+Driving the base is not learned: the omni wheels use classical kinematics. The RL runs on the
+home PC's GPU as a queue of short user jobs, and no job starts while CI needs the GPU.
 
 ## Privacy and the network
 

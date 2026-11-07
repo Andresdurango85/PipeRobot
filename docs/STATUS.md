@@ -19,6 +19,8 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Done recently
 
+- 2026-11-07: non-integer seeds (`3.7`, `true`, `"42"`) are rejected in `results.json`, as
+  Andrés decided on ADR 0040's open question (#91).
 - 2026-11-07: retro output-signal excerpts redact the full text before locating and slicing
   the signal, preserving token and reminder removal at excerpt boundaries (brief 29d).
 
@@ -49,8 +51,12 @@ Older items: git history and ADRs 0001–0039.
    Reports go to the private repo. The machine paths for `PIPEROBOT_RETRO_*` go in
    `CLAUDE.local.md` ([harness.md](knowledge/harness.md)). Phase 2, a schedule plus a watchdog,
    needs its own ADR.
-2. **In progress (Carla):** reject non-integer seeds in `results.json` (`3.7`, `true`, `"42"`),
-   Andrés's decision on ADR 0040's open question.
+2. **This weekend (Anita, Carla):** the crab's RL run, about 36 h of GPU
+   ([ADR 0043](decisions/0043-reinforcement-learning-track-for-the-crab.md)). The code and
+   results go in the private crab repo. Check that the queue runner starts no job while an
+   SO-101 gate run holds the GPU, and that candidate checkpoints are judged by task success
+   through the gate. Record the verified RL commands, versions, VRAM/commit floors and job time
+   box in [isaac.md](knowledge/isaac.md).
 3. Andrés: fill in the OpenSSF badge form from the answer sheet (decisions 2 and 4 are his),
    then add the README badge with the project id.
 4. Andrés: the real-arm test (20 attempts) once the electronics arrive; then the crab's v0 in
