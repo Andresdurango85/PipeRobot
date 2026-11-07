@@ -379,3 +379,53 @@ tasks, commands and results live in its private repo; general Isaac Lab RL facts
 - **`rsl-rl-lib` 5.5.1 is already in the home PC's Isaac Lab 3.0 environment**: it came with
   the environment's install on 2026-11-01. The entry points require at least 5.0.1
   (`RSL_RL_MIN_VERSION` in `isaaclab_rl/rsl_rl/utils.py`). _(verified 2026-11-07)_
+- **A verified `rsl_rl` training command on native Windows** (PPO, Isaac Lab's Franka reach
+  reference task), run from a scratch directory with the Isaac Lab 3.0 venv's Python:
+
+  ```
+  PYTHONIOENCODING=utf-8 PYTHONUNBUFFERED=1 <isaaclab-venv>/Scripts/python.exe \
+    <IsaacLab clone>/scripts/reinforcement_learning/train.py --rl_library rsl_rl \
+    --task Isaac-Reach-Franka --num_envs 2048 --max_iterations 200 --seed 1 \
+    --run_timestamp <name> --viz none presets=hold
+  ```
+
+  - Checkpoints land in `<cwd>/logs/rsl_rl/<experiment>/<run_timestamp>/model_<n>.pt`.
+  - `--rl_library` picks the backend.
+  - Task ids in 3.0 have no `-v0` suffix (`Isaac-Reach-Franka`, `Isaac-Lift-Franka`).
+  - Presets are Hydra tokens on the command line (`presets=hold`), not flags.
+
+  Versions: isaacsim 6.2.0.0, isaaclab 28.0.1, isaaclab_rl 1.5.1, isaaclab_tasks 25.2.0 (clone
+  `release/3.0.0` at `44044b0963`), rsl-rl-lib 5.5.1, torch 2.11.0+cu130, warp-lang 1.17.0;
+  tensorboard 2.21.0 is already in the venv. _(verified 2026-11-07, RTX 5060 Ti 16 GB, driver
+  610.88, Windows 11)_
+- **`PYTHONIOENCODING=utf-8` is required when training output goes to a file on Windows.** Isaac
+  Lab prints non-ASCII characters, and Python's default cp1252 stdout dies with
+  `UnicodeEncodeError` about 13 s in. _(verified 2026-11-07)_
+- **`nvidia-smi --query-compute-apps` shows `used_memory` as `[N/A]` per process on Windows**
+  (WDDM driver model). Measure the GPU's total used and free memory instead
+  (`nvidia-smi --query-gpu=memory.used,memory.free`). _(verified 2026-11-07, driver 610.88)_
+- **Startup and the first iteration are slow**: about 25–60 s from launch to the first
+  iteration, and the first iteration includes about 30–66 s of kernel warm-up. Time-box jobs
+  with that overhead included. _(verified 2026-11-07)_
+- **`play.py --video` must not be combined with `--viz none`.** Without `--viz`, `play.py`
+  creates a headless Kit visualizer by itself. _(verified 2026-11-07)_
+- **RL cost on the RTX 5060 Ti 16 GB** (seed 1, desktop apps closed, ~12.5 GB VRAM free at
+  rest):
+
+  | Task | Envs | s / iteration | Wall | Min free VRAM | Min free commit |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | Reach-Franka, 200 iterations | 512 | 0.70 | 230 s | 12.3 GB | ~63–64 GB |
+  | Reach-Franka, 200 iterations | 1024 | 0.73 | 171 s | 12.2 GB | ~63–64 GB |
+  | Reach-Franka, 200 iterations | 2048 | 0.73 | 175 s | 12.0 GB | ~63–64 GB |
+  | Lift-Franka, 40 iterations | 1024 | 1.14 | 118 s | 11.1 GB | ~62 GB |
+  | Lift-Franka, 40 iterations | 2048 | 1.39 | 81 s | 10.3 GB | ~62 GB |
+
+  Reach's time per iteration stays flat from 512 to 2048 envs: at that size it is bound by CPU
+  and Python, not the GPU, so more envs give more samples for free. A job at these sizes adds
+  about 0.5–2.2 GB of VRAM and ~2 GB of commit charge.
+
+  The SO-101 gate can start while a training job is running ([ADR
+  0043](../decisions/0043-reinforcement-learning-track-for-the-crab.md): no preemption), so the
+  job's own footprint must leave at least 5 GB of VRAM free for one gate worker. The gate's
+  Isaac process alone took +3.4–3.6 GB in the render check above. The queue runner starts a
+  job only with at least 7 GB of VRAM and 16 GB of commit free. _(verified 2026-11-07)_
