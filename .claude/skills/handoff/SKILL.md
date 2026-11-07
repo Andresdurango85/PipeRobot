@@ -21,7 +21,19 @@ alone. Follow the memory protocol in `AGENTS.md` (ADR 0001).
    questions". Keep it under ~60 lines.
 5. **Machine-only notes** (accounts, paths, local GPU) go to `CLAUDE.local.md`, never to `docs/`.
 6. **Check.** Run `uv run pytest tests/test_docs.py` and `uv run ruff check .`; fix failures.
-   Scan the diff for secrets or employer-related content.
+   Scan the diff for secrets or employer-related content. Then check that the git hooks still
+   point at an existing `prek`. Worktrees share one `.git/hooks`, and a `prek install` run from a
+   removed worktree breaks every commit with `prek: not found`:
+
+   ```bash
+   hook="$(git rev-parse --git-common-dir)/hooks/pre-push"
+   prek="$(sed -n 's/^PREK="\(.*\)"$/\1/p' "$hook")"
+   test -x "$prek" || echo "hooks point at a missing prek ($prek)"
+   ```
+
+   If it prints anything, do not commit around it (`uv run git` or `--no-verify`). Tell the
+   orchestrator or Andrés: the fix is `prek install` from the main checkout, never from a
+   worktree ([ci.md](../../../docs/knowledge/ci.md)).
 7. **Propose, don't push.** Show Andrés a summary (in Spanish) of the memory changes and the
    suggested commit message. Commit or push only if he asks; memory changes go in the same PR as
    the code.
