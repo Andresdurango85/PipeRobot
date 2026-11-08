@@ -22,7 +22,8 @@ experiment was registered before it ran. Four results bear on the gate's generic
    seeds were 32, 41 and 45 of 100 (up to 13 pp apart, a WARN), and the mid checkpoints were 55,
    5 and 2. Seed 1's "final worse than mid" (a BLOCK) did not repeat on seeds 2 and 3. On one of
    the crab's tasks, a reward change with a sound gradient argument lowered the recipe from
-   147/300 to 108/300 across three seeds. One seed alone would have shown a PASS (-3 pp).
+   147/300 to 108/300 across three seeds. A single seed could have shown anything from a PASS
+   (-3 pp) to a BLOCK (-25 pp).
 3. **Repeatability depends on the task, not only on the backend.** Both tasks ran on Isaac Lab
    3.0's default `newton_mjwarp` backend (`deterministic_mode: not_guaranteed`). Reach, which has
    no contacts, re-evaluated bit-identically: 100 of 100 outcomes and final-state digests matched.
@@ -34,6 +35,10 @@ experiment was registered before it ran. Four results bear on the gate's generic
    episodes all ended within 3.9 cm of the target, with medians of 1.9 to 3.2 cm, so the 2 cm
    threshold sat inside the distribution. A shift of a few millimetres moved the rate by tens of
    points.
+
+One rule has no evidence from the weekend; it comes from the contract's own blind spot. Nothing
+an evaluator records today would reveal seeds that all produce the same scene: such a run would
+look like a confident rate measured on one episode.
 
 Until now, the gate's contract ([results.py](../../piperobot/results.py)) carries only a seed and
 a pass/fail per episode. Its paired path ([ADR 0032](0032-nightly-paired-run-on-rotating-seeds.md))
@@ -96,5 +101,13 @@ yet.
   and the checks run only when an evaluator provides the fields.
 - Non-repeatable tasks need more episodes for the same power. That shows up as a longer
   evaluation or a wider interval, not as false confidence.
+- The existing gates already satisfy the admission check, and keep their paired tests:
+  - the SO-101 gate, by ADR 0033's bit-for-bit check;
+  - the PushT nightly ([ADR 0032](0032-nightly-paired-run-on-rotating-seeds.md)), because it
+    pairs two runs on the same host, where PushT is deterministic: its paired runs show 0
+    discordant episodes. Across CPU types PushT's outcomes differ
+    ([ci.md](../knowledge/ci.md)), so it must never pair runs from different hosts.
+
+  Both re-run the check on their next simulator, backend or evaluator upgrade.
 - Watch: a task whose repeatability changes after an upgrade. Re-running the admission check is
   part of every simulator or backend upgrade.
