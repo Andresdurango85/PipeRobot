@@ -24,8 +24,11 @@ where nothing is seeded, the seed is the attempt number, a label only (ADR 0022)
 Optional episode fields also include ``initial_state_sha256``, ``final_state_sha256``
 and ``metric`` (a finite number stored as float). Digests are 64 lowercase hex characters.
 Each new episode field must be present on all episodes or none. Initial digests must differ
-between seeds. Optional ``metric_spec`` contains exactly ``name``, ``unit``, ``threshold``
-(finite number), and ``success_when`` (below or above), and requires episode metrics.
+between seeds. That rule assumes the initial digest covers all randomized state: an evaluator
+whose scenes come from a small discrete set, with no continuous perturbation, must not emit
+initial digests, because two seeds could legitimately share a scene.
+Optional ``metric_spec`` contains exactly ``name``, ``unit``, ``threshold`` (finite number)
+and ``success_when`` (below or above), and requires episode metrics.
 Success is not cross-checked against the threshold: other conditions may determine the outcome.
 Metrics without a spec are allowed and reported without a threshold.
 ``seed`` must be a JSON integer, not a float such as ``3.0``, a bool or a string.
