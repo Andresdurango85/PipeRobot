@@ -184,6 +184,39 @@ regression test that failed on `c0bcccb`:
   seeds) are ints, so a float means a hand edit or a foreign writer. Its regression tests
   failed on `9caac15`. _(2026-11-07)_
 
+## Repeatability and continuous metrics in the results contract (2026-11-08)
+
+[ADR 0044](../decisions/0044-gate-trained-policies-against-a-spec-with-checked-repeatability.md)'s
+points 2 to 4, in `piperobot/results.py`, `piperobot/stats/repeatability.py` and
+`piperobot/stats/metric.py` ([stats README](../../piperobot/stats/README.md)):
+
+- **New optional fields are all-or-none.** `initial_state_sha256`, `final_state_sha256` (64
+  lowercase hex) and `metric` (finite number; `true`, `NaN`, `Infinity` and `1e400`-sized ints
+  are rejected) must be on every episode or on none, each field checked on its own. A top-level
+  `metric_spec` (`name`, `unit`, `threshold`, `success_when`: `below` or `above`, no other keys)
+  needs per-episode metrics. These checks live in `EvalResults.__post_init__`, not only in
+  `from_dict`, because evaluators also build `EpisodeResult` directly. Without the fields,
+  `save_results` writes the same bytes as before, so certificates and goldens are unchanged.
+- **Seeds must vary the scene**: two seeds with one `initial_state_sha256` raise
+  `ResultsError("seeds do not vary the scene: ...")`.
+- **Quantiles are Hyndman-Fan type 7 (linear interpolation, numpy's default)**: sort the `n`
+  values, `h = (n - 1) * q`, interpolate between positions `floor(h)` and `ceil(h)`. Worked
+  example, values `0, 2, 4, 6, 10`: median 4; p90 at `h = 3.6` is `6 + 0.6 * (10 - 6) = 8.4`;
+  q25 = 2 and q75 = 6, so IQR = 4. One value gives IQR 0. The report warns when
+  `abs(threshold - median) <= IQR`, so a zero IQR with the threshold at the median warns.
+  `statistics.quantiles` is not used: it needs two values on Python 3.12.
+- **Repeatability verdicts**: any outcome mismatch is NOT_REPEATABLE, even without digests (one
+  differing outcome already disproves repeatability); matching outcomes without final digests
+  are UNVERIFIED, since equal outcomes do not show that episodes reproduce; matching outcomes and
+  final digests, plus initial digests when present, are REPEATABLE. Exit codes: 0 REPEATABLE,
+  1 NOT_REPEATABLE, 3 UNVERIFIED, 2 invalid input. Exit 1 is a finding, not a crash.
+  Different seed sets, different `policy` strings, or digests in one file but not the other are
+  invalid input.
+- **A new `piperobot/stats` module is mutation-tested on Linux**, so its test file must be added
+  to `[tool.mutmut]` in `pyproject.toml` and to `mutation.yml`'s `paths`
+  (`tests/test_mutation_config.py` fails otherwise). `test_metric.py` and `test_repeatability.py`
+  were added to both.
+
 ## Fuzzing (atheris)
 
 - **Layout** ([ADR 0040](../decisions/0040-fuzz-untrusted-parsers-with-atheris.md)):

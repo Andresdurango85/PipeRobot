@@ -43,3 +43,12 @@ the previous history as an exact prefix. Writes replace the file atomically. Inv
 The `history.yml` workflow evaluates main, appends each result to the `history` data branch
 with fetch/append/push retries, and renders that branch to GitHub Pages. CI never uses `--new`;
 the data branch must be created and seeded first (ADR 0026).
+
+## Optional continuous metrics
+
+When episode metrics are supplied, comments add a table immediately after the results table:
+median, p90 and IQR for the candidate, plus the reference in paired comments when available.
+A `metric_spec` supplies the heading, unit and success threshold. Each run warns when the
+threshold is within one IQR of its median. Without a spec the heading is `Metric` and no
+threshold is shown. Paired inputs with different specs are rejected; one supplied spec is
+shared by both rows. Comments without metrics retain their existing format.

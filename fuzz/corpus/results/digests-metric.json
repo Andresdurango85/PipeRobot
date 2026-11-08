@@ -1,0 +1,1 @@
+{"policy": "test", "evaluator": "test", "episodes": [{"seed": 1, "success": true, "initial_state_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "final_state_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "metric": 0.01}], "metric_spec": {"name": "distance", "unit": "m", "threshold": 0.02, "success_when": "below"}}

@@ -49,14 +49,13 @@ Older items: git history and ADRs 0001–0043.
    Reports go to the private repo. The machine paths for `PIPEROBOT_RETRO_*` go in
    `CLAUDE.local.md` ([harness.md](knowledge/harness.md)). Phase 2, a schedule plus a watchdog,
    needs its own ADR.
-2. Implement ADR 0044's points 2-4 in the generic core:
-   - optional `initial_state_sha256`, `final_state_sha256` and `metric` fields in `results.json`;
-   - a repeatability admission check that compares two runs of one checkpoint and picks the
-     paired or the unpaired gate;
-   - the seed-variation check;
-   - metric median, p90 and IQR in reports, with a warning when the threshold sits within one
-     IQR of the median.
-   Then make the SO-101 Isaac evaluator emit the digests and its end-distance metric.
+2. ADR 0044's points 2-4 are in the generic core ([testing.md](knowledge/testing.md)):
+   - optional digests, `metric` and `metric_spec` in `results.json`, with the seed-variation
+     check;
+   - `python -m piperobot.stats.repeatability`, which picks the paired or unpaired gate;
+   - metric median, p90 and IQR in both PR comments.
+   Next: make the SO-101 Isaac evaluator emit the digests and its end-distance metric, then run
+   the admission check on it.
 3. The crab's RL track continues in its private repo (PR authorization until 2026-11-15).
    Next candidates, each registered first:
    - a Lift run with `deterministic_mode="run_to_run"`, to test the admission check's fix;

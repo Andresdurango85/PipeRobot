@@ -11,9 +11,10 @@ import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from piperobot.results import EpisodeResult, ResultsError, load_results
+from piperobot.results import EpisodeResult, MetricSpec, ResultsError, load_results
 from piperobot.stats.baseline import BaselineError, load_baseline
 from piperobot.stats.gate import SuccessCount
+from piperobot.stats.metric import MetricSummary
 
 InputError = (ResultsError, BaselineError)
 
@@ -23,6 +24,8 @@ class GateInputs:
     candidate: SuccessCount
     baseline: SuccessCount
     failed_episodes: list[EpisodeResult] = field(default_factory=list)
+    metric_summary: MetricSummary | None = None
+    metric_spec: MetricSpec | None = None
 
 
 def add_input_arguments(parser: argparse.ArgumentParser) -> None:
@@ -43,4 +46,6 @@ def resolve_inputs(args: argparse.Namespace) -> GateInputs:
         candidate=SuccessCount(results.successes, results.trials),
         baseline=baseline,
         failed_episodes=results.failed,
+        metric_summary=MetricSummary.from_results(results),
+        metric_spec=results.metric_spec,
     )
