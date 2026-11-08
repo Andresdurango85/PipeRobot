@@ -138,3 +138,63 @@ def test_note_rejects_newline(note: str) -> None:
             failed_seeds=[],
             note=note,
         )
+
+
+def test_metric_golden_and_escaping() -> None:
+    from piperobot.results import MetricSpec
+    from piperobot.stats.metric import MetricSummary
+
+    result = decide_paired(PairedCounts(1, 0, 0, 1))
+    summary = MetricSummary(2, 2, 2.8, 1)
+
+    def render(spec: MetricSpec | None) -> str:
+        return render_paired_comment(
+            result,
+            marker=MARKER,
+            title="Policy gate",
+            run_url=None,
+            commit=None,
+            failed_seeds=[1],
+            reference_metric=summary,
+            candidate_metric=summary,
+            metric_spec=spec,
+        )
+
+    assert render(MetricSpec("distance", "cm", 2, "below")) == (
+        GOLDEN / "paired_comment_metric.md"
+    ).read_text(encoding="utf-8")
+    assert "### Metric" in render(None)
+    text = render(MetricSpec("<b>*x*|y\nheading", "[m]", 2, "below"))
+    assert "<b>" not in text
+    assert "&lt;b&gt;" in text
+    assert r"\*x\*\|y heading" in text
+    assert r"\[m\]" in text
+
+
+def test_metric_spec_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from piperobot.results import EpisodeResult, EvalResults, MetricSpec, save_results
+
+    a, b, output = tmp_path / "a.json", tmp_path / "b.json", tmp_path / "comment.md"
+    episodes = (EpisodeResult(0, True, metric=2),)
+    spec = MetricSpec("distance", "cm", 2, "below")
+    save_results(EvalResults("a", "e", episodes, spec), a)
+    save_results(EvalResults("b", "e", episodes, MetricSpec("other", "cm", 2, "below")), b)
+    args = [
+        "--reference",
+        str(a),
+        "--candidate",
+        str(b),
+        "--marker",
+        MARKER,
+        "--title",
+        "Policy gate",
+        "--output",
+        str(output),
+    ]
+    assert main(args) == 2
+    assert "metric_spec" in capsys.readouterr().err
+    for left, right in [(spec, None), (None, spec), (spec, spec)]:
+        save_results(EvalResults("a", "e", episodes, left), a)
+        save_results(EvalResults("b", "e", episodes, right), b)
+        assert main(args) == 0
+        assert "### distance (cm)" in output.read_text(encoding="utf-8")

@@ -47,3 +47,36 @@ python -m piperobot.stats.paired --reference reference.json --candidate candidat
 ```
 
 Exit codes: 0 PASS/WARN, 1 BLOCK, 2 invalid input or arguments.
+
+## Repeatability admission check
+
+Evaluate one checkpoint twice in fresh processes, then run:
+
+```
+python -m piperobot.stats.repeatability --first first.json --second second.json --json
+```
+
+Policy strings and seed sets must agree. Initial and final digest presence must agree between
+files; a contract mismatch is invalid input. Re-run after evaluator or simulator upgrades.
+
+| Evidence | Verdict | Recommended gate | Exit |
+| --- | --- | --- | ---: |
+| Any outcome or supplied digest mismatch | NOT_REPEATABLE | Unpaired Wilson/Newcombe (ADR 0003) | 1 |
+| Outcomes match, no final digests | UNVERIFIED | None; caller decides | 3 |
+| Outcomes and final digests match, initial digests also match if supplied | REPEATABLE | Paired (ADR 0032) | 0 |
+| Invalid input or arguments | Error | None | 2 |
+
+Exit 1 is a finding, not a crash: the check ran and the task must use the unpaired gate.
+
+An outcome mismatch alone conclusively disproves repeatability. Identical outcomes alone do not
+prove episodes reproduce: add final digests to the evaluator. Text is the default; `--json`
+emits one object with verdict, gate, seed count, matching outcome/final/initial counts (null for
+absent digests), up to ten sorted mismatched seeds, and a reason.
+
+## Continuous metric summary
+
+`metric.py` summarizes optional episode metrics with count, median, p90 and IQR (q75 - q25).
+Quantiles use Hyndman-Fan type 7 linear interpolation, including singleton inputs (IQR zero).
+Reports warn when `abs(threshold - median) <= IQR`, including equality with zero IQR.
+The optional `metric_spec` names the metric, unit, finite threshold and direction (below/above).
+It describes the threshold without deriving success: a task may have additional conditions.

@@ -187,3 +187,45 @@ def test_main_stdout_without_buffer(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     assert main(["--results", str(results), "--baseline", "15/20"]) == 0
 
     assert stdout.getvalue() == render_comment(decide(SuccessCount(1, 1), SuccessCount(15, 20)))
+
+
+def test_metric_golden_and_escaping() -> None:
+    from piperobot.results import MetricSpec
+    from piperobot.stats.metric import MetricSummary
+
+    result = decide(SuccessCount(1, 2), SuccessCount(1, 2))
+    summary = MetricSummary(2, 2, 2.8, 1)
+    spec = MetricSpec("distance", "cm", 2, "below")
+    comment = render_comment(result, metric_summary=summary, metric_spec=spec)
+    assert comment == (GOLDEN_DIR / "pr_comment_metric.md").read_text(encoding="utf-8")
+    assert "### Metric" in render_comment(result, metric_summary=summary)
+    empty_unit = render_comment(
+        result, metric_summary=summary, metric_spec=MetricSpec("distance", "", 20, "above")
+    )
+    assert "### distance\n" in empty_unit
+    assert "Success when distance is above 20." in empty_unit
+    assert "Warning" not in empty_unit
+    escaped = render_comment(
+        result, metric_summary=summary, metric_spec=MetricSpec("x|y\nheading", "m|s", 2, "below")
+    )
+    assert "### x\\|y heading (m\\|s)" in escaped
+
+
+def test_metric_from_results_cli(tmp_path: Path) -> None:
+    from piperobot.results import EpisodeResult, EvalResults, MetricSpec, save_results
+
+    path, output = tmp_path / "results.json", tmp_path / "comment.md"
+    save_results(
+        EvalResults(
+            "p",
+            "e",
+            (EpisodeResult(0, True, metric=1.5),),
+            MetricSpec("distance", "cm", 1.5, "below"),
+        ),
+        path,
+    )
+    assert main(["--results", str(path), "--baseline", "1/1", "--output", str(output)]) == 0
+    text = output.read_text(encoding="utf-8")
+    assert "| Candidate | 1.5 | 1.5 | 0 |" in text
+    assert "Success when distance is below 1.5 cm." in text
+    assert "Warning" in text

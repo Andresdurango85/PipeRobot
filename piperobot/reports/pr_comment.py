@@ -20,7 +20,8 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from piperobot.results import EpisodeResult
+from piperobot.reports.metric_section import metric_section
+from piperobot.results import EpisodeResult, MetricSpec
 from piperobot.stats.cli_inputs import InputError, add_input_arguments, resolve_inputs
 from piperobot.stats.gate import (
     DEFAULT_CONFIDENCE,
@@ -31,6 +32,7 @@ from piperobot.stats.gate import (
     decide,
     format_percent,
 )
+from piperobot.stats.metric import MetricSummary
 
 COMMENT_MARKER = "<!-- piperobot-gate -->"
 MAX_FAILED_LISTED = 10
@@ -121,6 +123,9 @@ def render_comment(
     failed_episodes: Sequence[EpisodeResult] = (),
     run_url: str | None = None,
     commit: str | None = None,
+    *,
+    metric_summary: MetricSummary | None = None,
+    metric_spec: MetricSpec | None = None,
 ) -> str:
     """Build the full Markdown body of the PR comment."""
     total_failed = result.candidate.trials - result.candidate.successes
@@ -137,6 +142,7 @@ def render_comment(
         result.reason,
         "",
         *_results_table(result, commit),
+        *metric_section([("Candidate", metric_summary)], metric_spec, _cell),
         *_failed_section(failed_episodes, total_failed, run_url),
         *_explanation(result),
     ]
@@ -167,7 +173,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     result = decide(inputs.candidate, inputs.baseline, args.confidence, args.tolerance)
     comment = render_comment(
-        result, inputs.failed_episodes, run_url=args.run_url, commit=args.commit
+        result,
+        inputs.failed_episodes,
+        run_url=args.run_url,
+        commit=args.commit,
+        metric_summary=inputs.metric_summary,
+        metric_spec=inputs.metric_spec,
     )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -10,9 +10,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from piperobot.reports.metric_section import metric_section
 from piperobot.reports.sticky_comment import validate_marker
-from piperobot.results import load_results
+from piperobot.results import MetricSpec, ResultsError, load_results
 from piperobot.stats.gate import Verdict, format_percent
+from piperobot.stats.metric import MetricSummary
 from piperobot.stats.paired import PairedCounts, PairedResult, decide_paired
 
 
@@ -30,6 +32,9 @@ def render_paired_comment(
     commit: str | None,
     failed_seeds: Sequence[int],
     note: str | None = None,
+    reference_metric: MetricSummary | None = None,
+    candidate_metric: MetricSummary | None = None,
+    metric_spec: MetricSpec | None = None,
 ) -> str:
     """Build a comment; the exact test decides, the interval only reports scale."""
     validate_marker(marker)
@@ -57,6 +62,9 @@ def render_paired_comment(
         f"| Difference (candidate - reference) | {result.difference * 100:+.1f} pp |",
         f"| {format_percent(1 - 2 * result.alpha)}% paired CI | "
         f"{interval.lower * 100:+.1f} to {interval.upper * 100:+.1f} pp |",
+        *metric_section(
+            [("Reference", reference_metric), ("Candidate", candidate_metric)], metric_spec, _escape
+        ),
         "",
         _escape(result.reason),
         "",
@@ -108,6 +116,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         reference, candidate = load_results(args.reference), load_results(args.candidate)
+        if (
+            reference.metric_spec is not None
+            and candidate.metric_spec is not None
+            and reference.metric_spec != candidate.metric_spec
+        ):
+            raise ResultsError("metric_spec differs between reference and candidate")
         result = decide_paired(PairedCounts.from_results(reference, candidate))
         comment = render_paired_comment(
             result,
@@ -116,6 +130,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             run_url=args.run_url,
             commit=args.commit,
             note=args.note,
+            reference_metric=MetricSummary.from_results(reference),
+            candidate_metric=MetricSummary.from_results(candidate),
+            metric_spec=reference.metric_spec or candidate.metric_spec,
             failed_seeds=[episode.seed for episode in candidate.episodes if not episode.success],
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
