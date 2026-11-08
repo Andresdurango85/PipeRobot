@@ -56,10 +56,10 @@ def check_repeatability(first: EvalResults, second: EvalResults) -> Repeatabilit
         )
     if first.policy != second.policy:
         raise ResultsError(f"policy strings differ: {first.policy!r} vs {second.policy!r}")
-    fields = ("success", "final_state_sha256", "initial_state_sha256")
+    mismatched = {seed for seed in a if a[seed].success != b[seed].success}
+    matching_outcomes = len(a) - len(mismatched)
     matches: list[int | None] = []
-    mismatched: set[int] = set()
-    for field in fields:
+    for field in ("final_state_sha256", "initial_state_sha256"):
         provided = getattr(first.episodes[0], field) is not None
         if provided != (getattr(second.episodes[0], field) is not None):
             raise ResultsError(f"{field} contract mismatch")
@@ -69,7 +69,7 @@ def check_repeatability(first: EvalResults, second: EvalResults) -> Repeatabilit
     if mismatched:
         verdict, gate = Verdict.NOT_REPEATABLE, "unpaired"
         reason = "Episodes differ; use the unpaired Wilson/Newcombe gate (ADR 0003)."
-    elif matches[1] is None:
+    elif matches[0] is None:
         verdict, gate = Verdict.UNVERIFIED, None
         reason = (
             "Identical outcomes alone do not show that episodes reproduce; add final "
@@ -82,9 +82,9 @@ def check_repeatability(first: EvalResults, second: EvalResults) -> Repeatabilit
         verdict,
         gate,
         len(a),
-        len(a) - sum(a[s].success != b[s].success for s in a),
+        matching_outcomes,
+        matches[0],
         matches[1],
-        matches[2],
         sorted(mismatched)[:10],
         reason,
     )
