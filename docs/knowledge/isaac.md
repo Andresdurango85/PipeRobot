@@ -450,3 +450,61 @@ tasks, commands and results live in its private repo; general Isaac Lab RL facts
   job's own footprint must leave at least 5 GB of VRAM free for one gate worker. The gate's
   Isaac process alone took +3.4–3.6 GB in the render check above. The queue runner starts a
   job only with at least 7 GB of VRAM and 16 GB of commit free. _(verified 2026-11-07)_
+
+### Evaluating the reference tasks (verified 2026-11-08)
+
+Facts from the RL weekend's reference runs on Isaac Lab's public Franka tasks. They feed
+[ADR 0044](../decisions/0044-gate-trained-policies-against-a-spec-with-checked-repeatability.md).
+Source paths are relative to `source/` in the clone at `release/3.0.0` `44044b0963`.
+
+- **Reach's `hold` preset pays its success reward inside a 5 cm / 0.2 rad band.** `hold` removes
+  the success termination and adds `pose_command_success` as a reward, weight 10
+  (`isaaclab_tasks/core/reach/config/franka/franka_reach_env_cfg.py:242-246`), with thresholds of
+  0.05 m and 0.2 rad (`isaaclab_tasks/core/reach/reach_env_cfg.py:112-113`).
+  - Inside that band, the only pull toward finer precision is position tracking (weight -0.2).
+  - Override the band with the Hydra token
+    `env.commands.ee_pose.position_success_threshold=<m>`, placed after `presets=hold`.
+- **`hold`'s penalty profile depends on the physics backend**
+  (`franka_reach_env_cfg.py:248-258`).
+  - Newton keeps the task's `action_rate` curriculum, which ends at -0.005.
+  - The PhysX aliases use `action_rate` -0.01 and a curriculum weight of -0.5, 100 times larger.
+  - Results are comparable only on the same backend.
+- **Lift trains under an ADR curriculum that scales gravity.** The `gravity_adr` term interpolates
+  gravity from (0, 0, 0) to (0, 0, -9.81) m/s² with the difficulty level
+  (`isaaclab_tasks/core/lift/adr_curriculum.py:126-137`). It also scales the out-of-bound floor
+  and observation noise.
+  - `play_mode()` sets `init_difficulty` to `max_difficulty`
+    (`isaaclab_tasks/core/lift/lift_env_cfg.py:579-580`), so evaluating in play mode runs at full
+    gravity.
+  - 6000 iterations at 4096 envs reached a difficulty of only 0.86-0.89.
+- **Lift's training `Metrics/success_rate` is not a task-success measure.**
+  - It counts an episode once the object is *ever* within the threshold.
+  - The goal resamples every 4-6 s (`lift_env_cfg.py:159`).
+  - Starts come from a success-monitored reset bank aimed at 50% success (`lift_env_cfg.py:321`,
+    `:415`).
+  - Training read 0.89-0.91 on three seeds while a fixed-goal, end-of-episode evaluation at full
+    gravity scored 3, 15 and 2 of 100.
+  - In play mode the bank stays on, with 32 states per group (`lift_env_cfg.py:575-578`), so one
+    process's episodes are coupled.
+- **Repeatability on `newton_mjwarp` depends on contacts.** Newton's default is
+  `deterministic_mode="not_guaranteed"`
+  (`isaaclab_newton/isaaclab_newton/physics/newton_manager_cfg.py:190`).
+  - Reach, with no contacts, re-evaluated in a fresh process bit-identically: 100 of 100 outcomes
+    and final-state digests matched.
+  - Lift, with contacts, did not. Three processes on the same checkpoint and seeds scored 3, 3
+    and 6 of 100, and 0-1 of 100 final-state digests matched.
+  - `deterministic_mode="run_to_run"` orders contacts deterministically, at a memory and speed
+    cost. Untested here.
+- **Video from a custom task: put the camera in `sim.visualizer_cfgs`.**
+  `sim.default_visualizer_cfg` is only a hint, and "does not add a visualizer"
+  (`isaaclab/isaaclab/sim/simulation_cfg.py:143-146`). A task that sets only that captured no
+  frames. A `KitVisualizerCfg(headless=True, ...)` in `sim.visualizer_cfgs` works, and
+  `--viz none` still disables it for training.
+- **Costs on the RTX 5060 Ti 16 GB, 4096 envs:**
+
+  | Job | Wall time |
+  | --- | --- |
+  | Reach-Franka (`hold`), 1500 iterations | 20-24 min |
+  | Lift-Franka, 6000 iterations | about 3 h 05 min |
+  | Evaluating 100 episodes, one env: Reach | 6.4-6.9 min |
+  | Evaluating 100 episodes, one env: Lift | 9-10.4 min |
