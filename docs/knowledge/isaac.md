@@ -346,8 +346,8 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
     bit-identical on `trajectory_sha256` (PhysX, `enable_enhanced_determinism=False`, one process
     per seed), and two workers left every hash unchanged (above). The final-state digest is
     computed from that same trajectory's last state, so it should match too.
-  - Plan: two fresh 100-seed evaluations of the scripted policy (`--seeds 0-99`, the gate's task
-    and policy), back to back, in separate work and output folders, then
+  - Plan: two fresh 100-seed evaluations of the scripted policy on the gate's seeds, task and
+    policy (`--seeds 100000-100099`, corrected from `0-99` before any run), back to back, in separate work and output folders, then
     `python -m piperobot.stats.repeatability --first a/results.json --second b/results.json`.
   - Outcome: pending. _(registered 2026-11-10)_
 - **Evaluator inputs live under one cache root**: `PIPEROBOT_CACHE`, else
