@@ -45,3 +45,26 @@ malformed counts jump.
   installed: `ZoneInfo("America/Bogota")` raises `ZoneInfoNotFoundError` in this repository's
   venv. Bogotá: no DST since 1993; revisit if the scheduler ever runs elsewhere.
   _(verified 2026-11-07, CPython 3.12.12, Windows)_
+- **Headless runs for a scheduled retro** ([ADR 0045](../decisions/0045-daily-retrospective-phase-2-window-and-watchdog.md)):
+  - `claude -p "/retro 2026-11-09"` expands a project skill from `.claude/skills/` and passes the
+    rest of the line as arguments. Do not add `--bare`: it skips skill discovery and OAuth.
+  - `--permission-mode dontAsk`: reads in the working and `--add-dir` directories, plus whatever
+    `--allowedTools` or `permissions.allow` pre-approve, run; everything else is denied, and the
+    run goes on without waiting. `bypassPermissions` is documented for isolated containers and VMs
+    only. Bash rules match by prefix: `Bash(git diff *)`, where the space before `*` matters.
+  - Since v2.1.302, `-p` with no mode starts in Manual (`default`) mode; denied calls continue.
+    `--output-format stream-json --verbose` reports denials as `permission_denied` events and
+    in the result's `permission_denials`.
+  - Exit code 0 on success, non-zero on failure; a failure inside the run, such as missing
+    authentication, prints as the result on stdout. `-p` stops background work after 10 minutes
+    idle (`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS`).
+  - Authentication: `ANTHROPIC_API_KEY`, when set, wins over `CLAUDE_CODE_OAUTH_TOKEN`
+    (`claude setup-token`, one year) and `/login`, so an API key in the task's environment bills
+    the API, not the subscription.
+  - Not documented: how compound commands (`&&`, `|`) match allow rules, the exit code when
+    `--max-turns` ends a run, and whether a Task Scheduler task inherits the user's PATH and
+    can read `%USERPROFILE%\.claude\.credentials.json`. Use the absolute path to `claude.exe`,
+    and check the first scheduled run by hand.
+
+  _(verified 2026-11-10, code.claude.com/docs/en: headless, permission-modes, cli-reference,
+  skills, authentication)_
