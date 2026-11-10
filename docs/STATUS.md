@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-08 (home PC)
+Last updated: 2026-11-10 (home PC)
 
 Current state and hand-off. Rewrite this file at the end of every session (`/handoff` in Claude
 Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts in knowledge.
@@ -54,8 +54,10 @@ Older items: git history and ADRs 0001–0043.
      check;
    - `python -m piperobot.stats.repeatability`, which picks the paired or unpaired gate;
    - metric median, p90 and IQR in both PR comments.
-   Next: make the SO-101 Isaac evaluator emit the digests and its end-distance metric, then run
-   the admission check on it.
+   The SO-101 Isaac evaluator now emits the digests and `box_signed_distance`, and passed the
+   admission check: REPEATABLE, 100/100 ([isaac.md](knowledge/isaac.md)), so its gate stays
+   paired. Next: re-record the SO-101 baseline (a `baseline` dispatch) so that the paired
+   comment shows the reference's metric row too.
 3. The crab's RL track continues in its private repo (PR authorization until 2026-11-15).
    Next candidates, each registered first:
    - a Lift run with `deterministic_mode="run_to_run"`, to test the admission check's fix;
