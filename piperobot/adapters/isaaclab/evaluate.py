@@ -21,7 +21,7 @@ from threading import Event, Lock
 from typing import Protocol
 
 from piperobot.adapters.isaaclab.specs import PolicySpec, TaskSpec, object_dict, read_object
-from piperobot.results import EpisodeResult, EvalResults, ResultsError, save_results
+from piperobot.results import EpisodeResult, EvalResults, MetricSpec, ResultsError, save_results
 
 MAX_ATTEMPTS_PER_SEED = 2
 MAX_RETRIED_SEEDS = 3
@@ -153,7 +153,19 @@ def validate_episode(data: dict[str, object], seed: int) -> EpisodeResult:
         raise ResultsError("Failed trial must include a failure reason")
     if not isinstance(data.get("platform"), dict):
         raise ResultsError("Worker must return platform metadata")
-    return EpisodeResult(seed, success, scene, None if success else str(failure))
+    payload = {
+        "seed": seed,
+        "success": success,
+        "scene": scene,
+        "failure": None if success else failure,
+    }
+    for key in ("initial_state_sha256", "final_state_sha256", "metric"):
+        if key in data:
+            payload[key] = data[key]
+    episode = EpisodeResult.from_dict(payload)
+    if data.get("metric_spec") is not None:
+        MetricSpec.from_dict(data["metric_spec"])
+    return episode
 
 
 def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
@@ -341,7 +353,11 @@ def evaluate(args: argparse.Namespace, *, runner: Runner = run_process) -> int:
     write_json(output.with_name("episodes_detail.json"), details)
     if error:
         return 2
-    results = EvalResults(policy.name, "isaaclab", tuple(episodes))
+    specs = [seed_details[seed].get("metric_spec") for seed in seeds]
+    if any(spec != specs[0] for spec in specs):
+        raise ResultsError("Workers returned mismatched metric_spec across seeds")
+    metric_spec = MetricSpec.from_dict(specs[0]) if specs[0] is not None else None
+    results = EvalResults(policy.name, "isaaclab", tuple(episodes), metric_spec=metric_spec)
     save_results(results, output)
     print(
         f"{policy.name}: {results.successes}/{results.trials} episodes succeeded "

@@ -66,6 +66,7 @@ class VialResult:
     placed: bool
     rack_local_position: Vec3
     bottom_local_z: float
+    box_signed_distance: float
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,24 @@ def rotate_xyzw(q: Quat, v: Vec3) -> Vec3:
         v[0] + w * ux + y * uz - z * uy,
         v[1] + w * uy + z * ux - x * uz,
         v[2] + w * uz + x * uy - y * ux,
+    )
+
+
+def box_margins(position: Vec3, bottom_local_z: float, params: SuccessParams) -> tuple[float, ...]:
+    """Six signed geometric box margins in metres; max is the box signed distance.
+
+    This covers only geometry. Vertical, release and hold are judged separately,
+    so a negative distance with success false is expected.
+    """
+    x, y, z = position
+    rim_threshold = params.rack_rim_z - params.rim_margin_m
+    return (
+        params.rack_local_x_min - x,
+        x - params.rack_local_x_max,
+        params.rack_local_y_min - y,
+        y - params.rack_local_y_max,
+        z - params.rack_local_z_max,
+        bottom_local_z - rim_threshold,
     )
 
 
@@ -142,14 +161,10 @@ class SuccessTracker:
             grasped = vial.force_n > p.force_threshold_n
             self._history[i].append(grasped)
             recent = any(self._history[i])
-            x, y, z = local_positions[i]
+            z = local_positions[i][2]
             bottom_local_z = z + min(end * local_axes[i][2] for end in p.tube_axis_span_m)
-            in_box = (
-                p.rack_local_x_min <= x <= p.rack_local_x_max
-                and p.rack_local_y_min <= y <= p.rack_local_y_max
-                and z < p.rack_local_z_max
-                and bottom_local_z < p.rack_rim_z - p.rim_margin_m
-            )
+            margins = box_margins(local_positions[i], bottom_local_z, p)
+            in_box = all(m <= 0 for m in margins[:4]) and all(m < 0 for m in margins[4:])
             if step_index >= p.warmup_steps:
                 self._ever_grasped |= grasped
                 self._placed[i] |= verticals[i] and in_box and recent and not grasped
@@ -162,6 +177,7 @@ class SuccessTracker:
                     self._placed[i],
                     local_positions[i],
                     bottom_local_z,
+                    max(margins),
                 )
             )
         valid = any(v.placed and v.vertical and v.in_box and not v.grasped_now for v in results)

@@ -202,3 +202,99 @@ def test_depth_margin_is_configurable_and_strict() -> None:
     vial = sample(tracker, 0, position=(0.06, 0.06, height)).vials[0]
     assert vial.bottom_local_z == pytest.approx(0.07)
     assert not vial.in_box
+
+
+@pytest.mark.parametrize("face", range(6))
+@pytest.mark.parametrize("offset", [-1e-7, 0.0, 1e-7])
+def test_box_faces(face: int, offset: float) -> None:
+    # Isolate each face, including strict z with the rim moved out of the way.
+    params = S.SuccessParams(rack_rim_z=1.0) if face == 4 else S.SuccessParams()
+    position = [0.06, 0.06, 0.03]
+    if face < 4:
+        position[face // 2] = -offset if face % 2 == 0 else 0.12 + offset
+    else:
+        position[2] = (
+            0.1 if face == 4 else params.rack_rim_z - params.rim_margin_m + 0.017
+        ) + offset
+    result = (
+        S.SuccessTracker(params)
+        .step(0, [S.VialState(0.0, tuple(position), IDENTITY)], (0, 0, 0), IDENTITY)
+        .vials[0]
+    )
+    assert result.box_signed_distance == pytest.approx(offset, abs=1e-15)
+    assert result.in_box == (offset < 0 if face >= 4 else offset <= 0)
+
+
+def test_box_random_yaw_and_tilt() -> None:
+    import random
+
+    rng = random.Random(44)
+    p = S.SuccessParams()
+    for _ in range(1000):
+        yaw, tilt = rng.uniform(-math.pi, math.pi), rng.uniform(-math.pi, math.pi)
+        rack_q = (0, 0, math.sin(yaw / 2), math.cos(yaw / 2))
+        tube_q = (0, math.sin(tilt / 2), 0, math.cos(tilt / 2))
+        local = tuple(rng.uniform(-0.05, 0.17) for _ in range(3))
+        world = S.rotate_xyzw(rack_q, local)
+        v = S.SuccessTracker(p).step(0, [S.VialState(0, world, tube_q)], (0, 0, 0), rack_q).vials[0]
+        x, y, z = v.rack_local_position
+        expected = (
+            0 <= x <= 0.12
+            and 0 <= y <= 0.12
+            and z < 0.1
+            and v.bottom_local_z < p.rack_rim_z - p.rim_margin_m
+        )
+        assert v.in_box == expected
+        assert v.in_box == (v.box_signed_distance <= 0)
+
+
+def test_upright_on_rack_rim_binds() -> None:
+    v = sample(S.SuccessTracker(), 0, position=(0.06, 0.06, 0.09)).vials[0]
+    assert not v.in_box
+    assert v.box_signed_distance == pytest.approx(0.02)
+
+
+def test_state_digest_canonicalization() -> None:
+    import hashlib
+
+    digest = load("state_digest_tests", "robots/so101/envs/state_digest.py").state_digest
+    assert digest([-0.0]) == digest([0.0]) == digest([1e-7]) == digest([-1e-7])
+    assert digest([1.0, 2.0]) != digest([2.0, 1.0])
+    assert digest([1.1234567, -0.0]) == hashlib.sha256(b"1.123457,0.000000").hexdigest()
+
+
+@pytest.mark.parametrize("face", range(6))
+def test_rotated_tilted_face_grid(face: int) -> None:
+    import random
+
+    rng = random.Random(44 + face)
+    p = S.SuccessParams(rack_rim_z=1.0) if face == 4 else S.SuccessParams()
+    for _ in range(30):
+        yaw, tilt = rng.uniform(-math.pi, math.pi), rng.uniform(-math.pi, math.pi)
+        if face == 5:
+            # Keep the bottom face below the origin-z ceiling while isolating it.
+            tilt = rng.uniform(-math.pi / 2, math.pi / 2)
+        rack_q = (0, 0, math.sin(yaw / 2), math.cos(yaw / 2))
+        tube_q = (0, math.sin(tilt / 2), 0, math.cos(tilt / 2))
+        axis_z = S.rotate_xyzw(tube_q, (0, 0, 1))[2]
+        for offset in (-1e-6, 1e-6):
+            local = [0.06, 0.06, 0.0]
+            if face < 4:
+                local[face // 2] = -offset if face % 2 == 0 else 0.12 + offset
+            elif face == 4:
+                local[2] = p.rack_local_z_max + offset
+            else:
+                local[2] = (
+                    p.rack_rim_z
+                    - p.rim_margin_m
+                    - min(end * axis_z for end in p.tube_axis_span_m)
+                    + offset
+                )
+            world = S.rotate_xyzw(rack_q, tuple(local))
+            vial = (
+                S.SuccessTracker(p)
+                .step(0, [S.VialState(0, world, tube_q)], (0, 0, 0), rack_q)
+                .vials[0]
+            )
+            assert vial.box_signed_distance == pytest.approx(offset, abs=1e-14)
+            assert vial.in_box == (offset < 0)

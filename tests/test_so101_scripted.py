@@ -116,7 +116,8 @@ def runtime_class() -> type:
     cls.body = [
         node
         for node in cls.body
-        if isinstance(node, ast.FunctionDef) and node.name in ("run_policy_episode", "object_state")
+        if isinstance(node, ast.FunctionDef)
+        and node.name in ("run_policy_episode", "object_state", "state_digest")
     ]
     namespace = {
         "torch": SimpleNamespace(inference_mode=nullcontext),
@@ -126,6 +127,7 @@ def runtime_class() -> type:
         "math": math,
         "asdict": asdict,
         "INITIAL_JOINTS": {"wrist_flex": 0},
+        "DIGEST": SimpleNamespace(state_digest=lambda values: list(values)),
         "CORE": P.GEOMETRY,
         "UNITS": SimpleNamespace(to_lerobot=lambda radians, table: radians),
     }
@@ -172,6 +174,13 @@ def test_policy_loop(
     env.action_space = "joint"
     env.uses_object_state = privileged
     env.policy = SimpleNamespace(command_phase="approach")
+    digest_calls = []
+
+    def digest() -> str:
+        digest_calls.append(len(trace))
+        return f"{len(digest_calls):064x}"
+
+    env.state_digest = digest
     env.forces = lambda: [0.0]
     env.names = ["wrist_flex"]
     env.table = {}
@@ -197,7 +206,12 @@ def test_policy_loop(
     def sample(index: int) -> object:
         trace.append(("sample", index))
         env.dump_steps.append({"step_index": index})
-        return P.GEOMETRY.StepResult(index == success_at, (), 0, success_at)
+        return P.GEOMETRY.StepResult(
+            index == success_at,
+            (P.GEOMETRY.VialResult(False, False, True, True, False, (0, 0, 0), 0, -0.01),),
+            0,
+            success_at,
+        )
 
     def action(index: int, obs: dict) -> list[float]:
         assert set(obs) == (
@@ -208,6 +222,10 @@ def test_policy_loop(
 
     env.sample = sample
     result = env.run_policy_episode(lambda: trace.append("layout"), action, 4, record_steps)
+    assert result["initial_state_sha256"] == f"{1:064x}"
+    assert result["final_state_sha256"] == f"{2:064x}"
+    assert result["metric"] == -0.01
+    assert digest_calls == [5, len(trace)]
     count = 2 if success_at == 1 else 4
     assert result["steps_run"] == count
     assert result["success"] is (success_at is not None)
@@ -224,6 +242,10 @@ def test_policy_loop(
     ]
     expected = json.dumps(env.dump_steps, sort_keys=True, separators=(",", ":"), allow_nan=False)
     assert result["trajectory_sha256"] == hashlib.sha256(expected.encode()).hexdigest()
+    with pytest.raises(RuntimeError, match="Initial rack position is stale"):
+        env.run_policy_episode(lambda: None, action, 4, False, expected_rack_position=(0, 0, 0))
+    # The failed freshness check must happen before any further digest or action.
+    assert len(digest_calls) == 2
 
 
 def test_object_world_geometry() -> None:
@@ -262,8 +284,14 @@ def test_task_dispatches_randomized_policy(monkeypatch: pytest.MonkeyPatch) -> N
             calls.append(obj)
 
         def run_policy_episode(
-            self, layout_source: object, action_source: object, horizon: int, record_steps: bool
+            self,
+            layout_source: object,
+            action_source: object,
+            horizon: int,
+            record_steps: bool,
+            expected_rack_position: tuple[float, float, float],
         ) -> dict:
+            assert len(expected_rack_position) == 3
             layout_source()
             assert self.seed == 200000
             assert self.uses_object_state
@@ -351,3 +379,20 @@ def test_grasp_moves_in_when_the_tube_is_far() -> None:
     obs["objects"]["tubes"][0]["pos"][0] = 0.26
     # Only 1 cm of reach left, but never closer to the tube's end than 1.5 cm.
     assert policy.act(obs)[0] == pytest.approx(0.26 + 0.015)
+
+
+def test_state_vector_order() -> None:
+    env = runtime_class()()
+
+    def body(start: int) -> object:
+        return SimpleNamespace(
+            data=SimpleNamespace(
+                root_pos_w=Array(list(range(start, start + 3))),
+                root_quat_w=Array(list(range(start + 3, start + 7))),
+            )
+        )
+
+    env.tubes = [body(0), body(7), body(14)]
+    env.rack = body(21)
+    env.robot = SimpleNamespace(data=SimpleNamespace(joint_pos=Array(list(range(28, 34)))))
+    assert env.state_digest() == list(range(34))

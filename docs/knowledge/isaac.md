@@ -340,6 +340,24 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   to 4 processes kept the same outcomes and hashes but hit three host-memory failures (a
   timeout, a `MemoryError` in warp, PhysX "failed to allocate pinned host buffers"); with two,
   free RAM stayed above ~10 GB. _(verified 2026-11-03, Isaac Sim 6.2, Isaac Lab 3.0, RTX 5060 Ti)_
+- **Repeatability admission check for the SO-101 gate
+  ([ADR 0044](../decisions/0044-gate-trained-policies-against-a-spec-with-checked-repeatability.md))**:
+  - Prediction, registered before the runs: **REPEATABLE**. ADR 0033 found repeated runs
+    bit-identical on `trajectory_sha256` (PhysX, `enable_enhanced_determinism=False`, one process
+    per seed), and two workers left every hash unchanged (above). The final-state digest is
+    computed from that same trajectory's last state, so it should match too.
+  - Plan: two fresh 100-seed evaluations of the scripted policy on the gate's seeds, task and
+    policy (`--seeds 100000-100099`, corrected from `0-99` before any run), back to back, in separate work and output folders, then
+    `python -m piperobot.stats.repeatability --first a/results.json --second b/results.json`.
+  - Outcome: **REPEATABLE, as predicted.** 100/100 outcomes, final-state digests, initial-state
+    digests and `trajectory_sha256` matched; the 100 initial digests are all distinct, so the
+    seeds vary the scene. Both runs scored 78/100 with 0 outcome flips against the stored
+    baseline, all 22 failures `not_placed`, 0 retries, 2 workers, 1717 s and 1737 s.
+  - `box_signed_distance` on both runs: median -0.0300 m, p90 0.0558 m, IQR 0.00045 m, so the
+    threshold (0) is far outside one IQR of the median. It separated the outcomes completely
+    on these seeds: every success below 0, every failure above 0 (0.016 to 0.083 m).
+    _(verified 2026-11-10, Isaac Lab 28.0.1 / Isaac Sim 6.2, torch 2.11.0+cu130, RTX 5060 Ti,
+    driver 610.88, commit 69e0078)_
 - **Evaluator inputs live under one cache root**: `PIPEROBOT_CACHE`, else
   `%LOCALAPPDATA%\piperobot` (XDG cache on Linux). `robots/so101/tools/prepare_caches.py` (repo
   env, `uv sync --group so101-data`) fills and verifies it by sha256: the course's assets under
