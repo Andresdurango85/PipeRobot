@@ -340,6 +340,16 @@ Scene, checks and decisions: [ADR 0028](../decisions/0028-so101-scene-gains-and-
   to 4 processes kept the same outcomes and hashes but hit three host-memory failures (a
   timeout, a `MemoryError` in warp, PhysX "failed to allocate pinned host buffers"); with two,
   free RAM stayed above ~10 GB. _(verified 2026-11-03, Isaac Sim 6.2, Isaac Lab 3.0, RTX 5060 Ti)_
+- **Repeatability admission check for the SO-101 gate
+  ([ADR 0044](../decisions/0044-gate-trained-policies-against-a-spec-with-checked-repeatability.md))**:
+  - Prediction, registered before the runs: **REPEATABLE**. ADR 0033 found repeated runs
+    bit-identical on `trajectory_sha256` (PhysX, `enable_enhanced_determinism=False`, one process
+    per seed), and two workers left every hash unchanged (above). The final-state digest is
+    computed from that same trajectory's last state, so it should match too.
+  - Plan: two fresh 100-seed evaluations of the scripted policy (`--seeds 0-99`, the gate's task
+    and policy), back to back, in separate work and output folders, then
+    `python -m piperobot.stats.repeatability --first a/results.json --second b/results.json`.
+  - Outcome: pending. _(registered 2026-11-10)_
 - **Evaluator inputs live under one cache root**: `PIPEROBOT_CACHE`, else
   `%LOCALAPPDATA%\piperobot` (XDG cache on Linux). `robots/so101/tools/prepare_caches.py` (repo
   env, `uv sync --group so101-data`) fills and verifies it by sha256: the course's assets under
