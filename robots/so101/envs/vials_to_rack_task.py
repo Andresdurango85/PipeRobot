@@ -58,6 +58,13 @@ def simulation_settings(options: Mapping[str, object]) -> dict[str, object]:
     return {"dt": data["control"]["physics_dt"]}
 
 
+def metric_spec(options: Mapping[str, object]) -> dict[str, object] | None:
+    """Describe geometric box distance only; vertical, release and hold are separate."""
+    if options["layout"] == "reconstructed_demo":
+        return None
+    return {"name": "box_signed_distance", "unit": "m", "threshold": 0.0, "success_when": "below"}
+
+
 def run_episode(
     seed: int,
     policy: Policy,
@@ -132,6 +139,7 @@ def run_episode(
             lambda index, observation: policy.act(observation),
             horizon,
             record_steps=bool(options.get("record_steps", False)),
+            expected_rack_position=sampled.rack_position,
             **({"record_dir": record_dir} if record_dir is not None else {}),
         )
     if layout == "reconstructed_demo":

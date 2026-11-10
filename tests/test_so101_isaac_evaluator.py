@@ -322,11 +322,13 @@ def test_replay_and_task(tmp_path: Path) -> None:
         TASK.scene_label(0, "unknown")
 
 
+@pytest.mark.parametrize("hook", ["absent", "none", "spec"])
 @pytest.mark.parametrize("fails", [False, True, "write", "read"])
 def test_worker(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     fails: bool | str,
+    hook: str,
 ) -> None:
     import argparse
     from collections.abc import Iterator
@@ -385,6 +387,18 @@ def test_worker(
         ),
         encoding="utf-8",
     )
+    if hook != "absent":
+        with task_module.open("a", encoding="utf-8") as stream:
+            stream.write(
+                "def metric_spec(options):\n"
+                "    assert options == {'gain': 1, 'layout': 'test'}\n"
+                + (
+                    "    return None\n"
+                    if hook == "none"
+                    else "    return {'name': 'distance', 'unit': 'm', "
+                    "'threshold': 0.0, 'success_when': 'below'}\n"
+                )
+            )
     (tmp_path / "policy.py").write_text(
         "class Policy:\n    def reset(self, seed):\n        self.seed = seed\n",
         encoding="utf-8",
@@ -463,6 +477,14 @@ def test_worker(
         assert data["platform"]["device"] == "cpu"
         assert data["platform"]["options"] == {"gain": 1}
         assert data["wall_seconds"] >= 0
+        if hook == "absent":
+            assert "metric_spec" not in data
+        else:
+            assert data["metric_spec"] == (
+                None
+                if hook == "none"
+                else {"name": "distance", "unit": "m", "threshold": 0.0, "success_when": "below"}
+            )
 
 
 def test_duplicate_driver_seeds(
@@ -991,3 +1013,95 @@ def test_untrusted_deep_json(tmp_path: Path, payload: bytes) -> None:
     with pytest.raises(ResultsError, match=re.escape(str(path))) as excinfo:
         read_object(path)
     assert isinstance(excinfo.value.__cause__, RecursionError)
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ["fields", "legacy", "mismatch", "missing_spec", "bad_digest", "nan", "same_scene", "partial"],
+)
+def test_adr0044_worker_fields(
+    specs: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: str,
+) -> None:
+    monkeypatch.setattr(evaluate, "git_commit", lambda repo: None)
+    monkeypatch.setattr(evaluate, "PACKAGE_PARENT", tmp_path / "repo")
+    output = tmp_path / "out" / "results.json"
+    spec = {"name": "distance", "unit": "m", "threshold": 0.0, "success_when": "below"}
+
+    def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seed = int(command[command.index("--seed") + 1])
+        payload = {"seed": seed, "success": True, "scene": "s", "platform": {}}
+        if mode != "legacy":
+            payload.update(
+                initial_state_sha256=f"{seed:064x}",
+                final_state_sha256="a" * 64,
+                metric=-0.01,
+                metric_spec=spec.copy(),
+            )
+            if mode == "mismatch" and seed == 1:
+                payload["metric_spec"] = {**spec, "threshold": 1.0}
+            if mode == "missing_spec" and seed == 1:
+                del payload["metric_spec"]
+            if mode == "bad_digest":
+                payload["final_state_sha256"] = "bad"
+            if mode == "nan":
+                payload["metric"] = float("nan")
+            if mode == "same_scene":
+                payload["initial_state_sha256"] = "b" * 64
+            if mode == "partial" and seed == 1:
+                del payload["initial_state_sha256"]
+        write(Path(command[command.index("--out") + 1]), payload)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    code = evaluate.main(
+        [
+            "--task",
+            str(specs[0]),
+            "--policy",
+            str(specs[1]),
+            "--seeds",
+            "0,1",
+            "--isaac-python",
+            "python",
+            "--workdir",
+            str(tmp_path / "work"),
+            "--output",
+            str(output),
+        ],
+        runner=runner,
+    )
+    if mode in {"fields", "legacy"}:
+        assert code == 0
+        result = load_results(output)
+        assert (result.metric_spec is None) == (mode == "legacy")
+        for episode in result.episodes:
+            assert episode.metric == (-0.01 if mode == "fields" else None)
+            assert episode.initial_state_sha256 == (
+                f"{episode.seed:064x}" if mode == "fields" else None
+            )
+            assert episode.final_state_sha256 == ("a" * 64 if mode == "fields" else None)
+    else:
+        assert code == 2
+        assert not output.exists()
+        expected = {
+            "mismatch": "mismatched metric_spec",
+            "missing_spec": "mismatched metric_spec",
+            "bad_digest": "final_state_sha256 must be 64 lowercase hex characters",
+            "nan": "Non-finite JSON number",
+            "same_scene": "seeds do not vary the scene",
+            "partial": "initial_state_sha256 must be present on all episodes or none",
+        }
+        assert expected[mode] in capsys.readouterr().err
+
+
+def test_task_metric_spec() -> None:
+    assert TASK.metric_spec({"layout": "reconstructed_demo"}) is None
+    assert TASK.metric_spec({"layout": "randomized"}) == {
+        "name": "box_signed_distance",
+        "unit": "m",
+        "threshold": 0.0,
+        "success_when": "below",
+    }

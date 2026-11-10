@@ -46,3 +46,20 @@ regenerate the portable report with `tools/demo_replay_report.py`. Paths are rel
 - `../tools/prepare_caches.py`: idempotent verified asset and episode cache preparation.
 - `../policies/demo_replay_weak_grip.json`: replay with a 25-unit gripper floor.
 - `../policies/weak_grip_expectation.json`: pre-registered weak-grip BLOCK prediction.
+
+### ADR 0044 evaluation evidence
+
+Randomized episodes emit initial and final state SHA256 digests using the 34-float
+world-state vector documented in `state_digest.py`. Initial rack position must match
+its sampled layout within 1e-6 m; a mismatch aborts instead of hashing stale buffers.
+Reconstructed demos emit neither digests nor a metric specification.
+
+`box_signed_distance` is the minimum over tubes of the maximum of the six signed
+box margins at the final sampled step, in metres. It covers only the geometric box
+condition. Vertical orientation, release after a recent grasp and confirmation hold
+are judged separately: a negative metric with `success` false is expected.
+On the boundary the distance is exactly 0: on the strict z and tube-bottom faces the tube is
+outside the box, consistent with `success_when` "below" (strictly < 0); on the inclusive x and y
+faces the judge counts it inside, a measure-zero case the metric does not distinguish.
+The task's optional `metric_spec(options)` hook receives task options with `layout`
+set by the worker from the task specification. Every seed must agree on that spec.

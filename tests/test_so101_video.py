@@ -131,6 +131,7 @@ def test_capture_order_and_indices(
     env = runtime_class()()
     trace = []
     env.full_reset = False
+    env.state_digest = lambda: "a" * 64
     env.seed = 1
     env.names = ["wrist_flex"]
     env.table = {}
@@ -181,7 +182,11 @@ def test_capture_order_and_indices(
     def sample(index: int) -> SimpleNamespace:
         trace.append(index)
         env.dump_steps.append({"step_index": index})
-        return SimpleNamespace(success=index == success_at, success_step=success_at)
+        return SimpleNamespace(
+            success=index == success_at,
+            success_step=success_at,
+            vials=(SimpleNamespace(box_signed_distance=0.01),),
+        )
 
     env.sample = sample
     result = env.run_policy_episode(

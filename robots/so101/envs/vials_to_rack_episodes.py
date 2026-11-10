@@ -17,6 +17,7 @@ from isaaclab.sim import SimulationContext
 from isaaclab.utils import instantiate
 
 LAYOUT = load_module("episode_layout", ENV / "vials_to_rack_layout.py")
+DIGEST = load_module("episode_state_digest", ENV / "state_digest.py")
 SUCCESS = load_module("episode_success", ENV / "vials_to_rack_success.py")
 
 
@@ -368,6 +369,14 @@ class ReconstructedEpisodes:
             target=self.tensor([[values[name] for name in self.names]]), joint_ids=ids
         )
 
+    def state_digest(self) -> str:
+        values = []
+        for obj in [*self.tubes, self.rack]:
+            values.extend(obj.data.root_pos_w.torch[0].cpu().tolist())
+            values.extend(obj.data.root_quat_w.torch[0].cpu().tolist())
+        values.extend(self.robot.data.joint_pos.torch[0].cpu().tolist())
+        return DIGEST.state_digest(values)
+
     def run_policy_episode(
         self,
         layout_source: Callable[[], None],
@@ -375,6 +384,7 @@ class ReconstructedEpisodes:
         horizon: int,
         record_steps: bool,
         record_dir: Path | None = None,
+        expected_rack_position: Sequence[float] | None = None,
     ) -> dict[str, object]:
         if type(horizon) is not int or horizon <= 0:
             raise ValueError("horizon must be a positive integer")
@@ -401,6 +411,12 @@ class ReconstructedEpisodes:
                 "pos": self.rack.data.root_pos_w.torch[0].cpu().tolist(),
                 "quat_xyzw": self.rack.data.root_quat_w.torch[0].cpu().tolist(),
             }
+            if expected_rack_position is not None and any(
+                not math.isclose(actual, expected, rel_tol=0.0, abs_tol=1e-6)
+                for actual, expected in zip(rack_pose["pos"], expected_rack_position, strict=True)
+            ):
+                raise RuntimeError("Initial rack position is stale: differs from sampled layout")
+            initial_state_sha256 = self.state_digest()
             for index in range(horizon):
                 radians = {
                     name: float(
@@ -468,6 +484,9 @@ class ReconstructedEpisodes:
             "release_frame": None,
             "forces": None,
             "wrist_flex_limit_steps": limit_steps,
+            "initial_state_sha256": initial_state_sha256,
+            "final_state_sha256": self.state_digest(),
+            "metric": min(vial.box_signed_distance for vial in result.vials),
         }
         if record_steps:
             report["steps"] = diagnostics

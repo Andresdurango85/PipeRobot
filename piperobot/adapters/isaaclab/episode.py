@@ -109,6 +109,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     sim_cfg=sim_cfg,
                     **recording,
                 )
+                metric_settings = getattr(task_module, "metric_spec", None)
+                if metric_settings is not None:
+                    # The declared layout takes precedence over any option with that name.
+                    result["metric_spec"] = metric_settings({**task.options, "layout": task.layout})
                 cuda = torch.cuda.is_available() and str(sim_cfg.device).startswith("cuda")
                 result.update(
                     seed=args.seed,
