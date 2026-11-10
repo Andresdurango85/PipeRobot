@@ -19,6 +19,10 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: torchvision
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # LeRobot 0.6.1 requires huggingface-hub<2.0.0, so a 2.x bump is unresolvable and failed the
+      # whole job (2026-11-09). Remove with the LeRobot upgrade that allows hub 2.x.
+      - dependency-name: huggingface-hub
+        update-types: ["version-update:semver-major"]
     groups:
       python-dependencies:
         patterns: ["*"]

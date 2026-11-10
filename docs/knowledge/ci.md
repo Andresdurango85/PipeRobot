@@ -728,6 +728,15 @@
   survived, so where it is lost is not known. In briefs, give non-ASCII characters as escapes
   (`\u00b7`) or name them, and grep a Codex diff for `?` where a symbol was intended; a
   screenshot of rendered output catches it too. _(observed 2026-11-03, Codex CLI 0.166)_
+- **Reviews and ad-hoc analysis: cite the source, and fail on a missing field.** A claim in a
+  review or a brief about a run's backend, curriculum, success definition or data field cites
+  where it comes from: the run's `env.yaml`, a log line or `file:line`. Analysis one-liners
+  index fields strictly (`e["final_state_sha256"]`, never `e.get("digest")`), so a wrong field
+  name fails instead of returning a plausible number. Over one weekend, four corrections came
+  from claims made by analogy, among them a backend assumed to be PhysX that the run's
+  `env.yaml` showed as `newton_mjwarp`, and an "identical digests" alarm that was a `.get()` on
+  a field that does not exist, counting `{None}` as one digest. _(observed 2026-11-07..08,
+  retro R-2026-11-09-4)_
 - **Codex leaves sandbox-owned folders besides `pytest-tmp`** (`.venv\pytest-focused`,
   `.venv\pytest-*`), which `git worktree remove` cannot delete; remove them all from inside the
   sandbox (`glob.glob(r'.venv\pytest-*')`) before removing a worktree, and tell Codex in the brief

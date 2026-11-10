@@ -1,9 +1,9 @@
 ---
 name: retro
-description: Daily retrospective for PipeRobot (phase 1, report only). Collects one day of Claude Code, Codex, GitHub and Scorecard evidence with retro_collect.py, writes a redacted report and metrics to the private repo through a pull request, and proposes fixes without applying any. Use when asked for the retro, retrospective, "retro del día", or "/retro [date]".
+description: Daily retrospective for PipeRobot (report only). Collects the complete days since the last report (through yesterday) of Claude Code, Codex, GitHub and Scorecard evidence with retro_collect.py, writes a redacted report and metrics to the private repo through a pull request, and proposes fixes without applying any. Use when asked for the retro, retrospective, "retro del día", or "/retro [date]".
 ---
 
-# Daily retrospective (phase 1: report only)
+# Daily retrospective (report only)
 
 Goal: once a day, find the three problems that cost the most in how the model, the harness and our
 processes worked, with evidence. For each one, propose one fix and its risk. Do not apply any
@@ -11,8 +11,8 @@ fix. Decision and reasons: [ADR 0042](../../../docs/decisions/0042-daily-retrosp
 
 ## Guardrails (read first, never relax)
 
-- Phase 1 applies **no** fix. You write a report, a metrics file and the improvement log, in the
-  private repository, and nothing else.
+- The retro applies **no** fix (ADR 0042; ADR 0045 keeps that). You write a report, a metrics
+  file and the improvement log, in the private repository, and nothing else.
 - Never touch permissions, `settings*.json`, `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`,
   rulesets or repository settings. Never bypass hooks (`--no-verify`, `core.hooksPath`).
 - Never approve your own medium- or high-risk proposal; they go to Andrés.
@@ -34,9 +34,15 @@ These come from the machine's `CLAUDE.local.md` or the environment; never hard-c
 | `PIPEROBOT_RETRO_CODEX` | Codex sessions directory (`~/.codex/sessions`), optional |
 | `PIPEROBOT_RETRO_REPORTS` | Local clone of `Andresdurango85/piperobot-private` |
 
-The date is today in America/Bogota unless the caller gives one (`/retro 2026-11-07`) or a
-range (first run only: `2026-11-05..2026-11-07`). `gh` runs with the personal account's token
-(`GH_TOKEN`, see `CLAUDE.local.md`), never the employer's.
+The window is complete local days, never today
+([ADR 0045](../../../docs/decisions/0045-daily-retrospective-phase-2-window-and-watchdog.md)).
+By default it runs from the day after the latest `retro/reports/<date>.md` through yesterday, in
+America/Bogota: `--date` is the first day, `--until` is yesterday, and `<date>` in every file
+name is the window's last day. A Monday run therefore covers Saturday and Sunday, and a missed
+day is caught up by the next run. The caller may give a day (`/retro 2026-11-07`) or a range
+(`2026-11-05..2026-11-07`) instead. If the window would be empty (yesterday already reported),
+stop and say so. `gh` runs with the personal account's token (`GH_TOKEN`, see
+`CLAUDE.local.md`), never the employer's.
 
 ## Steps
 

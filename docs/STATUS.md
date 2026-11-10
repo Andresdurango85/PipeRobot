@@ -19,6 +19,11 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 
 ## Done recently
 
+- 2026-11-10: the daily retrospective's phase 2
+  ([ADR 0045](decisions/0045-daily-retrospective-phase-2-window-and-watchdog.md)): each run
+  covers the complete days since the last report, never today. Approved retro fixes: a
+  huggingface-hub major ignore for Dependabot, and source-citing review rules in
+  [ci.md](knowledge/ci.md).
 - 2026-11-08: the RL track's first weekend (ADR 0043) ended with registered results in the
   private crab repo. Isaac Lab's Franka Reach and Lift ran as references, three training seeds
   each. Its gate lessons became
@@ -36,19 +41,17 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 - 2026-11-07: first signed release `v0.1.0`, with tag rulesets on `v*`
   ([ADR 0041](decisions/0041-signed-source-releases.md)). `CONTRIBUTING.md` and the OpenSSF
   badge [answer sheet](knowledge/openssf-best-practices.md). Scorecard 6.3 → 7.5.
-- 2026-11-07: ADR rule: only a dated `## Outcome` section may be appended to an accepted ADR
-  ([decisions/README.md](decisions/README.md)).
 
 Older items: git history and ADRs 0001–0043.
 
 ## Next
 
-1. The daily retrospective, phase 1
-   ([ADR 0042](decisions/0042-daily-retrospective-report-only.md)): run `/retro` by hand for 3–4
-   days, report only; the first run covers 2026-11-05..2026-11-07 (the acceptance check).
-   Reports go to the private repo. The machine paths for `PIPEROBOT_RETRO_*` go in
-   `CLAUDE.local.md` ([harness.md](knowledge/harness.md)). Phase 2, a schedule plus a watchdog,
-   needs its own ADR.
+1. The daily retrospective, phase 2 ([ADR 0045](decisions/0045-daily-retrospective-phase-2-window-and-watchdog.md)):
+   - run `/retro` each weekday morning (it covers yesterday, or since the last report);
+   - the watchdog workflow in the private repo (its PR needs Andrés's OK);
+   - Andrés: the Task Scheduler task with `dontAsk` and an allow list
+     ([harness.md](knowledge/harness.md));
+   - `retro_collect.py trend` per-day normalization (in progress).
 2. ADR 0044's points 2-4 are in the generic core ([testing.md](knowledge/testing.md)):
    - optional digests, `metric` and `metric_spec` in `results.json`, with the seed-variation
      check;
@@ -81,8 +84,8 @@ Older items: git history and ADRs 0001–0043.
 10. Isaac (optional): a second registered demo (gripper_closed 10); the wrist_flex-at-limit
    failure mode; re-run the camera on/off check after any Isaac or Kit upgrade.
 11. A first ACT policy from the simulated rack dataset ([datasets.md](knowledge/datasets.md)).
-12. CI: check Monday's Dependabot runs; ask Andrés about `zizmor` as a required check; put
-    `robots/` under mypy strict; after ~4 clean weekly mutation runs, fail on a NEW survivor
+12. CI: Dependabot #100 and #101 wait for Andrés (ADR 0037); ask Andrés about `zizmor` as a
+    required check; put `robots/` under mypy strict; after ~4 clean weekly mutation runs, fail on a NEW survivor
     ([testing.md](knowledge/testing.md)).
 
 ## Open questions for Andrés

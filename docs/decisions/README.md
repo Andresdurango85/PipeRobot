@@ -60,6 +60,7 @@ ADR. Anything else (a later fact, a gotcha, a stale reason) goes to `docs/knowle
 | [0042](0042-daily-retrospective-report-only.md) | Daily retrospective, phase 1: report only | Accepted |
 | [0043](0043-reinforcement-learning-track-for-the-crab.md) | Reinforcement learning for the crab's reach, approach, dock and grasp skills, judged by the gate | Accepted |
 | [0044](0044-gate-trained-policies-against-a-spec-with-checked-repeatability.md) | Gate trained policies against a written spec, with repeatability checked per task | Accepted |
+| [0045](0045-daily-retrospective-phase-2-window-and-watchdog.md) | Daily retrospective, phase 2: complete-day windows, a watchdog, then a schedule | Accepted |
 
 ## Template
 
