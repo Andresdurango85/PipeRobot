@@ -511,6 +511,63 @@ def test_trend_mixed_windows(tmp_path: Path) -> None:
     }
 
 
+def test_trend_excludes_overlapping_history(tmp_path: Path) -> None:
+    history = tmp_path / "history"
+    history.mkdir()
+    retro.write(
+        history / "overlap.json",
+        {"date": "2026-11-06", "until": "2026-11-08", "calls": 300},
+    )
+    retro.write(
+        history / "previous.json",
+        {"date": "2026-11-04", "until": "2026-11-06", "calls": 12},
+    )
+    current = tmp_path / "current.json"
+    retro.write(current, {"date": "2026-11-07", "until": "2026-11-09", "calls": 24})
+    data = retro.trend(current, history, 2)
+    assert data["history"] == [
+        {"file": "previous.json", "date": "2026-11-04", "days": 3},
+    ]
+    assert data["skipped"] == []
+    assert data["metrics"]["calls"]["n"] == 1
+    assert data["metrics"]["calls"]["mean"] == 4
+
+
+@pytest.mark.parametrize("record", [[], 3, {}])
+def test_trend_invalid_record(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], record: object
+) -> None:
+    current = tmp_path / "current.json"
+    retro.write(current, record)
+    with pytest.raises(ValueError, match=r"expected metrics object|missing date"):
+        retro.trend(current, tmp_path, 2)
+    assert (
+        retro.main(
+            [
+                "trend",
+                "--current",
+                str(current),
+                "--history",
+                str(tmp_path),
+                "--output",
+                str(tmp_path / "out.json"),
+            ]
+        )
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("ERROR: ")
+    assert len(captured.err.splitlines()) == 1
+    history = tmp_path / "history"
+    history.mkdir()
+    retro.write(history / "bad.json", record)
+    retro.write(current, {"date": "2026-11-07", "calls": 5})
+    data = retro.trend(current, history, 2)
+    assert data["skipped"] == ["bad.json"]
+    assert data["history"] == []
+
+
 def test_trend_gauges(tmp_path: Path) -> None:
     history = tmp_path / "history"
     history.mkdir()

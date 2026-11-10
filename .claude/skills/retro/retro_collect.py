@@ -842,7 +842,11 @@ def numeric(value: object, prefix: str = "") -> dict[str, float | int]:
     return result
 
 
-def days(record: dict[str, Any]) -> int:
+def record_window(record: object) -> tuple[date, date]:
+    if not isinstance(record, dict):
+        raise ValueError("expected metrics object")
+    if "date" not in record:
+        raise ValueError("missing date")
     first = date.fromisoformat(record["date"])
     until = record.get("until")
     try:
@@ -851,19 +855,29 @@ def days(record: dict[str, Any]) -> int:
         raise ValueError("until must be an ISO date") from error
     if last < first:
         raise ValueError("until precedes date")
+    return first, last
+
+
+def days(record: dict[str, Any]) -> int:
+    first, last = record_window(record)
     return (last - first).days + 1
 
 
 def trend(current: Path, history: Path, window: int) -> dict[str, Any]:
+    """Select history ending before the current start; silently exclude overlaps.
+
+    Normalize counters per day and keep gauges raw.
+    """
     now = json.loads(current.read_text(encoding="utf-8"))
     current_days = days(now)
+    current_start = date.fromisoformat(now["date"])
     records = []
     skipped = []
     for path in sorted(history.glob("*.json")):
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
             record_days = days(record)
-            if record["date"] < now["date"]:
+            if record_window(record)[1] < current_start:
                 records.append((record["date"], path.name, numeric(record), record_days))
         except (OSError, ValueError, KeyError, TypeError):
             skipped.append(path.name)
