@@ -1,0 +1,20 @@
+# Machine-specific SO-101 hardware values (see docs/hardware/so101-build-log.md).
+# Copy this file to robots/so101/hardware.yaml, which is gitignored, and fill it in there.
+# COM ports change per PC and per USB socket, so they never go into the repo. Nothing reads
+# this file yet: it records the values to type into the LeRobot commands.
+
+lerobot:
+  # Output of: python -c "import importlib.metadata as m; print(m.version('lerobot'))"
+  version: ""
+  # How it was installed, e.g. "repo .venv: uv sync --group so101" or "conda env lerobot".
+  environment: ""
+
+follower:
+  port: "" # e.g. COM5, from lerobot-find-port
+  id: "" # --robot.id; it names the calibration file
+  supply: 12V
+
+leader:
+  port: ""
+  id: "" # --teleop.id
+  supply: 5V

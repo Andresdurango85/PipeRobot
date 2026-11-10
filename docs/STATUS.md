@@ -13,7 +13,7 @@ Code). Keep it under ~60 lines: history lives in git, decisions in ADRs, facts i
 | ≥ 50 episodes with seeds and scene variations | **Done.** PushT: 50 seeded episodes on CPU ([ADR 0016](decisions/0016-real-evaluator-lerobot-pusht.md)). SO-101 on Isaac: 100 fixed seeds of a randomized layout, one process per seed, bit-for-bit repeatable ([ADR 0033](decisions/0033-so101-isaac-evaluator-one-process-per-seed.md)) |
 | Statistical verdict vs. baseline | **Done.** Wilson/Newcombe for PushT ([ADR 0003](decisions/0003-statistical-gate-wilson-newcombe.md)); exact paired McNemar for SO-101 and the nightly ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md)) |
 | Automatic PR comment with rate, verdict, failed videos | **Done.** Sticky comments on both gates; SO-101 re-runs up to 5 lost seeds with a camera and links MP4s ([ADR 0038](decisions/0038-so101-failed-episode-videos.md)) |
-| Real-arm test, 20 attempts | **Not started**: electronics pending; runbook in [so101-bringup.md](knowledge/so101-bringup.md), manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
+| Real-arm test, 20 attempts | **Building** (2026-11-10): follower parts complete, leader waits for two 1/191 servos ([build log](hardware/so101-build-log.md)); runbook in [so101-bringup.md](knowledge/so101-bringup.md), manual-outcome adapter ready ([ADR 0022](decisions/0022-so101-hardware-deps-and-manual-outcomes.md)) |
 | Deliberately worse PR blocked, normal PR passes | **Done.** PushT #13 PASS / #14 BLOCK; SO-101 #63 PASS (78/100) / registered demo #65 BLOCK (20/100, p = 5.3e-17) |
 | README reproducible in 30 min | **Done, tested by CI** (`readme.yml`, Linux and Windows, ~5 min) |
 
@@ -67,8 +67,9 @@ Older items: git history and ADRs 0001–0043.
    - a crab task with harder variation, because approach sits at its ceiling.
 4. Andrés: fill in the OpenSSF badge form from the answer sheet (decisions 2 and 4 are his),
    then add the README badge with the project id.
-5. Andrés: the real-arm test (20 attempts) once the electronics arrive; then the crab's v0 in
-   Onshape, in its private repo.
+5. The real SO-101 build, step by step in the [build log](hardware/so101-build-log.md):
+   the follower first; the leader when its two 1/191 servos arrive; then the real-arm test
+   (20 attempts). Then the crab's v0 in Onshape, in its private repo.
 6. Nightly: after a week, check the unpaired fresh-seed rate (+8.8, -1.2, +4.0 pp so far) and
    decide on a paired pr-gate ([ADR 0032](decisions/0032-nightly-paired-run-on-rotating-seeds.md));
    evaluate takes 22–43 min (90-min timeout); the cron starts ~7 h 41 min late
