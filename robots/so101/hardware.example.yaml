@@ -11,10 +11,10 @@ lerobot:
 
 follower:
   port: "" # e.g. COM5, from lerobot-find-port
-  id: "" # --robot.id; it names the calibration file
+  id: piperobot_follower # --robot.id; it names the calibration file (runbook default)
   supply: 12V
 
 leader:
   port: ""
-  id: "" # --teleop.id
+  id: piperobot_leader # --teleop.id (runbook default)
   supply: 5V
