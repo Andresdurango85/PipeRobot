@@ -137,6 +137,26 @@ lerobot-setup-motors --teleop.type=so101_leader --teleop.port=COM4
 
 Unverified until hardware.
 
+### Assembly, joint by joint
+
+Two screw sizes: **M2x6** (the smallest) holds the motors in their printed holders, and **M3x6**
+holds horns and printed parts. A motor's *horn* is the round plate on its output shaft. The top
+horn takes one M3x6 in its centre; the bottom horn needs no screw. Put a 3-pin cable in each
+motor as you place it, and watch each step's video in the official guide: the text is short.
+
+| Step | What to do |
+| --- | --- |
+| Joint 1 | Both horns on motor 1. Motor 1 into the base, 4× M2x6 (2 from the top, 2 from below). Slide on the first motor holder, 2× M2x6 (one per side). Shoulder part on, 4× M3x6 on top and 4× M3x6 below. Add the shoulder motor holder. |
+| Joint 2 | Both horns on motor 2. Slide motor 2 in from the top, 4× M2x6. Upper arm on, 4× M3x6 per side. |
+| Joint 3 | Both horns on motor 3. Insert motor 3, 4× M2x6. Forearm on motor 3, 4× M3x6 per side. |
+| Joint 4 | Both horns on motor 4. Slide on motor holder 4, slide in motor 4, 4× M2x6. |
+| Joint 5 | Motor 5 into the wrist holder, 2× M2x6 at the front. **One** horn only, with its M3x6. Wrist onto motor 4, 4× M3x6 per side. |
+| Gripper (follower) | Gripper onto motor 5's horn, 4× M3x6. Gripper motor in, 2× M2x6 per side. Both horns on it. Claw on, 4× M3x6 per side. |
+| Handle (leader) | Leader holder onto the wrist, 4× M3x6. Handle onto the holder, 1× M2x6. Gripper motor in, 2× M2x6 per side, one horn with its M3x6. Trigger on, 4× M3x6. |
+
+_(verified 2026-11-10, docs/lerobot/so101 (main), "Step-by-Step Assembly Instructions"; the
+videos are not transcribed)_
+
 ## 5. Calibrate follower and leader
 
 ```powershell

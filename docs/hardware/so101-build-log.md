@@ -39,7 +39,8 @@ wrong and how it was fixed. The steps and commands themselves live in the runboo
 ### Other
 
 - Printed parts ready (PLA, printed on the X2D).
-- Computer: Windows. LeRobot environment: to be confirmed before step 2 (see the log).
+- Computer: the home PC (Windows), with the repo's `.venv`: `uv sync --group so101`, LeRobot 0.6.1.
+- Arm ids: the runbook's, `piperobot_follower` and `piperobot_leader`.
 
 ## Checklist
 
@@ -82,3 +83,7 @@ Command flags are checked against the installed LeRobot before each step.
 - On the home PC, LeRobot 0.6.1 is installed in the CUDA venv, but without the servo
   dependencies (`pyserial`, `feetech-servo-sdk`). There is no conda there. Which machine and
   environment drive the arms is still to be decided.
+- Decided: the arms run from the home PC with the repo's `.venv`. `uv sync --group so101`
+  installed LeRobot 0.6.1 with the Feetech SDK and pyserial: 79 packages, 1.6 GB with the CPU
+  torch, mostly from the uv cache. The arm ids are the runbook's. The leader is set up in one go
+  once the C044s arrive.
