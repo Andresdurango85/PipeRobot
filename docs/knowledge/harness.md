@@ -68,3 +68,7 @@ malformed counts jump.
 
   _(verified 2026-11-10, code.claude.com/docs/en: headless, permission-modes, cli-reference,
   skills, authentication)_
+- **Metrics files hold totals over a window of local days** (`date`..`until`, inclusive; no
+  `until` means one day), and windows differ in length (2026-11-07.json covers 3 days,
+  2026-11-09.json 2). `retro_collect.py trend` therefore compares per-day values against a
+  days-weighted trailing mean; the gauges in its `GAUGES` list are compared raw. _(2026-11-10)_

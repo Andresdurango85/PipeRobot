@@ -76,6 +76,9 @@ stop and say so. `gh` runs with the personal account's token (`GH_TOKEN`, see
    - read the last 5 files in `retro/reports/` and all of `retro/improvements.md`;
    - run `retro_collect.py trend --current <scratch>/<date>.json --history
      "$PIPEROBOT_RETRO_REPORTS/retro/metrics" --window 5 --output <scratch>/trend-<date>.json`.
+   - The trend is per day (2026-11-10): totals are divided by each file's window length
+     (`date`..`until`), the trailing mean is weighted by days, and the gauges listed in its
+     output (`schema`, `scorecard.score`, `github.evaluate_max_minutes`) are compared raw.
 
 3. **Write `retro/reports/<date>.md`** in the private clone, in English, with these sections:
    - **Metrics vs trailing average**: a table from the trend output; only metrics that moved, or
