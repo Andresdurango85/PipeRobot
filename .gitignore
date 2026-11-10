@@ -34,3 +34,5 @@ Thumbs.db
 # Per-machine agent config (see CLAUDE.md)
 CLAUDE.local.md
 .claude/settings.local.json
+# Per-machine SO-101 hardware values: COM ports, arm ids (robots/so101/hardware.example.yaml)
+robots/so101/hardware.yaml

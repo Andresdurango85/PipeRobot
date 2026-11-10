@@ -1,6 +1,7 @@
 # SO-101 bring-up with LeRobot 0.6.1 (Windows)
 
 The runbook from bare servos to a policy evaluated on the real arm, in the order to run it.
+Progress on the real build is recorded in [so101-build-log.md](../hardware/so101-build-log.md).
 Hardware, power supplies and cameras: see [AGENTS.md](../../AGENTS.md#hardware-and-stack).
 **Never swap the leader's 5 V and the follower's 12 V supplies.**
 
@@ -108,6 +109,10 @@ Connect one controller board by USB (and its supply), run the command, unplug th
 asked and press Enter: the port that disappeared is that arm's. On Windows it lists COM ports
 through pyserial. Repeat for the other arm. _(verified 2026-11-01, LeRobot 0.6.1,
 `lerobot_find_port.py`; COM names unverified until hardware)_
+
+`lerobot-find-port` takes no arguments: `--help` is ignored and the procedure starts at once,
+so run it only with the board connected. _(verified 2026-11-10, LeRobot 0.6.1,
+`lerobot_find_port.py` `main`)_
 
 ## 4. Set motor IDs and baudrate, one motor at a time
 
