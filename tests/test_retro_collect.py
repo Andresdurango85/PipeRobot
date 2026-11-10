@@ -448,9 +448,217 @@ def test_trend(tmp_path: Path) -> None:
     assert retro.main(args) == 0
     assert output.read_bytes() == first
     data = json.loads(first)
-    assert data["metrics"]["totals.calls"] == {"current": 8, "mean": 4, "n": 2, "delta": 4}
-    assert data["metrics"]["totals.new"]["mean"] is None
+    assert data["normalization"] == "per_day"
+    assert data["gauges"] == ["github.evaluate_max_minutes", "schema", "scorecard.score"]
+    assert data["current"] == {"file": "current.json", "date": "2026-11-07", "days": 1}
+    assert data["history"] == [
+        {"file": "2.json", "date": "2026-11-02", "days": 1},
+        {"file": "3.json", "date": "2026-11-03", "days": 1},
+    ]
+    assert data["metrics"]["totals.calls"] == {
+        "basis": "per_day",
+        "current": 8,
+        "current_total": 8,
+        "mean": 4,
+        "n": 2,
+        "delta": 4,
+    }
+    assert data["metrics"]["totals.new"] == {
+        "basis": "per_day",
+        "current": 1,
+        "current_total": 1,
+        "mean": None,
+        "n": 0,
+        "delta": None,
+    }
     assert data["skipped"] == ["bad.json"]
+
+
+def test_trend_mixed_windows(tmp_path: Path) -> None:
+    history = tmp_path / "history"
+    history.mkdir()
+    for day, until, total in [(1, 1, 2), (2, 3, 10), (4, 6, 24)]:
+        retro.write(
+            history / f"{day}.json",
+            {
+                "date": f"2026-11-{day:02d}",
+                "until": f"2026-11-{until:02d}",
+                "calls": total,
+                **({"sparse": 9} if day == 4 else {}),
+            },
+        )
+    current = tmp_path / "current.json"
+    retro.write(current, {"date": "2026-11-07", "until": "2026-11-09", "calls": 24, "sparse": 12})
+    data = retro.trend(current, history, 3)
+    assert data["current"]["days"] == 3
+    assert [r["days"] for r in data["history"]] == [1, 2, 3]
+    # 36 / 6 = 6, whereas the mean of daily means would be (2 + 5 + 8) / 3 = 5.
+    assert data["metrics"]["calls"] == {
+        "basis": "per_day",
+        "current": 8,
+        "current_total": 24,
+        "mean": 6,
+        "n": 3,
+        "delta": 2,
+    }
+    assert data["metrics"]["sparse"] == {
+        "basis": "per_day",
+        "current": 4,
+        "current_total": 12,
+        "mean": 3,
+        "n": 1,
+        "delta": 1,
+    }
+
+
+def test_trend_excludes_overlapping_history(tmp_path: Path) -> None:
+    history = tmp_path / "history"
+    history.mkdir()
+    retro.write(
+        history / "overlap.json",
+        {"date": "2026-11-06", "until": "2026-11-08", "calls": 300},
+    )
+    retro.write(
+        history / "previous.json",
+        {"date": "2026-11-04", "until": "2026-11-06", "calls": 12},
+    )
+    current = tmp_path / "current.json"
+    retro.write(current, {"date": "2026-11-07", "until": "2026-11-09", "calls": 24})
+    data = retro.trend(current, history, 2)
+    assert data["history"] == [
+        {"file": "previous.json", "date": "2026-11-04", "days": 3},
+    ]
+    assert data["skipped"] == []
+    assert data["metrics"]["calls"]["n"] == 1
+    assert data["metrics"]["calls"]["mean"] == 4
+
+
+@pytest.mark.parametrize("record", [[], 3, {}])
+def test_trend_invalid_record(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], record: object
+) -> None:
+    current = tmp_path / "current.json"
+    retro.write(current, record)
+    with pytest.raises(ValueError, match=r"expected metrics object|missing date"):
+        retro.trend(current, tmp_path, 2)
+    assert (
+        retro.main(
+            [
+                "trend",
+                "--current",
+                str(current),
+                "--history",
+                str(tmp_path),
+                "--output",
+                str(tmp_path / "out.json"),
+            ]
+        )
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("ERROR: ")
+    assert len(captured.err.splitlines()) == 1
+    history = tmp_path / "history"
+    history.mkdir()
+    retro.write(history / "bad.json", record)
+    retro.write(current, {"date": "2026-11-07", "calls": 5})
+    data = retro.trend(current, history, 2)
+    assert data["skipped"] == ["bad.json"]
+    assert data["history"] == []
+
+
+def test_trend_gauges(tmp_path: Path) -> None:
+    history = tmp_path / "history"
+    history.mkdir()
+    for day, until, value in [(1, 1, 2), (2, 3, 6)]:
+        retro.write(
+            history / f"{day}.json",
+            {
+                "date": f"2026-11-{day:02d}",
+                "until": f"2026-11-{until:02d}",
+                "schema": value,
+                "scorecard": {"score": value},
+                "github": {"evaluate_max_minutes": value},
+            },
+        )
+    current = tmp_path / "current.json"
+    retro.write(
+        current,
+        {
+            "date": "2026-11-07",
+            "until": "2026-11-09",
+            "schema": 8,
+            "scorecard": {"score": 8},
+            "github": {"evaluate_max_minutes": 8},
+        },
+    )
+    data = retro.trend(current, history, 2)
+    for key in retro.GAUGES:
+        assert data["metrics"][key] == {
+            "basis": "raw",
+            "current": 8,
+            "mean": 4,
+            "n": 2,
+            "delta": 4,
+        }
+
+
+def test_trend_legacy_windows(tmp_path: Path) -> None:
+    history = tmp_path / "history"
+    history.mkdir()
+    retro.write(history / "missing.json", {"date": "2026-11-01", "calls": 2})
+    retro.write(history / "null.json", {"date": "2026-11-02", "until": None, "calls": 4})
+    current = tmp_path / "current.json"
+    retro.write(current, {"date": "2026-11-07", "until": None, "calls": 5})
+    data = retro.trend(current, history, 2)
+    assert [r["days"] for r in data["history"]] == [1, 1]
+    assert data["current"]["days"] == 1
+    assert data["metrics"]["calls"]["mean"] == 3
+    assert data["metrics"]["calls"]["n"] == 2
+
+
+@pytest.mark.parametrize("until", ["2026-10-31", "invalid", 42])
+def test_trend_invalid_history_window(tmp_path: Path, until: object) -> None:
+    history = tmp_path / "history"
+    history.mkdir()
+    retro.write(history / "bad.json", {"date": "2026-11-01", "until": until, "calls": 2})
+    current = tmp_path / "current.json"
+    retro.write(current, {"date": "2026-11-07", "calls": 5})
+    data = retro.trend(current, history, 2)
+    assert data["skipped"] == ["bad.json"]
+    assert data["history"] == []
+    assert data["metrics"]["calls"]["n"] == 0
+
+
+@pytest.mark.parametrize("until", ["2026-11-06", "invalid", 42])
+def test_trend_invalid_current_window(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    until: object,
+) -> None:
+    current = tmp_path / "current.json"
+    retro.write(current, {"date": "2026-11-07", "until": until})
+    with pytest.raises(ValueError, match=r"until|Invalid isoformat"):
+        retro.trend(current, tmp_path, 2)
+    assert (
+        retro.main(
+            [
+                "trend",
+                "--current",
+                str(current),
+                "--history",
+                str(tmp_path),
+                "--output",
+                str(tmp_path / "out.json"),
+            ]
+        )
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("ERROR: ")
+    assert len(captured.err.splitlines()) == 1
 
 
 @pytest.mark.parametrize("case", ["missing", "codex", "arguments", "output"])

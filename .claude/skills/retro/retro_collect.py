@@ -112,6 +112,10 @@ def claude_record(r: dict[str, Any]) -> dict[str, Any]:
 
 # END CLAUDE CODE FORMAT ASSUMPTIONS
 
+# Gauges do not grow with window length: schema is a format version,
+# scorecard.score is a 0-10 snapshot, and evaluate_max_minutes is a window maximum.
+GAUGES = frozenset({"schema", "scorecard.score", "github.evaluate_max_minutes"})
+
 PATTERNS = [
     (r"github_pat_[A-Za-z0-9_]{20,}", "github"),
     (r"gh[pousr]_[A-Za-z0-9]{20,}", "github"),
@@ -838,30 +842,69 @@ def numeric(value: object, prefix: str = "") -> dict[str, float | int]:
     return result
 
 
+def record_window(record: object) -> tuple[date, date]:
+    if not isinstance(record, dict):
+        raise ValueError("expected metrics object")
+    if "date" not in record:
+        raise ValueError("missing date")
+    first = date.fromisoformat(record["date"])
+    until = record.get("until")
+    try:
+        last = date.fromisoformat(record["date"] if until is None else until)
+    except TypeError as error:
+        raise ValueError("until must be an ISO date") from error
+    if last < first:
+        raise ValueError("until precedes date")
+    return first, last
+
+
+def days(record: dict[str, Any]) -> int:
+    first, last = record_window(record)
+    return (last - first).days + 1
+
+
 def trend(current: Path, history: Path, window: int) -> dict[str, Any]:
+    """Select history ending before the current start; silently exclude overlaps.
+
+    Normalize counters per day and keep gauges raw.
+    """
     now = json.loads(current.read_text(encoding="utf-8"))
+    current_days = days(now)
+    current_start = date.fromisoformat(now["date"])
     records = []
     skipped = []
     for path in sorted(history.glob("*.json")):
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
-            date.fromisoformat(record["date"])
-            if record["date"] < now["date"]:
-                records.append((record["date"], path.name, numeric(record)))
+            record_days = days(record)
+            if record_window(record)[1] < current_start:
+                records.append((record["date"], path.name, numeric(record), record_days))
         except (OSError, ValueError, KeyError, TypeError):
             skipped.append(path.name)
     chosen = sorted(records)[-window:]
     result = {}
     for key, value in numeric(now).items():
-        values = [r[2][key] for r in chosen if key in r[2]]
-        mean = sum(values) / len(values) if values else None
+        values = [(r[2][key], r[3]) for r in chosen if key in r[2]]
+        gauge = key in GAUGES
+        denominator = len(values) if gauge else sum(d for _, d in values)
+        mean = sum(v for v, _ in values) / denominator if values else None
+        current_value = value if gauge else value / current_days
         result[key] = {
-            "current": value,
+            "basis": "raw" if gauge else "per_day",
+            "current": round(current_value, 3),
+            **({} if gauge else {"current_total": value}),
             "mean": round(mean, 3) if mean is not None else None,
             "n": len(values),
-            "delta": round(value - mean, 3) if mean is not None else None,
+            "delta": round(current_value - mean, 3) if mean is not None else None,
         }
-    return {"metrics": result, "skipped": skipped}
+    return {
+        "normalization": "per_day",
+        "gauges": sorted(GAUGES),
+        "current": {"file": current.name, "date": now["date"], "days": current_days},
+        "history": [{"file": r[1], "date": r[0], "days": r[3]} for r in chosen],
+        "metrics": result,
+        "skipped": skipped,
+    }
 
 
 class Parser(argparse.ArgumentParser):
