@@ -1,0 +1,2217 @@
+{
+  "policy": "vqbet-pusht",
+  "evaluator": "lerobot-eval",
+  "episodes": [
+    {
+      "seed": 258000,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258001,
+      "success": true
+    },
+    {
+      "seed": 258002,
+      "success": true
+    },
+    {
+      "seed": 258003,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258004,
+      "success": true
+    },
+    {
+      "seed": 258005,
+      "success": true
+    },
+    {
+      "seed": 258006,
+      "success": true
+    },
+    {
+      "seed": 258007,
+      "success": false,
+      "failure": "not solved (max reward 0.18)"
+    },
+    {
+      "seed": 258008,
+      "success": true
+    },
+    {
+      "seed": 258009,
+      "success": true
+    },
+    {
+      "seed": 258010,
+      "success": false,
+      "failure": "not solved (max reward 0.64)"
+    },
+    {
+      "seed": 258011,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 258012,
+      "success": false,
+      "failure": "not solved (max reward 0.15)"
+    },
+    {
+      "seed": 258013,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258014,
+      "success": true
+    },
+    {
+      "seed": 258015,
+      "success": true
+    },
+    {
+      "seed": 258016,
+      "success": true
+    },
+    {
+      "seed": 258017,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258018,
+      "success": true
+    },
+    {
+      "seed": 258019,
+      "success": true
+    },
+    {
+      "seed": 258020,
+      "success": true
+    },
+    {
+      "seed": 258021,
+      "success": true
+    },
+    {
+      "seed": 258022,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258023,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258024,
+      "success": true
+    },
+    {
+      "seed": 258025,
+      "success": false,
+      "failure": "not solved (max reward 0.51)"
+    },
+    {
+      "seed": 258026,
+      "success": true
+    },
+    {
+      "seed": 258027,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258028,
+      "success": false,
+      "failure": "not solved (max reward 0.71)"
+    },
+    {
+      "seed": 258029,
+      "success": false,
+      "failure": "not solved (max reward 0.59)"
+    },
+    {
+      "seed": 258030,
+      "success": true
+    },
+    {
+      "seed": 258031,
+      "success": true
+    },
+    {
+      "seed": 258032,
+      "success": false,
+      "failure": "not solved (max reward 0.66)"
+    },
+    {
+      "seed": 258033,
+      "success": false,
+      "failure": "not solved (max reward 0.94)"
+    },
+    {
+      "seed": 258034,
+      "success": false,
+      "failure": "not solved (max reward 0.30)"
+    },
+    {
+      "seed": 258035,
+      "success": true
+    },
+    {
+      "seed": 258036,
+      "success": true
+    },
+    {
+      "seed": 258037,
+      "success": true
+    },
+    {
+      "seed": 258038,
+      "success": true
+    },
+    {
+      "seed": 258039,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258040,
+      "success": false,
+      "failure": "not solved (max reward 0.60)"
+    },
+    {
+      "seed": 258041,
+      "success": true
+    },
+    {
+      "seed": 258042,
+      "success": false,
+      "failure": "not solved (max reward 0.96)"
+    },
+    {
+      "seed": 258043,
+      "success": true
+    },
+    {
+      "seed": 258044,
+      "success": true
+    },
+    {
+      "seed": 258045,
+      "success": false,
+      "failure": "not solved (max reward 0.68)"
+    },
+    {
+      "seed": 258046,
+      "success": true
+    },
+    {
+      "seed": 258047,
+      "success": false,
+      "failure": "not solved (max reward 0.39)"
+    },
+    {
+      "seed": 258048,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258049,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258050,
+      "success": true
+    },
+    {
+      "seed": 258051,
+      "success": true
+    },
+    {
+      "seed": 258052,
+      "success": true
+    },
+    {
+      "seed": 258053,
+      "success": true
+    },
+    {
+      "seed": 258054,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258055,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258056,
+      "success": true
+    },
+    {
+      "seed": 258057,
+      "success": true
+    },
+    {
+      "seed": 258058,
+      "success": true
+    },
+    {
+      "seed": 258059,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258060,
+      "success": true
+    },
+    {
+      "seed": 258061,
+      "success": true
+    },
+    {
+      "seed": 258062,
+      "success": true
+    },
+    {
+      "seed": 258063,
+      "success": true
+    },
+    {
+      "seed": 258064,
+      "success": true
+    },
+    {
+      "seed": 258065,
+      "success": true
+    },
+    {
+      "seed": 258066,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258067,
+      "success": false,
+      "failure": "not solved (max reward 0.78)"
+    },
+    {
+      "seed": 258068,
+      "success": true
+    },
+    {
+      "seed": 258069,
+      "success": true
+    },
+    {
+      "seed": 258070,
+      "success": false,
+      "failure": "not solved (max reward 0.63)"
+    },
+    {
+      "seed": 258071,
+      "success": false,
+      "failure": "not solved (max reward 0.13)"
+    },
+    {
+      "seed": 258072,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258073,
+      "success": true
+    },
+    {
+      "seed": 258074,
+      "success": true
+    },
+    {
+      "seed": 258075,
+      "success": true
+    },
+    {
+      "seed": 258076,
+      "success": true
+    },
+    {
+      "seed": 258077,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258078,
+      "success": true
+    },
+    {
+      "seed": 258079,
+      "success": true
+    },
+    {
+      "seed": 258080,
+      "success": true
+    },
+    {
+      "seed": 258081,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258082,
+      "success": false,
+      "failure": "not solved (max reward 0.20)"
+    },
+    {
+      "seed": 258083,
+      "success": false,
+      "failure": "not solved (max reward 0.95)"
+    },
+    {
+      "seed": 258084,
+      "success": true
+    },
+    {
+      "seed": 258085,
+      "success": true
+    },
+    {
+      "seed": 258086,
+      "success": false,
+      "failure": "not solved (max reward 0.40)"
+    },
+    {
+      "seed": 258087,
+      "success": true
+    },
+    {
+      "seed": 258088,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258089,
+      "success": true
+    },
+    {
+      "seed": 258090,
+      "success": true
+    },
+    {
+      "seed": 258091,
+      "success": false,
+      "failure": "not solved (max reward 0.90)"
+    },
+    {
+      "seed": 258092,
+      "success": true
+    },
+    {
+      "seed": 258093,
+      "success": true
+    },
+    {
+      "seed": 258094,
+      "success": true
+    },
+    {
+      "seed": 258095,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258096,
+      "success": true
+    },
+    {
+      "seed": 258097,
+      "success": true
+    },
+    {
+      "seed": 258098,
+      "success": true
+    },
+    {
+      "seed": 258099,
+      "success": false,
+      "failure": "not solved (max reward 0.31)"
+    },
+    {
+      "seed": 258100,
+      "success": true
+    },
+    {
+      "seed": 258101,
+      "success": true
+    },
+    {
+      "seed": 258102,
+      "success": true
+    },
+    {
+      "seed": 258103,
+      "success": true
+    },
+    {
+      "seed": 258104,
+      "success": false,
+      "failure": "not solved (max reward 0.43)"
+    },
+    {
+      "seed": 258105,
+      "success": false,
+      "failure": "not solved (max reward 0.56)"
+    },
+    {
+      "seed": 258106,
+      "success": true
+    },
+    {
+      "seed": 258107,
+      "success": false,
+      "failure": "not solved (max reward 0.41)"
+    },
+    {
+      "seed": 258108,
+      "success": true
+    },
+    {
+      "seed": 258109,
+      "success": true
+    },
+    {
+      "seed": 258110,
+      "success": true
+    },
+    {
+      "seed": 258111,
+      "success": true
+    },
+    {
+      "seed": 258112,
+      "success": true
+    },
+    {
+      "seed": 258113,
+      "success": false,
+      "failure": "not solved (max reward 0.22)"
+    },
+    {
+      "seed": 258114,
+      "success": false,
+      "failure": "not solved (max reward 0.40)"
+    },
+    {
+      "seed": 258115,
+      "success": true
+    },
+    {
+      "seed": 258116,
+      "success": false,
+      "failure": "not solved (max reward 0.73)"
+    },
+    {
+      "seed": 258117,
+      "success": false,
+      "failure": "not solved (max reward 0.16)"
+    },
+    {
+      "seed": 258118,
+      "success": false,
+      "failure": "not solved (max reward 0.03)"
+    },
+    {
+      "seed": 258119,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258120,
+      "success": true
+    },
+    {
+      "seed": 258121,
+      "success": true
+    },
+    {
+      "seed": 258122,
+      "success": true
+    },
+    {
+      "seed": 258123,
+      "success": false,
+      "failure": "not solved (max reward 0.56)"
+    },
+    {
+      "seed": 258124,
+      "success": true
+    },
+    {
+      "seed": 258125,
+      "success": false,
+      "failure": "not solved (max reward 0.91)"
+    },
+    {
+      "seed": 258126,
+      "success": true
+    },
+    {
+      "seed": 258127,
+      "success": true
+    },
+    {
+      "seed": 258128,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258129,
+      "success": true
+    },
+    {
+      "seed": 258130,
+      "success": true
+    },
+    {
+      "seed": 258131,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258132,
+      "success": false,
+      "failure": "not solved (max reward 0.72)"
+    },
+    {
+      "seed": 258133,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258134,
+      "success": false,
+      "failure": "not solved (max reward 0.15)"
+    },
+    {
+      "seed": 258135,
+      "success": true
+    },
+    {
+      "seed": 258136,
+      "success": true
+    },
+    {
+      "seed": 258137,
+      "success": true
+    },
+    {
+      "seed": 258138,
+      "success": true
+    },
+    {
+      "seed": 258139,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 258140,
+      "success": true
+    },
+    {
+      "seed": 258141,
+      "success": true
+    },
+    {
+      "seed": 258142,
+      "success": true
+    },
+    {
+      "seed": 258143,
+      "success": true
+    },
+    {
+      "seed": 258144,
+      "success": true
+    },
+    {
+      "seed": 258145,
+      "success": true
+    },
+    {
+      "seed": 258146,
+      "success": true
+    },
+    {
+      "seed": 258147,
+      "success": true
+    },
+    {
+      "seed": 258148,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258149,
+      "success": true
+    },
+    {
+      "seed": 258150,
+      "success": true
+    },
+    {
+      "seed": 258151,
+      "success": true
+    },
+    {
+      "seed": 258152,
+      "success": true
+    },
+    {
+      "seed": 258153,
+      "success": true
+    },
+    {
+      "seed": 258154,
+      "success": true
+    },
+    {
+      "seed": 258155,
+      "success": true
+    },
+    {
+      "seed": 258156,
+      "success": true
+    },
+    {
+      "seed": 258157,
+      "success": false,
+      "failure": "not solved (max reward 0.72)"
+    },
+    {
+      "seed": 258158,
+      "success": true
+    },
+    {
+      "seed": 258159,
+      "success": true
+    },
+    {
+      "seed": 258160,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258161,
+      "success": true
+    },
+    {
+      "seed": 258162,
+      "success": true
+    },
+    {
+      "seed": 258163,
+      "success": true
+    },
+    {
+      "seed": 258164,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258165,
+      "success": true
+    },
+    {
+      "seed": 258166,
+      "success": true
+    },
+    {
+      "seed": 258167,
+      "success": true
+    },
+    {
+      "seed": 258168,
+      "success": false,
+      "failure": "not solved (max reward 0.54)"
+    },
+    {
+      "seed": 258169,
+      "success": false,
+      "failure": "not solved (max reward 0.03)"
+    },
+    {
+      "seed": 258170,
+      "success": true
+    },
+    {
+      "seed": 258171,
+      "success": false,
+      "failure": "not solved (max reward 0.93)"
+    },
+    {
+      "seed": 258172,
+      "success": false,
+      "failure": "not solved (max reward 0.51)"
+    },
+    {
+      "seed": 258173,
+      "success": true
+    },
+    {
+      "seed": 258174,
+      "success": true
+    },
+    {
+      "seed": 258175,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258176,
+      "success": true
+    },
+    {
+      "seed": 258177,
+      "success": true
+    },
+    {
+      "seed": 258178,
+      "success": true
+    },
+    {
+      "seed": 258179,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258180,
+      "success": true
+    },
+    {
+      "seed": 258181,
+      "success": false,
+      "failure": "not solved (max reward 0.13)"
+    },
+    {
+      "seed": 258182,
+      "success": true
+    },
+    {
+      "seed": 258183,
+      "success": true
+    },
+    {
+      "seed": 258184,
+      "success": true
+    },
+    {
+      "seed": 258185,
+      "success": true
+    },
+    {
+      "seed": 258186,
+      "success": false,
+      "failure": "not solved (max reward 0.47)"
+    },
+    {
+      "seed": 258187,
+      "success": true
+    },
+    {
+      "seed": 258188,
+      "success": false,
+      "failure": "not solved (max reward 0.25)"
+    },
+    {
+      "seed": 258189,
+      "success": true
+    },
+    {
+      "seed": 258190,
+      "success": true
+    },
+    {
+      "seed": 258191,
+      "success": false,
+      "failure": "not solved (max reward 0.18)"
+    },
+    {
+      "seed": 258192,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258193,
+      "success": false,
+      "failure": "not solved (max reward 0.03)"
+    },
+    {
+      "seed": 258194,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258195,
+      "success": true
+    },
+    {
+      "seed": 258196,
+      "success": false,
+      "failure": "not solved (max reward 0.04)"
+    },
+    {
+      "seed": 258197,
+      "success": false,
+      "failure": "not solved (max reward 0.94)"
+    },
+    {
+      "seed": 258198,
+      "success": false,
+      "failure": "not solved (max reward 0.01)"
+    },
+    {
+      "seed": 258199,
+      "success": false,
+      "failure": "not solved (max reward 0.27)"
+    },
+    {
+      "seed": 258200,
+      "success": true
+    },
+    {
+      "seed": 258201,
+      "success": true
+    },
+    {
+      "seed": 258202,
+      "success": true
+    },
+    {
+      "seed": 258203,
+      "success": true
+    },
+    {
+      "seed": 258204,
+      "success": true
+    },
+    {
+      "seed": 258205,
+      "success": true
+    },
+    {
+      "seed": 258206,
+      "success": true
+    },
+    {
+      "seed": 258207,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258208,
+      "success": true
+    },
+    {
+      "seed": 258209,
+      "success": false,
+      "failure": "not solved (max reward 0.64)"
+    },
+    {
+      "seed": 258210,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258211,
+      "success": true
+    },
+    {
+      "seed": 258212,
+      "success": true
+    },
+    {
+      "seed": 258213,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 258214,
+      "success": true
+    },
+    {
+      "seed": 258215,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258216,
+      "success": false,
+      "failure": "not solved (max reward 0.63)"
+    },
+    {
+      "seed": 258217,
+      "success": true
+    },
+    {
+      "seed": 258218,
+      "success": true
+    },
+    {
+      "seed": 258219,
+      "success": false,
+      "failure": "not solved (max reward 0.11)"
+    },
+    {
+      "seed": 258220,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258221,
+      "success": true
+    },
+    {
+      "seed": 258222,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258223,
+      "success": true
+    },
+    {
+      "seed": 258224,
+      "success": true
+    },
+    {
+      "seed": 258225,
+      "success": true
+    },
+    {
+      "seed": 258226,
+      "success": true
+    },
+    {
+      "seed": 258227,
+      "success": true
+    },
+    {
+      "seed": 258228,
+      "success": true
+    },
+    {
+      "seed": 258229,
+      "success": true
+    },
+    {
+      "seed": 258230,
+      "success": true
+    },
+    {
+      "seed": 258231,
+      "success": true
+    },
+    {
+      "seed": 258232,
+      "success": true
+    },
+    {
+      "seed": 258233,
+      "success": true
+    },
+    {
+      "seed": 258234,
+      "success": false,
+      "failure": "not solved (max reward 0.63)"
+    },
+    {
+      "seed": 258235,
+      "success": false,
+      "failure": "not solved (max reward 0.68)"
+    },
+    {
+      "seed": 258236,
+      "success": true
+    },
+    {
+      "seed": 258237,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258238,
+      "success": true
+    },
+    {
+      "seed": 258239,
+      "success": true
+    },
+    {
+      "seed": 258240,
+      "success": true
+    },
+    {
+      "seed": 258241,
+      "success": false,
+      "failure": "not solved (max reward 0.29)"
+    },
+    {
+      "seed": 258242,
+      "success": false,
+      "failure": "not solved (max reward 0.50)"
+    },
+    {
+      "seed": 258243,
+      "success": true
+    },
+    {
+      "seed": 258244,
+      "success": true
+    },
+    {
+      "seed": 258245,
+      "success": true
+    },
+    {
+      "seed": 258246,
+      "success": true
+    },
+    {
+      "seed": 258247,
+      "success": true
+    },
+    {
+      "seed": 258248,
+      "success": true
+    },
+    {
+      "seed": 258249,
+      "success": true
+    },
+    {
+      "seed": 258250,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258251,
+      "success": true
+    },
+    {
+      "seed": 258252,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258253,
+      "success": false,
+      "failure": "not solved (max reward 0.54)"
+    },
+    {
+      "seed": 258254,
+      "success": true
+    },
+    {
+      "seed": 258255,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258256,
+      "success": false,
+      "failure": "not solved (max reward 0.64)"
+    },
+    {
+      "seed": 258257,
+      "success": true
+    },
+    {
+      "seed": 258258,
+      "success": true
+    },
+    {
+      "seed": 258259,
+      "success": true
+    },
+    {
+      "seed": 258260,
+      "success": true
+    },
+    {
+      "seed": 258261,
+      "success": true
+    },
+    {
+      "seed": 258262,
+      "success": false,
+      "failure": "not solved (max reward 0.71)"
+    },
+    {
+      "seed": 258263,
+      "success": true
+    },
+    {
+      "seed": 258264,
+      "success": true
+    },
+    {
+      "seed": 258265,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258266,
+      "success": false,
+      "failure": "not solved (max reward 0.93)"
+    },
+    {
+      "seed": 258267,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258268,
+      "success": true
+    },
+    {
+      "seed": 258269,
+      "success": true
+    },
+    {
+      "seed": 258270,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258271,
+      "success": true
+    },
+    {
+      "seed": 258272,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258273,
+      "success": true
+    },
+    {
+      "seed": 258274,
+      "success": true
+    },
+    {
+      "seed": 258275,
+      "success": true
+    },
+    {
+      "seed": 258276,
+      "success": false,
+      "failure": "not solved (max reward 0.53)"
+    },
+    {
+      "seed": 258277,
+      "success": false,
+      "failure": "not solved (max reward 0.57)"
+    },
+    {
+      "seed": 258278,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258279,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258280,
+      "success": true
+    },
+    {
+      "seed": 258281,
+      "success": true
+    },
+    {
+      "seed": 258282,
+      "success": true
+    },
+    {
+      "seed": 258283,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258284,
+      "success": false,
+      "failure": "not solved (max reward 0.28)"
+    },
+    {
+      "seed": 258285,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258286,
+      "success": true
+    },
+    {
+      "seed": 258287,
+      "success": true
+    },
+    {
+      "seed": 258288,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258289,
+      "success": true
+    },
+    {
+      "seed": 258290,
+      "success": false,
+      "failure": "not solved (max reward 0.68)"
+    },
+    {
+      "seed": 258291,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258292,
+      "success": true
+    },
+    {
+      "seed": 258293,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258294,
+      "success": false,
+      "failure": "not solved (max reward 0.15)"
+    },
+    {
+      "seed": 258295,
+      "success": true
+    },
+    {
+      "seed": 258296,
+      "success": false,
+      "failure": "not solved (max reward 0.95)"
+    },
+    {
+      "seed": 258297,
+      "success": false,
+      "failure": "not solved (max reward 0.56)"
+    },
+    {
+      "seed": 258298,
+      "success": false,
+      "failure": "not solved (max reward 0.40)"
+    },
+    {
+      "seed": 258299,
+      "success": true
+    },
+    {
+      "seed": 258300,
+      "success": false,
+      "failure": "not solved (max reward 0.57)"
+    },
+    {
+      "seed": 258301,
+      "success": true
+    },
+    {
+      "seed": 258302,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258303,
+      "success": true
+    },
+    {
+      "seed": 258304,
+      "success": true
+    },
+    {
+      "seed": 258305,
+      "success": true
+    },
+    {
+      "seed": 258306,
+      "success": true
+    },
+    {
+      "seed": 258307,
+      "success": false,
+      "failure": "not solved (max reward 0.62)"
+    },
+    {
+      "seed": 258308,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258309,
+      "success": false,
+      "failure": "not solved (max reward 0.34)"
+    },
+    {
+      "seed": 258310,
+      "success": true
+    },
+    {
+      "seed": 258311,
+      "success": true
+    },
+    {
+      "seed": 258312,
+      "success": true
+    },
+    {
+      "seed": 258313,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 258314,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258315,
+      "success": false,
+      "failure": "not solved (max reward 0.13)"
+    },
+    {
+      "seed": 258316,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258317,
+      "success": true
+    },
+    {
+      "seed": 258318,
+      "success": true
+    },
+    {
+      "seed": 258319,
+      "success": true
+    },
+    {
+      "seed": 258320,
+      "success": false,
+      "failure": "not solved (max reward 0.96)"
+    },
+    {
+      "seed": 258321,
+      "success": true
+    },
+    {
+      "seed": 258322,
+      "success": false,
+      "failure": "not solved (max reward 0.31)"
+    },
+    {
+      "seed": 258323,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258324,
+      "success": false,
+      "failure": "not solved (max reward 0.56)"
+    },
+    {
+      "seed": 258325,
+      "success": true
+    },
+    {
+      "seed": 258326,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258327,
+      "success": true
+    },
+    {
+      "seed": 258328,
+      "success": true
+    },
+    {
+      "seed": 258329,
+      "success": false,
+      "failure": "not solved (max reward 0.09)"
+    },
+    {
+      "seed": 258330,
+      "success": true
+    },
+    {
+      "seed": 258331,
+      "success": false,
+      "failure": "not solved (max reward 0.69)"
+    },
+    {
+      "seed": 258332,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258333,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258334,
+      "success": true
+    },
+    {
+      "seed": 258335,
+      "success": false,
+      "failure": "not solved (max reward 0.58)"
+    },
+    {
+      "seed": 258336,
+      "success": true
+    },
+    {
+      "seed": 258337,
+      "success": false,
+      "failure": "not solved (max reward 0.49)"
+    },
+    {
+      "seed": 258338,
+      "success": false,
+      "failure": "not solved (max reward 0.61)"
+    },
+    {
+      "seed": 258339,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258340,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258341,
+      "success": true
+    },
+    {
+      "seed": 258342,
+      "success": true
+    },
+    {
+      "seed": 258343,
+      "success": false,
+      "failure": "not solved (max reward 0.67)"
+    },
+    {
+      "seed": 258344,
+      "success": true
+    },
+    {
+      "seed": 258345,
+      "success": false,
+      "failure": "not solved (max reward 0.37)"
+    },
+    {
+      "seed": 258346,
+      "success": true
+    },
+    {
+      "seed": 258347,
+      "success": true
+    },
+    {
+      "seed": 258348,
+      "success": true
+    },
+    {
+      "seed": 258349,
+      "success": true
+    },
+    {
+      "seed": 258350,
+      "success": true
+    },
+    {
+      "seed": 258351,
+      "success": true
+    },
+    {
+      "seed": 258352,
+      "success": true
+    },
+    {
+      "seed": 258353,
+      "success": true
+    },
+    {
+      "seed": 258354,
+      "success": false,
+      "failure": "not solved (max reward 0.07)"
+    },
+    {
+      "seed": 258355,
+      "success": true
+    },
+    {
+      "seed": 258356,
+      "success": true
+    },
+    {
+      "seed": 258357,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258358,
+      "success": true
+    },
+    {
+      "seed": 258359,
+      "success": true
+    },
+    {
+      "seed": 258360,
+      "success": true
+    },
+    {
+      "seed": 258361,
+      "success": true
+    },
+    {
+      "seed": 258362,
+      "success": true
+    },
+    {
+      "seed": 258363,
+      "success": true
+    },
+    {
+      "seed": 258364,
+      "success": true
+    },
+    {
+      "seed": 258365,
+      "success": true
+    },
+    {
+      "seed": 258366,
+      "success": true
+    },
+    {
+      "seed": 258367,
+      "success": true
+    },
+    {
+      "seed": 258368,
+      "success": true
+    },
+    {
+      "seed": 258369,
+      "success": true
+    },
+    {
+      "seed": 258370,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258371,
+      "success": false,
+      "failure": "not solved (max reward 0.96)"
+    },
+    {
+      "seed": 258372,
+      "success": false,
+      "failure": "not solved (max reward 0.94)"
+    },
+    {
+      "seed": 258373,
+      "success": true
+    },
+    {
+      "seed": 258374,
+      "success": false,
+      "failure": "not solved (max reward 0.58)"
+    },
+    {
+      "seed": 258375,
+      "success": false,
+      "failure": "not solved (max reward 0.72)"
+    },
+    {
+      "seed": 258376,
+      "success": true
+    },
+    {
+      "seed": 258377,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258378,
+      "success": true
+    },
+    {
+      "seed": 258379,
+      "success": false,
+      "failure": "not solved (max reward 0.65)"
+    },
+    {
+      "seed": 258380,
+      "success": true
+    },
+    {
+      "seed": 258381,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258382,
+      "success": true
+    },
+    {
+      "seed": 258383,
+      "success": true
+    },
+    {
+      "seed": 258384,
+      "success": false,
+      "failure": "not solved (max reward 0.97)"
+    },
+    {
+      "seed": 258385,
+      "success": true
+    },
+    {
+      "seed": 258386,
+      "success": true
+    },
+    {
+      "seed": 258387,
+      "success": true
+    },
+    {
+      "seed": 258388,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258389,
+      "success": true
+    },
+    {
+      "seed": 258390,
+      "success": true
+    },
+    {
+      "seed": 258391,
+      "success": false,
+      "failure": "not solved (max reward 0.22)"
+    },
+    {
+      "seed": 258392,
+      "success": false,
+      "failure": "not solved (max reward 0.94)"
+    },
+    {
+      "seed": 258393,
+      "success": false,
+      "failure": "not solved (max reward 0.20)"
+    },
+    {
+      "seed": 258394,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258395,
+      "success": true
+    },
+    {
+      "seed": 258396,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258397,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258398,
+      "success": true
+    },
+    {
+      "seed": 258399,
+      "success": true
+    },
+    {
+      "seed": 258400,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258401,
+      "success": true
+    },
+    {
+      "seed": 258402,
+      "success": true
+    },
+    {
+      "seed": 258403,
+      "success": true
+    },
+    {
+      "seed": 258404,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258405,
+      "success": false,
+      "failure": "not solved (max reward 0.54)"
+    },
+    {
+      "seed": 258406,
+      "success": true
+    },
+    {
+      "seed": 258407,
+      "success": false,
+      "failure": "not solved (max reward 0.66)"
+    },
+    {
+      "seed": 258408,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258409,
+      "success": true
+    },
+    {
+      "seed": 258410,
+      "success": false,
+      "failure": "not solved (max reward 0.46)"
+    },
+    {
+      "seed": 258411,
+      "success": true
+    },
+    {
+      "seed": 258412,
+      "success": false,
+      "failure": "not solved (max reward 0.25)"
+    },
+    {
+      "seed": 258413,
+      "success": false,
+      "failure": "not solved (max reward 0.59)"
+    },
+    {
+      "seed": 258414,
+      "success": false,
+      "failure": "not solved (max reward 0.21)"
+    },
+    {
+      "seed": 258415,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258416,
+      "success": true
+    },
+    {
+      "seed": 258417,
+      "success": true
+    },
+    {
+      "seed": 258418,
+      "success": false,
+      "failure": "not solved (max reward 0.95)"
+    },
+    {
+      "seed": 258419,
+      "success": true
+    },
+    {
+      "seed": 258420,
+      "success": true
+    },
+    {
+      "seed": 258421,
+      "success": true
+    },
+    {
+      "seed": 258422,
+      "success": false,
+      "failure": "not solved (max reward 0.18)"
+    },
+    {
+      "seed": 258423,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258424,
+      "success": true
+    },
+    {
+      "seed": 258425,
+      "success": true
+    },
+    {
+      "seed": 258426,
+      "success": false,
+      "failure": "not solved (max reward 0.41)"
+    },
+    {
+      "seed": 258427,
+      "success": true
+    },
+    {
+      "seed": 258428,
+      "success": true
+    },
+    {
+      "seed": 258429,
+      "success": false,
+      "failure": "not solved (max reward 0.87)"
+    },
+    {
+      "seed": 258430,
+      "success": false,
+      "failure": "not solved (max reward 0.15)"
+    },
+    {
+      "seed": 258431,
+      "success": true
+    },
+    {
+      "seed": 258432,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258433,
+      "success": true
+    },
+    {
+      "seed": 258434,
+      "success": false,
+      "failure": "not solved (max reward 0.51)"
+    },
+    {
+      "seed": 258435,
+      "success": true
+    },
+    {
+      "seed": 258436,
+      "success": true
+    },
+    {
+      "seed": 258437,
+      "success": true
+    },
+    {
+      "seed": 258438,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258439,
+      "success": true
+    },
+    {
+      "seed": 258440,
+      "success": false,
+      "failure": "not solved (max reward 0.01)"
+    },
+    {
+      "seed": 258441,
+      "success": true
+    },
+    {
+      "seed": 258442,
+      "success": true
+    },
+    {
+      "seed": 258443,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258444,
+      "success": true
+    },
+    {
+      "seed": 258445,
+      "success": true
+    },
+    {
+      "seed": 258446,
+      "success": true
+    },
+    {
+      "seed": 258447,
+      "success": false,
+      "failure": "not solved (max reward 0.57)"
+    },
+    {
+      "seed": 258448,
+      "success": false,
+      "failure": "not solved (max reward 0.65)"
+    },
+    {
+      "seed": 258449,
+      "success": false,
+      "failure": "not solved (max reward 0.47)"
+    },
+    {
+      "seed": 258450,
+      "success": true
+    },
+    {
+      "seed": 258451,
+      "success": false,
+      "failure": "not solved (max reward 0.51)"
+    },
+    {
+      "seed": 258452,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258453,
+      "success": true
+    },
+    {
+      "seed": 258454,
+      "success": false,
+      "failure": "not solved (max reward 0.01)"
+    },
+    {
+      "seed": 258455,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258456,
+      "success": true
+    },
+    {
+      "seed": 258457,
+      "success": false,
+      "failure": "not solved (max reward 0.61)"
+    },
+    {
+      "seed": 258458,
+      "success": true
+    },
+    {
+      "seed": 258459,
+      "success": true
+    },
+    {
+      "seed": 258460,
+      "success": false,
+      "failure": "not solved (max reward 0.63)"
+    },
+    {
+      "seed": 258461,
+      "success": true
+    },
+    {
+      "seed": 258462,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258463,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 258464,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258465,
+      "success": true
+    },
+    {
+      "seed": 258466,
+      "success": true
+    },
+    {
+      "seed": 258467,
+      "success": true
+    },
+    {
+      "seed": 258468,
+      "success": true
+    },
+    {
+      "seed": 258469,
+      "success": false,
+      "failure": "not solved (max reward 0.41)"
+    },
+    {
+      "seed": 258470,
+      "success": true
+    },
+    {
+      "seed": 258471,
+      "success": false,
+      "failure": "not solved (max reward 0.98)"
+    },
+    {
+      "seed": 258472,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258473,
+      "success": true
+    },
+    {
+      "seed": 258474,
+      "success": false,
+      "failure": "not solved (max reward 0.60)"
+    },
+    {
+      "seed": 258475,
+      "success": true
+    },
+    {
+      "seed": 258476,
+      "success": false,
+      "failure": "not solved (max reward 0.95)"
+    },
+    {
+      "seed": 258477,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258478,
+      "success": false,
+      "failure": "not solved (max reward 0.35)"
+    },
+    {
+      "seed": 258479,
+      "success": true
+    },
+    {
+      "seed": 258480,
+      "success": false,
+      "failure": "not solved (max reward 0.71)"
+    },
+    {
+      "seed": 258481,
+      "success": true
+    },
+    {
+      "seed": 258482,
+      "success": true
+    },
+    {
+      "seed": 258483,
+      "success": true
+    },
+    {
+      "seed": 258484,
+      "success": true
+    },
+    {
+      "seed": 258485,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258486,
+      "success": true
+    },
+    {
+      "seed": 258487,
+      "success": true
+    },
+    {
+      "seed": 258488,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258489,
+      "success": false,
+      "failure": "not solved (max reward 0.08)"
+    },
+    {
+      "seed": 258490,
+      "success": false,
+      "failure": "not solved (max reward 0.99)"
+    },
+    {
+      "seed": 258491,
+      "success": true
+    },
+    {
+      "seed": 258492,
+      "success": true
+    },
+    {
+      "seed": 258493,
+      "success": true
+    },
+    {
+      "seed": 258494,
+      "success": true
+    },
+    {
+      "seed": 258495,
+      "success": false,
+      "failure": "not solved (max reward 0.70)"
+    },
+    {
+      "seed": 258496,
+      "success": false,
+      "failure": "not solved (max reward 0.00)"
+    },
+    {
+      "seed": 258497,
+      "success": true
+    },
+    {
+      "seed": 258498,
+      "success": false,
+      "failure": "not solved (max reward 1.00)"
+    },
+    {
+      "seed": 258499,
+      "success": false,
+      "failure": "not solved (max reward 0.49)"
+    }
+  ]
+}
