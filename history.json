@@ -1719,5 +1719,52 @@
     },
     "cpu_flags_sha256": "9c39b836959294af15642451b3307a084bdf18b26aa8e3b4b2d37a09aff1a4b7",
     "runner_image": "ubuntu26 20261111.196.1"
+  },
+  {
+    "schema": 2,
+    "commit": "5fc7cc3019e09e681c583a5496dd0a05047a05a2",
+    "commit_date": "2026-11-10T18:59:53Z",
+    "evaluated_at": "2026-11-18T11:45:56Z",
+    "run_url": "https://github.com/Andresdurango85/PipeRobot/actions/runs/44297570381",
+    "run_id": 44297570381,
+    "run_attempt": 1,
+    "policy": "vqbet-pusht",
+    "evaluator": "lerobot-eval",
+    "successes": 277,
+    "trials": 500,
+    "confidence": 0.95,
+    "interval": [
+      0.5101829628154826,
+      0.5969936084146699
+    ],
+    "baseline": {
+      "successes": 265,
+      "trials": 500
+    },
+    "difference_interval": [
+      -0.03763865796609224,
+      0.08538171262086681
+    ],
+    "tolerance": 0.1,
+    "verdict": "pass",
+    "seeds": "260500-260999",
+    "platform": "INTEL(R) XEON(R) PLATINUM 8573C, 4 CPUs",
+    "series": "nightly",
+    "paired": {
+      "reference_commit": "34eabdd837a6d70e3825c31f596d4ab6b8e76249",
+      "both": 277,
+      "reference_only": 0,
+      "candidate_only": 0,
+      "neither": 223,
+      "p_value": 1.0,
+      "alpha": 0.025,
+      "difference_interval": [
+        -0.0008234287698475628,
+        0.0008234287698475628
+      ],
+      "verdict": "pass"
+    },
+    "cpu_flags_sha256": "4a50f060d39b3ad9c6e936a37bcca1b33503fdc7aa07bdbee3fba2925b0cb598",
+    "runner_image": "ubuntu26 20261111.196.1"
   }
 ]
